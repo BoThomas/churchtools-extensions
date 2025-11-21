@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { PersistanceCategory, type CategoryValue } from '@/api/persistance';
+import {
+  PersistanceCategory,
+  type CategoryValue,
+} from '@churchtools-extensions/persistance';
 
 export interface RunningDinnerRecord {
   id?: number; // internal id in category

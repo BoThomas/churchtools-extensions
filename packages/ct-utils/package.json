@@ -1,0 +1,20 @@
+{
+  "name": "@churchtools-extensions/ct-utils",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./kv-store": {
+      "types": "./kv-store.d.ts",
+      "default": "./kv-store.ts"
+    },
+    "./ct-types": {
+      "types": "./ct-types.d.ts",
+      "default": "./ct-types.d.ts"
+    },
+    "./reset.css": "./reset.css"
+  },
+  "dependencies": {
+    "@churchtools/churchtools-client": "^1.4.0"
+  }
+}

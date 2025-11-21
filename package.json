@@ -1,5 +1,19 @@
 {
-	"devDependencies": {
-		"turbo": "^2.6.1"
-	}
+  "name": "@churchtools-extensions/root",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "deploy": "turbo deploy",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.8.1",
+    "prettier": "^3.6.2",
+    "turbo": "^2.6.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
+  }
 }

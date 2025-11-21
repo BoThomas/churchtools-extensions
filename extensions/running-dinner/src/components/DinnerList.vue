@@ -52,9 +52,9 @@
 </template>
 
 <script setup lang="ts">
-import Card from '@/volt/Card.vue';
-import Badge from '@/volt/Badge.vue';
-import type { CategoryValue } from '@/api/persistance';
+import Card from '@churchtools-extensions/prime-volt/Card.vue';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import type { CategoryValue } from '@churchtools-extensions/persistance';
 import type { RunningDinnerRecord } from '@/stores/runningDinner';
 
 defineProps<{ dinners: CategoryValue<RunningDinnerRecord>[] }>();

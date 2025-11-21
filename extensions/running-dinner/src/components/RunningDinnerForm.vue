@@ -100,14 +100,14 @@
 </template>
 
 <script setup lang="ts">
-import Card from '@/volt/Card.vue';
-import InputText from '@/volt/InputText.vue';
-import InputNumber from '@/volt/InputNumber.vue';
-import DatePicker from '@/volt/DatePicker.vue';
-import Checkbox from '@/volt/Checkbox.vue';
-import Button from '@/volt/Button.vue';
-import SecondaryButton from '@/volt/SecondaryButton.vue';
-import Message from '@/volt/Message.vue';
+import Card from '@churchtools-extensions/prime-volt/Card.vue';
+import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
+import InputNumber from '@churchtools-extensions/prime-volt/InputNumber.vue';
+import DatePicker from '@churchtools-extensions/prime-volt/DatePicker.vue';
+import Checkbox from '@churchtools-extensions/prime-volt/Checkbox.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
+import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import type { RunningDinnerRecord } from '@/stores/runningDinner';
 
 defineProps<{ title: string; form: RunningDinnerRecord; saving: boolean }>();

@@ -35,7 +35,7 @@ import { onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRunningDinnerStore } from '@/stores/runningDinner';
 import DinnerList from '@/components/DinnerList.vue';
-import Button from '@/volt/Button.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
 
 const store = useRunningDinnerStore();
 const { dinners } = storeToRefs(store);

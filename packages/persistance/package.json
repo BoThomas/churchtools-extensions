@@ -1,0 +1,15 @@
+{
+  "name": "@churchtools-extensions/persistance",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "@churchtools-extensions/ct-utils": "workspace:*"
+  }
+}

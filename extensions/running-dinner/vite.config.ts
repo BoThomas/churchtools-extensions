@@ -12,9 +12,11 @@ export default ({ mode }: { mode: string }) => {
     server: {
       https: {
         key: fs.readFileSync(
-          path.resolve(__dirname, 'certs/localhost-key.pem'),
+          path.resolve(__dirname, '../../certs/localhost-key.pem'),
         ),
-        cert: fs.readFileSync(path.resolve(__dirname, 'certs/localhost.pem')),
+        cert: fs.readFileSync(
+          path.resolve(__dirname, '../../certs/localhost.pem'),
+        ),
       },
       proxy: {
         '/api': {

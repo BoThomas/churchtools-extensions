@@ -1,0 +1,41 @@
+{
+  "name": "@churchtools-extensions/prime-volt",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./AutoComplete.vue": "./volt/AutoComplete.vue",
+    "./Badge.vue": "./volt/Badge.vue",
+    "./Button.vue": "./volt/Button.vue",
+    "./Card.vue": "./volt/Card.vue",
+    "./Checkbox.vue": "./volt/Checkbox.vue",
+    "./Chip.vue": "./volt/Chip.vue",
+    "./ConfirmDialog.vue": "./volt/ConfirmDialog.vue",
+    "./ContrastButton.vue": "./volt/ContrastButton.vue",
+    "./DangerButton.vue": "./volt/DangerButton.vue",
+    "./DataTable.vue": "./volt/DataTable.vue",
+    "./DatePicker.vue": "./volt/DatePicker.vue",
+    "./Dialog.vue": "./volt/Dialog.vue",
+    "./InputNumber.vue": "./volt/InputNumber.vue",
+    "./InputText.vue": "./volt/InputText.vue",
+    "./Listbox.vue": "./volt/Listbox.vue",
+    "./Message.vue": "./volt/Message.vue",
+    "./Multiselect.vue": "./volt/Multiselect.vue",
+    "./Password.vue": "./volt/Password.vue",
+    "./Popover.vue": "./volt/Popover.vue",
+    "./ProgressBar.vue": "./volt/ProgressBar.vue",
+    "./RadioButton.vue": "./volt/RadioButton.vue",
+    "./SecondaryButton.vue": "./volt/SecondaryButton.vue",
+    "./Tab.vue": "./volt/Tab.vue",
+    "./TabList.vue": "./volt/TabList.vue",
+    "./TabPanel.vue": "./volt/TabPanel.vue",
+    "./TabPanels.vue": "./volt/TabPanels.vue",
+    "./Tabs.vue": "./volt/Tabs.vue",
+    "./utils": "./volt/utils.ts"
+  },
+  "peerDependencies": {
+    "primevue": "^4.3.9",
+    "tailwind-merge": "^3.3.1",
+    "vue": "^3.5.22"
+  }
+}

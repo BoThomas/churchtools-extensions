@@ -12,8 +12,8 @@ import {
   createCustomDataValue,
   updateCustomDataValue,
   deleteCustomDataValue,
-} from '../utils/kv-store';
-import type { CustomModuleDataValue } from '../utils/ct-types';
+} from '@churchtools-extensions/ct-utils/kv-store';
+import type { CustomModuleDataValue } from '@churchtools-extensions/ct-utils/ct-types';
 
 // -------- Public class API --------
 

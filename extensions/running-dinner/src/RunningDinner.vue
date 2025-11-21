@@ -68,11 +68,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import Button from '@/volt/Button.vue';
-import DangerButton from '@/volt/DangerButton.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import DinnerList from '@/components/DinnerList.vue';
 import RunningDinnerForm from '@/components/RunningDinnerForm.vue';
-import ConfirmDialog from '@/volt/ConfirmDialog.vue';
+import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 import { useConfirm } from 'primevue/useconfirm';
 import {
   useRunningDinnerStore,

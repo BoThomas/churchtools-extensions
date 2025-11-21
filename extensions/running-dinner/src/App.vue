@@ -54,16 +54,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import type { Person } from './utils/ct-types';
+import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import Showcase from './Showcase.vue';
 import RunningDinner from './RunningDinner.vue';
 import Mitmachen from './Mitmachen.vue';
-import Tabs from '@/volt/Tabs.vue';
-import TabList from '@/volt/TabList.vue';
-import Tab from '@/volt/Tab.vue';
-import TabPanels from '@/volt/TabPanels.vue';
-import TabPanel from '@/volt/TabPanel.vue';
+import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
+import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
+import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
+import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
+import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 
 // Active tab state (default to user demo)
 const activeTab = ref('user');
