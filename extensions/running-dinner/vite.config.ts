@@ -10,6 +10,7 @@ export default ({ mode }: { mode: string }) => {
   return defineConfig({
     base: `/ccm/${process.env.VITE_KEY}/`,
     server: {
+      port: Number(process.env.VITE_PORT) || 5173,
       https: {
         key: fs.readFileSync(
           path.resolve(__dirname, '../../certs/localhost-key.pem'),
