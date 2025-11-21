@@ -21,9 +21,6 @@
         severity="success"
         @click="startPresentation"
       />
-      <p class="text-2xl text-white">
-        Waiting for translation to start from control window...
-      </p>
     </div>
 
     <!-- Translation Display -->
@@ -124,6 +121,12 @@ function scrollToBottom() {
 function startPresentation() {
   initPhase.value = false;
 
+  // Signal to control window that we're ready to start recording
+  localStorage.setItem(
+    'translator_recording_started',
+    JSON.stringify({ started: true, timestamp: Date.now() }),
+  );
+
   // Request fullscreen
   const elem = document.documentElement;
   if (elem.requestFullscreen) {
@@ -162,6 +165,7 @@ onMounted(() => {
     localStorage.removeItem('translator_settings');
     localStorage.removeItem('translator_paused');
     localStorage.removeItem('translator_presentation');
+    localStorage.removeItem('translator_recording_started');
   });
 });
 

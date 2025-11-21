@@ -498,7 +498,12 @@
               icon="pi pi-play"
               severity="success"
               @click="pauseOrResume"
-              :disabled="!(state.isPresentationRunning || state.isTestRunning)"
+              :disabled="
+                !(
+                  (state.isPresentationRunning && state.isRecordingStarted) ||
+                  state.isTestRunning
+                )
+              "
             />
             <Button
               v-else
@@ -506,7 +511,12 @@
               icon="pi pi-pause"
               severity="warning"
               @click="pauseOrResume"
-              :disabled="!(state.isPresentationRunning || state.isTestRunning)"
+              :disabled="
+                !(
+                  (state.isPresentationRunning && state.isRecordingStarted) ||
+                  state.isTestRunning
+                )
+              "
             />
             <Button
               label="Stop"
@@ -623,6 +633,7 @@ const state = ref({
   isTestRunning: false,
   isPresentationRunning: false,
   isPaused: false,
+  isRecordingStarted: false, // Tracks if presentation window clicked start
 });
 
 const error = ref<string | null>(null);
@@ -906,45 +917,7 @@ async function startPresentation() {
     // Save settings to localStorage for presentation window
     localStorage.setItem('translator_settings', JSON.stringify(store.settings));
     localStorage.removeItem('translator_paused');
-
-    // Start session logging
-    if (user.value) {
-      const session = sessionLogger.createSession({
-        userId: user.value.id!,
-        userEmail: user.value.email ?? '',
-        userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage.code,
-        outputLanguage: store.settings.outputLanguage.code,
-        mode: 'presentation',
-      });
-      const sessionId = await store.startSession(session);
-      sessionLogger.setCurrentSessionId(sessionId);
-      currentSession.value = session;
-
-      // Start heartbeat updates
-      startHeartbeat();
-    }
-
-    // Create captioning service
-    captioningService = new CaptioningService(
-      {
-        inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
-        profanityOption: store.settings.profanityOption,
-        stablePartialResultThreshold:
-          store.settings.stablePartialResultThreshold,
-        phraseList: store.settings.phraseList,
-      },
-      {
-        onTranslating,
-        onTranslated,
-        onError,
-      },
-      store.settings.azureApiKey!,
-      store.settings.azureRegion!,
-    );
-
-    captioningService.start();
+    localStorage.removeItem('translator_recording_started');
 
     // Open presentation window - just open the same page which will detect the hash
     const presentationUrl = `${window.location.origin}${window.location.pathname}?presentation=true`;
@@ -1035,8 +1008,10 @@ function stop() {
         localStorage.removeItem('translator_settings');
         localStorage.removeItem('translator_paused');
         localStorage.removeItem('translator_presentation');
+        localStorage.removeItem('translator_recording_started');
         state.value.isPresentationRunning = false;
         state.value.isPaused = false;
+        state.value.isRecordingStarted = false;
 
         // Stop heartbeat
         stopHeartbeat();
@@ -1083,12 +1058,80 @@ async function saveSettings() {
   }
 }
 
+// Start recording (called when presentation window signals ready)
+async function startRecording() {
+  if (!state.value.isPresentationRunning || state.value.isRecordingStarted) {
+    return;
+  }
+
+  try {
+    // Start session logging
+    if (user.value) {
+      const session = sessionLogger.createSession({
+        userId: user.value.id!,
+        userEmail: user.value.email ?? '',
+        userName: `${user.value.firstName} ${user.value.lastName}`,
+        inputLanguage: store.settings.inputLanguage.code,
+        outputLanguage: store.settings.outputLanguage.code,
+        mode: 'presentation',
+      });
+      const sessionId = await store.startSession(session);
+      sessionLogger.setCurrentSessionId(sessionId);
+      currentSession.value = session;
+
+      // Start heartbeat updates
+      startHeartbeat();
+    }
+
+    // Create and start captioning service
+    captioningService = new CaptioningService(
+      {
+        inputLanguage: store.settings.inputLanguage,
+        outputLanguage: store.settings.outputLanguage,
+        profanityOption: store.settings.profanityOption,
+        stablePartialResultThreshold:
+          store.settings.stablePartialResultThreshold,
+        phraseList: store.settings.phraseList,
+      },
+      {
+        onTranslating,
+        onTranslated,
+        onError,
+      },
+      store.settings.azureApiKey!,
+      store.settings.azureRegion!,
+    );
+
+    captioningService.start();
+    state.value.isRecordingStarted = true;
+
+    toast.add({
+      severity: 'success',
+      summary: 'Recording Started',
+      detail: 'Translation is now active',
+      life: 3000,
+    });
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start recording';
+    console.error('startRecording failed', e);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value,
+      life: 5000,
+    });
+  }
+}
+
 // Initialize
 loadUser();
 
 // Listen for presentation window close via storage events
 function handleStorageEvent(e: StorageEvent) {
-  if (
+  if (e.key === 'translator_recording_started' && e.newValue) {
+    // Presentation window clicked "Start & Fullscreen"
+    startRecording();
+  } else if (
     e.key === 'translator_settings' &&
     e.newValue === null &&
     state.value.isPresentationRunning
@@ -1097,6 +1140,7 @@ function handleStorageEvent(e: StorageEvent) {
     captioningService?.stop();
     state.value.isPresentationRunning = false;
     state.value.isPaused = false;
+    state.value.isRecordingStarted = false;
 
     // Stop heartbeat
     stopHeartbeat();
