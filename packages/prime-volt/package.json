@@ -34,6 +34,7 @@
     "./utils": "./volt/utils.ts"
   },
   "peerDependencies": {
+    "@primevue/icons": "^4.3.9",
     "primevue": "^4.3.9",
     "tailwind-merge": "^3.3.1",
     "vue": "^3.5.22"

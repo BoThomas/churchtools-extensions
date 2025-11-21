@@ -1,6 +1,7 @@
 {
   "name": "@churchtools-extensions/root",
   "private": true,
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
