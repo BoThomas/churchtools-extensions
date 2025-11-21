@@ -1023,6 +1023,13 @@ function stop() {
       message: 'Are you sure you want to stop the presentation?',
       header: 'Confirm Stop',
       icon: 'pi pi-exclamation-triangle',
+      rejectProps: {
+        label: 'Cancel',
+        severity: 'secondary',
+      },
+      acceptProps: {
+        label: 'Stop',
+      },
       accept: () => {
         captioningService?.stop();
         localStorage.removeItem('translator_settings');
@@ -1079,13 +1086,51 @@ async function saveSettings() {
 // Initialize
 loadUser();
 
+// Listen for presentation window close via storage events
+function handleStorageEvent(e: StorageEvent) {
+  if (
+    e.key === 'translator_settings' &&
+    e.newValue === null &&
+    state.value.isPresentationRunning
+  ) {
+    // Presentation window was closed, stop everything
+    captioningService?.stop();
+    state.value.isPresentationRunning = false;
+    state.value.isPaused = false;
+
+    // Stop heartbeat
+    stopHeartbeat();
+
+    // End session
+    const sessionId = sessionLogger.getCurrentSessionId();
+    if (sessionId && currentSession.value) {
+      const endedSession = sessionLogger.endSession(
+        currentSession.value,
+        'completed',
+      );
+      store.endSession(sessionId, endedSession);
+      sessionLogger.clearCurrentSession();
+      currentSession.value = null;
+    }
+
+    toast.add({
+      severity: 'info',
+      summary: 'Presentation Stopped',
+      detail: 'Presentation window was closed',
+      life: 3000,
+    });
+  }
+}
+
 // Setup window close handler
 onMounted(() => {
   window.addEventListener('beforeunload', handleWindowClose);
+  window.addEventListener('storage', handleStorageEvent);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleWindowClose);
+  window.removeEventListener('storage', handleStorageEvent);
   stopHeartbeat();
 });
 </script>

@@ -156,9 +156,12 @@ onMounted(() => {
   // Listen for storage changes from the control window
   window.addEventListener('storage', handleStorageEvent);
 
-  // Clean up on window close
+  // Clean up on window close - signal to control window
   window.addEventListener('beforeunload', () => {
-    // Don't remove settings here - control window manages it
+    // Remove settings to signal the control window that presentation closed
+    localStorage.removeItem('translator_settings');
+    localStorage.removeItem('translator_paused');
+    localStorage.removeItem('translator_presentation');
   });
 });
 
