@@ -35,8 +35,6 @@ export async function getModule(extensionkey: string): Promise<CustomModule> {
     throw new Error(`Module for extension key "${extensionkey}" not found.`);
   }
 
-  console.log(`Module ${extensionkey} found:`, module);
-
   return module;
 }
 
