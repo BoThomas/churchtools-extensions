@@ -550,6 +550,14 @@
               :disabled="inputsDisabled || store.settingsSaving"
               :loading="store.settingsSaving"
             />
+            <Button
+              label="Restore Defaults"
+              icon="pi pi-refresh"
+              severity="secondary"
+              outlined
+              @click="confirmRestoreDefaults"
+              :disabled="inputsDisabled"
+            />
           </div>
         </div>
       </Fieldset>
@@ -1059,6 +1067,41 @@ async function saveSettings() {
       life: 5000,
     });
   }
+}
+
+// Restore default settings with confirmation
+function confirmRestoreDefaults() {
+  confirm.require({
+    message:
+      'Are you sure you want to restore default settings? This will reset translation and presentation options, but keep your Azure credentials.',
+    header: 'Confirm Restore Defaults',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: 'Cancel',
+      severity: 'secondary',
+    },
+    acceptProps: {
+      label: 'Restore',
+    },
+    accept: async () => {
+      try {
+        await store.resetSettings();
+        toast.add({
+          severity: 'success',
+          summary: 'Settings Restored',
+          detail: 'Default settings have been restored',
+          life: 3000,
+        });
+      } catch (e: any) {
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to restore default settings',
+          life: 5000,
+        });
+      }
+    },
+  });
 }
 
 // Start recording (called when presentation window signals ready)

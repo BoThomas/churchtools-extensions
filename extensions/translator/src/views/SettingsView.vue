@@ -41,10 +41,12 @@
           :disabled="!isValid"
         />
         <Button
-          label="Reset to Defaults"
-          icon="pi pi-refresh"
+          label="Reload Settings"
+          icon="pi pi-replay"
           severity="secondary"
-          @click="confirmReset"
+          outlined
+          @click="reloadSettings"
+          :loading="store.settingsLoading"
         />
       </div>
 
@@ -83,13 +85,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useTranslatorStore } from '../stores/translator';
-import { useConfirm } from 'primevue/useconfirm';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 
 const store = useTranslatorStore();
-const confirm = useConfirm();
 
 const localSettings = ref({ ...store.settings });
 const saveSuccess = ref(false);
@@ -119,15 +119,12 @@ async function saveSettings() {
   }
 }
 
-function confirmReset() {
-  confirm.require({
-    message: 'Are you sure you want to reset all settings to defaults?',
-    header: 'Confirm Reset',
-    icon: 'pi pi-exclamation-triangle',
-    accept: async () => {
-      await store.resetSettings();
-      localSettings.value = { ...store.settings };
-    },
-  });
+async function reloadSettings() {
+  try {
+    await store.loadSettings();
+    localSettings.value = { ...store.settings };
+  } catch (e) {
+    console.error('Failed to reload settings', e);
+  }
 }
 </script>

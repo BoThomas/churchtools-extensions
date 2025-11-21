@@ -161,7 +161,13 @@ export const useTranslatorStore = defineStore('translator', () => {
    * Reset settings to defaults
    */
   async function resetSettings() {
-    await saveSettings({ ...DEFAULT_SETTINGS });
+    // Preserve Azure credentials when resetting
+    const preservedSettings = {
+      ...DEFAULT_SETTINGS,
+      azureApiKey: settings.value.azureApiKey,
+      azureRegion: settings.value.azureRegion,
+    };
+    await saveSettings(preservedSettings);
   }
 
   /**
