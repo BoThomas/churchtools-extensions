@@ -51,13 +51,16 @@ export class PersistanceCategory<T = unknown> {
 
     let category = await getCustomDataCategory(categoryShorty, module.id);
     if (!category) {
-      category = await createCustomDataCategory({
-        customModuleId: instance.moduleId,
-        name: options.categoryName ?? categoryShorty,
-        shorty: categoryShorty,
-        description:
-          options.categoryDescription ?? 'Category for extension values',
-      });
+      category = await createCustomDataCategory(
+        {
+          customModuleId: instance.moduleId,
+          name: options.categoryName ?? categoryShorty,
+          shorty: categoryShorty,
+          description:
+            options.categoryDescription ?? 'Category for extension values',
+        },
+        instance.moduleId,
+      );
     }
 
     instance.categoryId = category.id;
