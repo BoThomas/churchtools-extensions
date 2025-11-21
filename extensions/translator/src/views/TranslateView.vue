@@ -38,87 +38,201 @@
           <!-- Input Language -->
           <div class="flex flex-col gap-2">
             <label for="input-lang" class="font-medium text-sm"
-              >Input Language (Speech)</label
+              >Spoken Input Language</label
             >
-            <Select
-              id="input-lang"
-              v-model="store.settings.inputLanguage"
-              :options="inputLanguages"
-              optionLabel="name"
-              :disabled="inputsDisabled"
-              placeholder="Select input language"
-              class="w-full"
-            />
+            <div class="flex items-stretch w-full">
+              <Select
+                id="input-lang"
+                v-model="store.settings.inputLanguage"
+                :options="inputLanguages"
+                optionLabel="name"
+                :disabled="inputsDisabled"
+                placeholder="Select input language"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => inputLangPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="inputLangPopover">
+              <div class="max-w-xs">
+                <p class="text-sm">The spoken language to be translated.</p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Output Language -->
           <div class="flex flex-col gap-2">
             <label for="output-lang" class="font-medium text-sm"
-              >Output Language (Translation)</label
+              >Written Output Language</label
             >
-            <Select
-              id="output-lang"
-              v-model="store.settings.outputLanguage"
-              :options="outputLanguages"
-              optionLabel="name"
-              :disabled="inputsDisabled"
-              placeholder="Select output language"
-              class="w-full"
-            />
+            <div class="flex items-stretch w-full">
+              <Select
+                id="output-lang"
+                v-model="store.settings.outputLanguage"
+                :options="outputLanguages"
+                optionLabel="name"
+                :disabled="inputsDisabled"
+                placeholder="Select output language"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => outputLangPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="outputLangPopover">
+              <div class="max-w-xs">
+                <p class="text-sm">
+                  The written language to which is translated.
+                </p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Profanity Filter -->
           <div class="flex flex-col gap-2">
             <label for="profanity" class="font-medium text-sm"
-              >Profanity Filter</label
+              >Profanity Option</label
             >
-            <Select
-              id="profanity"
-              v-model="store.settings.profanityOption"
-              :options="profanityOptions"
-              :disabled="inputsDisabled"
-              placeholder="Select profanity option"
-              class="w-full"
-            />
-            <p class="text-xs text-surface-600 dark:text-surface-400">
-              How to handle profanity in the speech
-            </p>
+            <div class="flex items-stretch w-full">
+              <Select
+                id="profanity"
+                v-model="store.settings.profanityOption"
+                :options="profanityOptions"
+                :disabled="inputsDisabled"
+                placeholder="Select profanity option"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => profanityPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="profanityPopover">
+              <div class="max-w-xs">
+                <p class="text-sm mb-2">Setting for dealing with profanity:</p>
+                <p class="text-sm">
+                  <strong>raw</strong>: swear words are kept<br />
+                  <strong>remove</strong>: swear words are removed<br />
+                  <strong>mask</strong>: swear words are replaced by ***
+                </p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Stable Partial Result Threshold -->
           <div class="flex flex-col gap-2">
             <label for="threshold" class="font-medium text-sm"
-              >Stable Partial Result Threshold</label
+              >Partial Result Threshold</label
             >
-            <Select
-              id="threshold"
-              v-model="store.settings.stablePartialResultThreshold"
-              :options="partialThresholds"
-              :disabled="inputsDisabled"
-              placeholder="Select threshold"
-              class="w-full"
-            />
-            <p class="text-xs text-surface-600 dark:text-surface-400">
-              Number of words before displaying live translation
-            </p>
+            <div class="flex items-stretch w-full">
+              <Select
+                id="threshold"
+                v-model="store.settings.stablePartialResultThreshold"
+                :options="partialThresholds"
+                :disabled="inputsDisabled"
+                placeholder="Select threshold"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => thresholdPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="thresholdPopover">
+              <div class="max-w-sm">
+                <p class="text-sm mb-2">
+                  Real-time translation presents tradeoffs with respect to
+                  latency versus accuracy. You could show the text as soon as
+                  possible. However, if you can accept some latency, you can
+                  improve the accuracy of the caption by setting a higher
+                  'partial results threshold'.
+                </p>
+                <p class="text-sm">
+                  The value that you set is the number of times a word has to be
+                  recognized before the Speech service returns a live
+                  translation.
+                </p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Phrase List -->
           <div class="flex flex-col gap-2 md:col-span-2">
-            <label for="phrases" class="font-medium text-sm"
-              >Phrase List (semicolon-separated)</label
-            >
-            <InputText
-              id="phrases"
-              v-model="store.settings.phraseList"
-              placeholder="Name1;Location2;TechnicalTerm3"
-              :disabled="inputsDisabled"
-              class="w-full"
-            />
-            <p class="text-xs text-surface-600 dark:text-surface-400">
-              Important words/phrases that should be recognized accurately
-              (names, locations, technical terms)
-            </p>
+            <label for="phrases" class="font-medium text-sm">Phrase List</label>
+            <div class="flex items-stretch w-full">
+              <InputText
+                id="phrases"
+                v-model="store.settings.phraseList"
+                placeholder="Oeschelbronn;Schaan;Paul"
+                :disabled="inputsDisabled"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => phraseListPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="phraseListPopover">
+              <div class="max-w-sm">
+                <p class="text-sm mb-2">
+                  A phrase list is a list of words or phrases that you can
+                  provide before starting the translation. Adding a phrase to a
+                  phrase list increases its importance, thus making it more
+                  likely to be recognized.
+                </p>
+                <p class="text-sm mb-2">
+                  Examples of phrases include: Names, Geographical locations,
+                  Homonyms, Words or acronyms unique to your industry or
+                  organization.
+                </p>
+                <p class="text-sm">
+                  Phrases need to be separated by a semicolon.
+                </p>
+              </div>
+            </Popover>
           </div>
         </div>
       </Fieldset>
@@ -135,29 +249,71 @@
           <!-- Font -->
           <div class="flex flex-col gap-2">
             <label for="font" class="font-medium text-sm">Font</label>
-            <Select
-              id="font"
-              v-model="store.settings.presentation.font"
-              :options="presentationFonts"
-              :disabled="inputsDisabled"
-              placeholder="Select font"
-              class="w-full"
-            >
-              <template #option="{ option }">
-                <span :style="{ fontFamily: option }">{{ option }}</span>
-              </template>
-            </Select>
+            <div class="flex items-stretch w-full">
+              <Select
+                id="font"
+                v-model="store.settings.presentation.font"
+                :options="presentationFonts"
+                :disabled="inputsDisabled"
+                placeholder="Select font"
+                pt:root="flex-1 rounded-e-none"
+              >
+                <template #option="{ option }">
+                  <span :style="{ fontFamily: option }">{{ option }}</span>
+                </template>
+              </Select>
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => fontPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="fontPopover">
+              <div class="max-w-xs">
+                <p class="text-sm">Font used to display the translated text.</p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Font Size -->
           <div class="flex flex-col gap-2">
             <label for="font-size" class="font-medium text-sm">Font Size</label>
-            <InputText
-              id="font-size"
-              v-model="store.settings.presentation.fontSize"
-              placeholder="2em / 30px"
-              :disabled="inputsDisabled"
-            />
+            <div class="flex items-stretch w-full">
+              <InputText
+                id="font-size"
+                v-model="store.settings.presentation.fontSize"
+                placeholder="2em / 30px"
+                :disabled="inputsDisabled"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => fontSizePopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="fontSizePopover">
+              <div class="max-w-xs">
+                <p class="text-sm">
+                  Font size of the translated text. You can specify the size in
+                  any CSS unit (px, em, rem...).
+                </p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Margin -->
@@ -165,23 +321,71 @@
             <label for="margin" class="font-medium text-sm"
               >Paragraph Margin</label
             >
-            <InputText
-              id="margin"
-              v-model="store.settings.presentation.margin"
-              placeholder="1em 2em"
-              :disabled="inputsDisabled"
-            />
+            <div class="flex items-stretch w-full">
+              <InputText
+                id="margin"
+                v-model="store.settings.presentation.margin"
+                placeholder="1em 2em"
+                :disabled="inputsDisabled"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => marginPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="marginPopover">
+              <div class="max-w-sm">
+                <p class="text-sm">
+                  Distance of the translated paragraphs to each other and to the
+                  screen border. Specifications in 'px' and in 'em' are allowed.
+                  To control all sides individually, e.g. '1em 4em 1em 2em' can
+                  be used (top, right, bottom, left).
+                </p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Text Color -->
           <div class="flex flex-col gap-2">
             <label for="color" class="font-medium text-sm">Text Color</label>
-            <InputText
-              id="color"
-              v-model="store.settings.presentation.color"
-              placeholder="white / #fff"
-              :disabled="inputsDisabled"
-            />
+            <div class="flex items-stretch w-full">
+              <InputText
+                id="color"
+                v-model="store.settings.presentation.color"
+                placeholder="white / #fff"
+                :disabled="inputsDisabled"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => colorPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="colorPopover">
+              <div class="max-w-xs">
+                <p class="text-sm">
+                  Color of the translated text. You can specify colors with html
+                  names, rgb, and hex.
+                </p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Live Text Color -->
@@ -189,12 +393,35 @@
             <label for="live-color" class="font-medium text-sm"
               >Live Text Color</label
             >
-            <InputText
-              id="live-color"
-              v-model="store.settings.presentation.liveColor"
-              placeholder="gray / #999"
-              :disabled="inputsDisabled"
-            />
+            <div class="flex items-stretch w-full">
+              <InputText
+                id="live-color"
+                v-model="store.settings.presentation.liveColor"
+                placeholder="gray / #999"
+                :disabled="inputsDisabled"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => liveColorPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="liveColorPopover">
+              <div class="max-w-xs">
+                <p class="text-sm">
+                  Color of the live translated text. You can specify colors with
+                  html names, rgb, and hex.
+                </p>
+              </div>
+            </Popover>
           </div>
 
           <!-- Background -->
@@ -202,12 +429,38 @@
             <label for="background" class="font-medium text-sm"
               >Background</label
             >
-            <InputText
-              id="background"
-              v-model="store.settings.presentation.background"
-              placeholder="black / #000"
-              :disabled="inputsDisabled"
-            />
+            <div class="flex items-stretch w-full">
+              <InputText
+                id="background"
+                v-model="store.settings.presentation.background"
+                placeholder="black / #000"
+                :disabled="inputsDisabled"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => backgroundPopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="backgroundPopover">
+              <div class="max-w-sm">
+                <p class="text-sm">
+                  Background of the presentation view. You can specify colors
+                  with html names, rgb, and hex. Also images with e.g. the
+                  following syntax: 'center / cover no-repeat
+                  url(https://picsum.photos/1920/1080)', or color-gradients
+                  with: 'linear-gradient(red, yellow)'.
+                </p>
+              </div>
+            </Popover>
           </div>
         </div>
       </Fieldset>
@@ -346,10 +599,24 @@ import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
+import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
 const toast = useToast();
+
+// Popover refs for info buttons
+const inputLangPopover = ref();
+const outputLangPopover = ref();
+const profanityPopover = ref();
+const thresholdPopover = ref();
+const phraseListPopover = ref();
+const fontPopover = ref();
+const fontSizePopover = ref();
+const marginPopover = ref();
+const colorPopover = ref();
+const liveColorPopover = ref();
+const backgroundPopover = ref();
 
 // State
 const state = ref({
