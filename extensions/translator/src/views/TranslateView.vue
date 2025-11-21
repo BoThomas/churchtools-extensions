@@ -3,7 +3,20 @@
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-semibold">Translation Control</h2>
       <div v-if="stateText" class="flex items-center gap-2">
-        <Chip :label="stateText" :class="stateColorClass" />
+        <div
+          class="inline-flex items-center rounded-2xl gap-2 px-3 py-2"
+          :class="{
+            'bg-orange-500 text-white': state.isPaused,
+            'bg-green-500 text-white':
+              state.isTestRunning || state.isPresentationRunning,
+            'bg-surface-100 dark:bg-surface-800 text-surface-800 dark:text-surface-0':
+              !state.isPaused &&
+              !state.isTestRunning &&
+              !state.isPresentationRunning,
+          }"
+        >
+          {{ stateText }}
+        </div>
       </div>
     </div>
 
@@ -606,7 +619,6 @@ import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
-import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
@@ -726,15 +738,6 @@ const stateText = computed(() => {
     return 'Testing';
   } else if (state.value.isPresentationRunning) {
     return 'Presenting';
-  }
-  return '';
-});
-
-const stateColorClass = computed(() => {
-  if (state.value.isPaused) {
-    return 'bg-orange-500 text-white';
-  } else if (state.value.isTestRunning || state.value.isPresentationRunning) {
-    return 'bg-green-500 text-white';
   }
   return '';
 });
