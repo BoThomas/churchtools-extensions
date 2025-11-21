@@ -15,6 +15,6 @@
     "./reset.css": "./reset.css"
   },
   "dependencies": {
-    "@churchtools/churchtools-client": "^1.4.0"
+    "@churchtools/churchtools-client": "^1.4.2"
   }
 }

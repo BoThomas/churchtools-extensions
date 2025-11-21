@@ -76,13 +76,13 @@ importers:
         version: 4.1.12
     devDependencies:
       '@churchtools/churchtools-client':
-        specifier: ^1.4.0
+        specifier: ^1.4.2
         version: 1.4.2
 
   packages/ct-utils:
     dependencies:
       '@churchtools/churchtools-client':
-        specifier: ^1.4.0
+        specifier: ^1.4.2
         version: 1.4.2
 
   packages/persistance:

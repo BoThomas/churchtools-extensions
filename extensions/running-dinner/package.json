@@ -10,7 +10,7 @@
     "deploy": "pnpm build && node scripts/package.js"
   },
   "devDependencies": {
-    "@churchtools/churchtools-client": "^1.4.0"
+    "@churchtools/churchtools-client": "^1.4.2"
   },
   "dependencies": {
     "@churchtools-extensions/ct-utils": "workspace:*",
