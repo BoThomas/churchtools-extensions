@@ -501,7 +501,6 @@
             <Button
               label="Start Presentation"
               icon="pi pi-video"
-              severity="success"
               @click="startPresentation"
               :disabled="state.isPresentationRunning || state.isTestRunning"
             />
@@ -509,7 +508,6 @@
               v-if="state.isPaused"
               label="Resume"
               icon="pi pi-play"
-              severity="success"
               @click="pauseOrResume"
               :disabled="
                 !(
@@ -518,11 +516,10 @@
                 )
               "
             />
-            <Button
+            <SecondaryButton
               v-else
               label="Pause"
               icon="pi pi-pause"
-              severity="warning"
               @click="pauseOrResume"
               :disabled="
                 !(
@@ -531,10 +528,9 @@
                 )
               "
             />
-            <Button
+            <DangerButton
               label="Stop"
               icon="pi pi-stop"
-              severity="danger"
               @click="stop"
               :disabled="!(state.isPresentationRunning || state.isTestRunning)"
             />
@@ -542,19 +538,17 @@
 
           <!-- Save/Load Settings -->
           <div class="flex gap-2 flex-wrap justify-center pt-4 border-t">
-            <Button
+            <ContrastButton
               label="Save Settings"
               icon="pi pi-save"
-              severity="secondary"
               @click="saveSettings"
               :disabled="inputsDisabled || store.settingsSaving"
               :loading="store.settingsSaving"
             />
-            <Button
+            <ContrastButton
               label="Restore Defaults"
               icon="pi pi-refresh"
-              severity="secondary"
-              outlined
+              variant="outlined"
               @click="confirmRestoreDefaults"
               :disabled="inputsDisabled"
             />
@@ -625,6 +619,9 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
+import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
+import ContrastButton from '@churchtools-extensions/prime-volt/ContrastButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
