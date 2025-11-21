@@ -351,6 +351,34 @@ export const useTranslatorStore = defineStore('translator', () => {
     );
   }
 
+  /**
+   * Clear all session records
+   */
+  async function clearAllSessions() {
+    sessionsSaving.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!sessionsCategory) return;
+
+      // Delete all sessions in parallel
+      await Promise.all(
+        sessions.value.map((session) => sessionsCategory!.delete(session.id)),
+      );
+
+      // Clear local state
+      sessions.value = [];
+      currentSessionId.value = null;
+      currentSession.value = null;
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to clear sessions';
+      console.error('clearAllSessions failed', e);
+      throw e;
+    } finally {
+      sessionsSaving.value = false;
+    }
+  }
+
   return {
     // State
     settings,
@@ -374,5 +402,6 @@ export const useTranslatorStore = defineStore('translator', () => {
     updateHeartbeat,
     fetchSessions,
     getUsageStats,
+    clearAllSessions,
   };
 });

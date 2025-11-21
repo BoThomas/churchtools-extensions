@@ -2,13 +2,22 @@
   <div class="space-y-6 max-w-7xl">
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-semibold">Usage Reports</h2>
-      <Button
-        icon="pi pi-refresh"
-        label="Refresh"
-        @click="loadData"
-        :loading="store.sessionsLoading"
-        severity="secondary"
-      />
+      <div class="flex gap-2">
+        <Button
+          icon="pi pi-refresh"
+          label="Refresh"
+          @click="loadData"
+          :loading="store.sessionsLoading"
+          severity="secondary"
+        />
+        <DangerButton
+          icon="pi pi-trash"
+          label="Clear All Sessions"
+          @click="confirmClearSessions"
+          :disabled="store.sessionsLoading || totalSessions === 0"
+          :loading="store.sessionsSaving"
+        />
+      </div>
     </div>
 
     <Message v-if="store.error" severity="error" :closable="true">
@@ -290,14 +299,19 @@ import {
 
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
 import Column from 'primevue/column';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import DatePicker from '@churchtools-extensions/prime-volt/DatePicker.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 
 const store = useTranslatorStore();
+const confirm = useConfirm();
+const toast = useToast();
 
 // State
 const usageStats = ref<UsageStats[]>([]);
@@ -489,6 +503,43 @@ function formatDuration(minutes: number): string {
   if (hours === 0) return `${mins}m`;
   if (mins === 0) return `${hours}h`;
   return `${hours}h ${mins}m`;
+}
+
+// Clear all sessions with confirmation
+function confirmClearSessions() {
+  confirm.require({
+    message:
+      'Are you sure you want to delete all session records? This action cannot be undone.',
+    header: 'Confirm Clear All Sessions',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: 'Cancel',
+      severity: 'secondary',
+    },
+    acceptProps: {
+      label: 'Delete All',
+      severity: 'danger',
+    },
+    accept: async () => {
+      try {
+        await store.clearAllSessions();
+        await loadData(); // Refresh the data
+        toast.add({
+          severity: 'success',
+          summary: 'Sessions Cleared',
+          detail: 'All session records have been deleted',
+          life: 3000,
+        });
+      } catch (e: any) {
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to clear session records',
+          life: 5000,
+        });
+      }
+    },
+  });
 }
 
 // Initialize

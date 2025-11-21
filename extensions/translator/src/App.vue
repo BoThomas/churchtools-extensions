@@ -25,6 +25,11 @@
       </Tabs>
     </div>
   </div>
+
+  <!-- Global Confirm Dialog -->
+  <ConfirmDialog />
+  <!-- Global Toast -->
+  <Toast />
 </template>
 
 <script setup lang="ts">
@@ -40,6 +45,8 @@ import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
 import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
 import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
 import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
+import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
+import Toast from 'primevue/toast';
 import { useTranslatorStore } from './stores/translator';
 
 // Check if we're in presentation mode

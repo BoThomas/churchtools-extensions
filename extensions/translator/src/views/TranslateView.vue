@@ -611,9 +611,6 @@
         </Fieldset>
       </div>
     </div>
-
-    <!-- Confirm Dialog -->
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -635,7 +632,6 @@ import ContrastButton from '@churchtools-extensions/prime-volt/ContrastButton.vu
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
-import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 
 const store = useTranslatorStore();
