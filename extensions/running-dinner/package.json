@@ -1,0 +1,35 @@
+{
+  "name": "churchtools-running-dinner",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write .",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && node scripts/package.js"
+  },
+  "devDependencies": {
+    "@churchtools/churchtools-client": "^1.4.0",
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.8.1",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
+  },
+  "dependencies": {
+    "@primevue/forms": "^4.3.9",
+    "@primevue/icons": "^4.3.9",
+    "@tailwindcss/vite": "^4.1.13",
+    "pinia": "^3.0.3",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.9",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^4.1.13",
+    "tailwindcss-primeui": "^0.6.1",
+    "vue": "^3.5.22",
+    "zod": "^4.1.11"
+  }
+}
