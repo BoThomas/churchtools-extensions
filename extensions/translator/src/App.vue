@@ -46,7 +46,7 @@ import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
 import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
 import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
-import Toast from 'primevue/toast';
+import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
 import { useTranslatorStore } from './stores/translator';
 
 // Check if we're in presentation mode

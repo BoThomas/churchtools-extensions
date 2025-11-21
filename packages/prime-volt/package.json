@@ -33,6 +33,7 @@
     "./TabPanel.vue": "./volt/TabPanel.vue",
     "./TabPanels.vue": "./volt/TabPanels.vue",
     "./Tabs.vue": "./volt/Tabs.vue",
+    "./Toast.vue": "./volt/Toast.vue",
     "./utils": "./volt/utils.ts"
   },
   "peerDependencies": {
