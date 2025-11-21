@@ -40,13 +40,18 @@
 
     <div v-if="hasApiCredentials" class="space-y-6">
       <!-- Translation Options -->
-      <Fieldset>
-        <template #legend>
+      <Fieldset
+        legend="Translation Options"
+        :collapsed="true"
+        :toggleable="true"
+      >
+        <!-- TODO: Volt doesnt support custom legends in combination with toggleable fieldsets yet -->
+        <!-- <template #legend>
           <div class="flex items-center gap-2">
             <i class="pi pi-language"></i>
             <span class="font-semibold">Translation Options</span>
           </div>
-        </template>
+        </template> -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Input Language -->
           <div class="flex flex-col gap-2">
@@ -251,13 +256,18 @@
       </Fieldset>
 
       <!-- Presentation Styling Options -->
-      <Fieldset>
-        <template #legend>
+      <Fieldset
+        legend="Presentation Options"
+        :collapsed="true"
+        :toggleable="true"
+      >
+        <!-- TODO: Volt doesnt support custom legends in combination with toggleable fieldsets yet -->
+        <!-- <template #legend>
           <div class="flex items-center gap-2">
             <i class="pi pi-palette"></i>
             <span class="font-semibold">Presentation Options</span>
           </div>
-        </template>
+        </template> -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- Font -->
           <div class="flex flex-col gap-2">
