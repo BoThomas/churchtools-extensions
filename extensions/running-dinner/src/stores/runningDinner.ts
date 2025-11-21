@@ -4,6 +4,7 @@ import {
   PersistanceCategory,
   type CategoryValue,
 } from '@churchtools-extensions/persistance';
+import { KEY } from '../main';
 
 export interface RunningDinnerRecord {
   id?: number; // internal id in category
@@ -30,6 +31,7 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
   async function ensureCategory() {
     if (!category) {
       category = await PersistanceCategory.init({
+        extensionkey: KEY,
         categoryShorty: 'runningdinners',
         categoryName: 'Running Dinners',
       });

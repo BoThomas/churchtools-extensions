@@ -1,6 +1,6 @@
 # Key-Value Store Guide
 
-ChurchTools extensions can store persistent data using the ChurchTools key-value store. This guide explains how to use the storage utilities provided in `src/utils/kv-store.ts`.
+ChurchTools extensions can store persistent data using the ChurchTools key-value store. This guide explains how to use the storage utilities provided in `@churchtools-extensions/ct-utils/kv-store`.
 
 ## Overview
 
@@ -39,156 +39,51 @@ In **development mode**, the module can be automatically created using `getOrCre
 
 **Values** are the actual key-value pairs stored within a category. Each value is a JSON string that can store any serializable data.
 
-## API Functions
+## Best Practices
 
-### Module Functions
+### Always Pass the Extension Key from Your Extension
 
-#### `getModule(extensionKey?: string): Promise<CustomModule>`
-
-Retrieves the extension module.
+Since the kv-store package is environment-agnostic, **always get the extension key from your extension code**:
 
 ```typescript
-import { getModule } from '../utils/kv-store';
+// In your extension's main file (e.g., main.ts, App.vue)
+const KEY = import.meta.env.VITE_KEY;
 
-const module = await getModule(); // Uses VITE_KEY from .env
-const module = await getModule('my-extension'); // Explicit key
+// Pass it to kv-store functions
+const module = await getModule(KEY);
+const categories = await getCustomDataCategories(undefined, KEY);
 ```
 
-#### `getOrCreateModule(extensionKey: string, name: string, description: string): Promise<CustomModule>`
+### Use Module ID When Available
 
-Gets the module or creates it if it doesn't exist (development mode only).
+If you've already fetched the module, prefer passing `moduleId` over `extensionkey` to avoid redundant API calls:
 
 ```typescript
-import { getOrCreateModule } from '../utils/kv-store';
+// Fetch module once
+const module = await getModule(KEY);
 
-const module = await getOrCreateModule(
-  'my-extension',
-  'My Extension',
-  'A ChurchTools extension',
-);
+// Use moduleId for subsequent calls
+const categories = await getCustomDataCategories(module.id);
+const values = await getCustomDataValues(categoryId, module.id);
 ```
 
-**Note**: In production, modules are created when the extension is installed. This function is primarily for development.
+### Use the Persistance Package for Higher-Level API
 
-### Category Functions
-
-#### `getCustomDataCategories<T>(moduleId?: number): Promise<T[]>`
-
-Retrieves all categories for a module with automatic JSON parsing.
+For a more convenient class-based API, use the `@churchtools-extensions/persistance` package:
 
 ```typescript
-import { getCustomDataCategories } from '../utils/kv-store';
+import { PersistanceCategory } from '@churchtools-extensions/persistance';
 
-interface SettingsCategory {
-  theme: string;
-  language: string;
-}
-
-const categories = await getCustomDataCategories<SettingsCategory>();
-```
-
-#### `getCustomDataCategory<T>(shorty: string): Promise<CustomModuleDataCategory | undefined>`
-
-Retrieves a specific category by its short name.
-
-```typescript
-import { getCustomDataCategory } from '../utils/kv-store';
-
-const settings = await getCustomDataCategory<object>('settings');
-if (settings) {
-  console.log('Settings category found:', settings);
-}
-```
-
-#### `createCustomDataCategory(payload: CustomModuleDataCategoryCreate, moduleId?: number): Promise<CustomModuleDataCategory>`
-
-Creates a new data category.
-
-```typescript
-import { createCustomDataCategory } from '../utils/kv-store';
-
-const category = await createCustomDataCategory({
-  customModuleId: moduleId,
-  name: 'Settings',
-  shorty: 'settings',
-  description: 'User preferences and configuration',
+const KEY = import.meta.env.VITE_KEY;
+const store = await PersistanceCategory.init({
+  extensionkey: KEY, // Required - must be passed from extension
+  categoryShorty: 'settings',
+  categoryName: 'Settings',
 });
-```
 
-#### `updateCustomDataCategory(categoryId: number, payload: Partial<CustomModuleDataCategory>, moduleId?: number): Promise<void>`
-
-Updates an existing category.
-
-```typescript
-import { updateCustomDataCategory } from '../utils/kv-store';
-
-await updateCustomDataCategory(categoryId, {
-  name: 'Updated Settings',
-  description: 'New description',
-});
-```
-
-#### `deleteCustomDataCategory(categoryId: number, moduleId?: number): Promise<void>`
-
-Deletes a category and all its values.
-
-```typescript
-import { deleteCustomDataCategory } from '../utils/kv-store';
-
-await deleteCustomDataCategory(categoryId);
-```
-
-### Value Functions
-
-#### `getCustomDataValues<T>(categoryId: number, moduleId?: number): Promise<T[]>`
-
-Retrieves all values in a category with automatic JSON parsing.
-
-```typescript
-import { getCustomDataValues } from '../utils/kv-store';
-
-interface UserSettings {
-  key: string;
-  value: string;
-}
-
-const values = await getCustomDataValues<UserSettings>(categoryId);
-const bgColor = values.find((v) => v.key === 'backgroundColor');
-```
-
-#### `createCustomDataValue(payload: CustomModuleDataValueCreate, moduleId?: number): Promise<void>`
-
-Creates a new value in a category.
-
-```typescript
-import { createCustomDataValue } from '../utils/kv-store';
-
-await createCustomDataValue({
-  dataCategoryId: categoryId,
-  value: JSON.stringify({ key: 'theme', value: 'dark' }),
-});
-```
-
-#### `updateCustomDataValue(categoryId: number, valueId: number, payload: Partial<CustomModuleDataValue>, moduleId?: number): Promise<void>`
-
-Updates an existing value.
-
-```typescript
-import { updateCustomDataValue } from '../utils/kv-store';
-
-await updateCustomDataValue(categoryId, valueId, {
-  value: JSON.stringify({ key: 'theme', value: 'light' }),
-});
-```
-
-#### `deleteCustomDataValue(categoryId: number, valueId: number, moduleId?: number): Promise<void>`
-
-Deletes a value.
-
-```typescript
-import { deleteCustomDataValue } from '../utils/kv-store';
-
-await deleteCustomDataValue(categoryId, valueId);
+// Now use the simpler API
+const values = await store.list();
+await store.create({ key: 'theme', value: 'dark' });
 ```
 
 ## Usage Patterns

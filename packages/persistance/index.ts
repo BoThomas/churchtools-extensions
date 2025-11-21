@@ -18,7 +18,7 @@ import type { CustomModuleDataValue } from '@churchtools-extensions/ct-utils/ct-
 // -------- Public class API --------
 
 export type CategoryOptions = {
-  extensionkey?: string; // defaults to VITE_KEY
+  extensionkey: string; // required - must be provided by the extension
   categoryShorty: string;
   categoryName?: string;
   categoryDescription?: string;
@@ -38,15 +38,18 @@ export class PersistanceCategory<T = unknown> {
 
   static async init(options: CategoryOptions): Promise<PersistanceCategory> {
     const instance = new PersistanceCategory();
-    const extensionkey = options.extensionkey ?? import.meta.env.VITE_KEY;
-    if (!extensionkey) throw new Error('Missing extensionkey (VITE_KEY)');
+    const extensionkey = options.extensionkey;
+    if (!extensionkey)
+      throw new Error(
+        'Missing extensionkey - must be provided by the extension',
+      );
     const categoryShorty = options.categoryShorty;
     if (!categoryShorty) throw new Error('Missing categoryShorty');
 
     const module = await getModule(extensionkey);
     instance.moduleId = module.id;
 
-    let category = await getCustomDataCategory(categoryShorty);
+    let category = await getCustomDataCategory(categoryShorty, module.id);
     if (!category) {
       category = await createCustomDataCategory({
         customModuleId: instance.moduleId,
