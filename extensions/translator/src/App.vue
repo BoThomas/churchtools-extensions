@@ -1,0 +1,75 @@
+<template>
+  <div class="min-h-screen flex flex-col">
+    <div class="flex-1 p-4">
+      <Tabs v-model:value="activeTab">
+        <TabList>
+          <Tab value="settings">Settings</Tab>
+          <Tab value="translate">Translate</Tab>
+          <Tab value="reports">Reports</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel value="settings">
+            <SettingsView />
+          </TabPanel>
+          <TabPanel value="translate">
+            <TranslateView />
+          </TabPanel>
+          <TabPanel value="reports">
+            <ReportsView />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
+import SettingsView from './views/SettingsView.vue';
+import TranslateView from './views/TranslateView.vue';
+import ReportsView from './views/ReportsView.vue';
+import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
+import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
+import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
+import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
+import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
+import { useTranslatorStore } from './stores/translator';
+
+// Active tab state (default to translate)
+const activeTab = ref('translate');
+
+const user = ref<Person | null>(null);
+const store = useTranslatorStore();
+
+declare const window: Window &
+  typeof globalThis & {
+    settings: {
+      base_url?: string;
+    };
+  };
+
+const baseUrl = window.settings?.base_url ?? import.meta.env.VITE_API_BASE_URL;
+churchtoolsClient.setBaseUrl(baseUrl);
+
+async function init() {
+  try {
+    const username = import.meta.env.VITE_USERNAME;
+    const password = import.meta.env.VITE_PASSWORD;
+    if (import.meta.env.MODE === 'development' && username && password) {
+      await churchtoolsClient.post('/login', { username, password });
+    }
+    user.value = await churchtoolsClient.get<Person>(`/whoami`);
+
+    // Load settings
+    await store.loadSettings();
+  } catch (e) {
+    console.error('Failed to init', e);
+  }
+}
+
+onMounted(() => {
+  void init();
+});
+</script>

@@ -1,0 +1,31 @@
+{
+  "name": "churchtools-translator",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "pnpm build && node scripts/package.js"
+  },
+  "devDependencies": {
+    "@churchtools/churchtools-client": "^1.4.2"
+  },
+  "dependencies": {
+    "@churchtools-extensions/ct-utils": "workspace:*",
+    "@churchtools-extensions/persistance": "workspace:*",
+    "@churchtools-extensions/prime-volt": "workspace:*",
+    "@primevue/forms": "^4.3.9",
+    "@primevue/icons": "^4.3.9",
+    "@tailwindcss/vite": "^4.1.13",
+    "microsoft-cognitiveservices-speech-sdk": "^1.28.0",
+    "pinia": "^3.0.3",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.9",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^4.1.13",
+    "tailwindcss-primeui": "^0.6.1",
+    "vue": "^3.5.22"
+  }
+}
