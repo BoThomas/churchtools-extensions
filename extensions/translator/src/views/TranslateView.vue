@@ -330,7 +330,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useTranslatorStore } from '../stores/translator';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -365,6 +365,7 @@ const currentSession = ref<any>(null);
 // Captioning service instance
 let captioningService: CaptioningService | null = null;
 const sessionLogger = new SessionLogger();
+let heartbeatInterval: NodeJS.Timeout | null = null;
 
 // Test mode output
 const finalizedParagraphsOri = ref<string[]>([]);
@@ -469,6 +470,49 @@ async function loadUser() {
   }
 }
 
+// Start sending heartbeat updates every 30 seconds
+function startHeartbeat() {
+  stopHeartbeat(); // Clear any existing interval
+
+  heartbeatInterval = setInterval(() => {
+    const sessionId = sessionLogger.getCurrentSessionId();
+    if (sessionId) {
+      // Non-blocking heartbeat update
+      store.updateHeartbeat(sessionId).catch(() => {
+        // Silent fail - already logged in store
+      });
+    }
+  }, 30000); // 30 seconds
+}
+
+// Stop heartbeat updates
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
+// Handle window close - try to end session gracefully
+function handleWindowClose() {
+  const sessionId = sessionLogger.getCurrentSessionId();
+  if (sessionId && currentSession.value) {
+    try {
+      // Attempt to end session (may not complete if browser closes quickly)
+      const endedSession = sessionLogger.endSession(
+        currentSession.value,
+        'completed',
+      );
+      // Use navigator.sendBeacon for better reliability on page unload
+      // Note: This is best-effort, not guaranteed to complete
+      store.endSession(sessionId, endedSession);
+    } catch (e) {
+      // Silent fail on unload
+      console.warn('Could not end session on close:', e);
+    }
+  }
+}
+
 // Translation callbacks
 function onTranslating(translation: string, original: string) {
   currentLiveTranslation.value = translation;
@@ -559,6 +603,9 @@ async function startTest() {
       const sessionId = await store.startSession(session);
       sessionLogger.setCurrentSessionId(sessionId);
       currentSession.value = session;
+
+      // Start heartbeat updates
+      startHeartbeat();
     }
 
     toast.add({
@@ -606,6 +653,9 @@ async function startPresentation() {
       const sessionId = await store.startSession(session);
       sessionLogger.setCurrentSessionId(sessionId);
       currentSession.value = session;
+
+      // Start heartbeat updates
+      startHeartbeat();
     }
 
     // Create captioning service
@@ -685,6 +735,9 @@ function stop() {
     state.value.isTestRunning = false;
     state.value.isPaused = false;
 
+    // Stop heartbeat
+    stopHeartbeat();
+
     // End session
     const sessionId = sessionLogger.getCurrentSessionId();
     if (sessionId && currentSession.value) {
@@ -710,6 +763,9 @@ function stop() {
         localStorage.removeItem('translator_presentation');
         state.value.isPresentationRunning = false;
         state.value.isPaused = false;
+
+        // Stop heartbeat
+        stopHeartbeat();
 
         // End session
         const sessionId = sessionLogger.getCurrentSessionId();
@@ -755,4 +811,14 @@ async function saveSettings() {
 
 // Initialize
 loadUser();
+
+// Setup window close handler
+onMounted(() => {
+  window.addEventListener('beforeunload', handleWindowClose);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleWindowClose);
+  stopHeartbeat();
+});
 </script>

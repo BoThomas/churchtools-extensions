@@ -232,8 +232,8 @@
 
         <Column field="durationMinutes" header="Duration" sortable>
           <template #body="{ data }">
-            <span v-if="data.value.durationMinutes">
-              {{ data.value.durationMinutes }} min
+            <span v-if="getSessionDuration(data.value) > 0">
+              {{ getSessionDuration(data.value) }} min
             </span>
             <span v-else class="text-surface-400">N/A</span>
           </template>
@@ -268,14 +268,8 @@
         <Column field="status" header="Status" sortable>
           <template #body="{ data }">
             <Chip
-              :label="data.value.status"
-              :severity="
-                data.value.status === 'completed'
-                  ? 'success'
-                  : data.value.status === 'error'
-                    ? 'danger'
-                    : 'warn'
-              "
+              :label="getSessionStatus(data.value)"
+              :severity="getSessionStatusSeverity(data.value)"
             />
           </template>
         </Column>
@@ -289,7 +283,10 @@ import { ref, computed, onMounted } from 'vue';
 import { useTranslatorStore } from '../stores/translator';
 import type { UsageStats } from '../stores/translator';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
-import type { TranslationSession } from '../services/sessionLogger';
+import {
+  SessionLogger,
+  type TranslationSession,
+} from '../services/sessionLogger';
 
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -401,7 +398,10 @@ const filteredStats = computed(() => {
 
       const stats = userMap.get(userId)!;
       stats.sessionCount++;
-      stats.totalMinutes += session.durationMinutes || 0;
+
+      // Use smart duration calculation
+      const duration = SessionLogger.calculateSessionDuration(session);
+      stats.totalMinutes += duration;
 
       if (new Date(session.startTime) > new Date(stats.lastUsed)) {
         stats.lastUsed = session.startTime;
@@ -410,11 +410,11 @@ const filteredStats = computed(() => {
       const date = session.startTime.split('T')[0];
       const existingDay = stats.sessions.find((s) => s.date === date);
       if (existingDay) {
-        existingDay.minutes += session.durationMinutes || 0;
+        existingDay.minutes += duration;
       } else {
         stats.sessions.push({
           date,
-          minutes: session.durationMinutes || 0,
+          minutes: duration,
         });
       }
     },
@@ -428,6 +428,39 @@ const filteredStats = computed(() => {
     (a, b) => b.totalMinutes - a.totalMinutes,
   );
 });
+
+// Helper functions for session display
+function getSessionDuration(session: TranslationSession): number {
+  return SessionLogger.calculateSessionDuration(session);
+}
+
+function getSessionStatus(session: TranslationSession): string {
+  if (SessionLogger.isSessionAbandoned(session)) {
+    return 'abandoned';
+  }
+  return session.status;
+}
+
+function getSessionStatusSeverity(
+  session: TranslationSession,
+): 'success' | 'warn' | 'danger' | 'secondary' {
+  if (SessionLogger.isSessionAbandoned(session)) {
+    return 'warn';
+  }
+
+  switch (session.status) {
+    case 'completed':
+      return 'success';
+    case 'error':
+      return 'danger';
+    case 'running':
+      return 'secondary';
+    case 'abandoned':
+      return 'warn';
+    default:
+      return 'secondary';
+  }
+}
 
 // Formatting functions
 function formatDate(dateString: string): string {

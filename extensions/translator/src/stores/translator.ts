@@ -5,7 +5,10 @@ import {
   type CategoryValue,
 } from '@churchtools-extensions/persistance';
 import { KEY } from '../config';
-import type { TranslationSession } from '../services/sessionLogger';
+import {
+  SessionLogger,
+  type TranslationSession,
+} from '../services/sessionLogger';
 
 export interface TranslatorSettings {
   // Azure Configuration
@@ -233,6 +236,33 @@ export const useTranslatorStore = defineStore('translator', () => {
   }
 
   /**
+   * Update session heartbeat (non-blocking, silent errors)
+   */
+  async function updateHeartbeat(sessionId: number) {
+    // Non-blocking update - don't throw errors to avoid disrupting translation
+    try {
+      if (!sessionsCategory) await ensureCategories();
+      if (!sessionsCategory) return;
+
+      const allSessions = await sessionsCategory.list<TranslationSession>();
+      const found = allSessions.find(
+        (s: CategoryValue<TranslationSession>) => s.id === sessionId,
+      );
+      if (!found) return;
+
+      const updated: TranslationSession = {
+        ...found.value,
+        lastHeartbeat: new Date().toISOString(),
+      };
+
+      await sessionsCategory.update(sessionId, updated);
+    } catch (e) {
+      // Silent fail - log but don't disrupt translation
+      console.warn('Failed to update heartbeat (non-critical):', e);
+    }
+  }
+
+  /**
    * Fetch all sessions
    */
   async function fetchSessions() {
@@ -279,7 +309,12 @@ export const useTranslatorStore = defineStore('translator', () => {
 
         const stats = userMap.get(userId)!;
         stats.sessionCount++;
-        stats.totalMinutes += session.durationMinutes || 0;
+
+        // Use smart duration calculation that handles abandoned sessions
+        const duration =
+          session.durationMinutes ||
+          SessionLogger.calculateSessionDuration(session);
+        stats.totalMinutes += duration;
 
         // Update last used if this session is more recent
         if (new Date(session.startTime) > new Date(stats.lastUsed)) {
@@ -290,11 +325,11 @@ export const useTranslatorStore = defineStore('translator', () => {
         const date = session.startTime.split('T')[0]; // Get YYYY-MM-DD
         const existingDay = stats.sessions.find((s) => s.date === date);
         if (existingDay) {
-          existingDay.minutes += session.durationMinutes || 0;
+          existingDay.minutes += duration;
         } else {
           stats.sessions.push({
             date,
-            minutes: session.durationMinutes || 0,
+            minutes: duration,
           });
         }
       },
@@ -330,6 +365,7 @@ export const useTranslatorStore = defineStore('translator', () => {
     // Session methods
     startSession,
     endSession,
+    updateHeartbeat,
     fetchSessions,
     getUsageStats,
   };
