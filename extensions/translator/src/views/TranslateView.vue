@@ -27,309 +27,300 @@
 
     <div v-if="hasApiCredentials" class="space-y-6">
       <!-- Translation Options -->
-      <Card>
-        <template #title>
+      <Fieldset>
+        <template #legend>
           <div class="flex items-center gap-2">
             <i class="pi pi-language"></i>
-            <span>Translation Options</span>
+            <span class="font-semibold">Translation Options</span>
           </div>
         </template>
-        <template #content>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Input Language -->
-            <div class="flex flex-col gap-2">
-              <label for="input-lang" class="font-medium text-sm"
-                >Input Language (Speech)</label
-              >
-              <Listbox
-                id="input-lang"
-                v-model="store.settings.inputLanguage"
-                :options="inputLanguages"
-                optionLabel="name"
-                :disabled="inputsDisabled"
-                class="w-full"
-              />
-            </div>
-
-            <!-- Output Language -->
-            <div class="flex flex-col gap-2">
-              <label for="output-lang" class="font-medium text-sm"
-                >Output Language (Translation)</label
-              >
-              <Listbox
-                id="output-lang"
-                v-model="store.settings.outputLanguage"
-                :options="outputLanguages"
-                optionLabel="name"
-                :disabled="inputsDisabled"
-                class="w-full"
-              />
-            </div>
-
-            <!-- Profanity Filter -->
-            <div class="flex flex-col gap-2">
-              <label for="profanity" class="font-medium text-sm"
-                >Profanity Filter</label
-              >
-              <Listbox
-                id="profanity"
-                v-model="store.settings.profanityOption"
-                :options="profanityOptions"
-                :disabled="inputsDisabled"
-                class="w-full"
-              />
-              <p class="text-xs text-surface-600 dark:text-surface-400">
-                How to handle profanity in the speech
-              </p>
-            </div>
-
-            <!-- Stable Partial Result Threshold -->
-            <div class="flex flex-col gap-2">
-              <label for="threshold" class="font-medium text-sm"
-                >Stable Partial Result Threshold</label
-              >
-              <Listbox
-                id="threshold"
-                v-model="store.settings.stablePartialResultThreshold"
-                :options="partialThresholds"
-                :disabled="inputsDisabled"
-                class="w-full"
-              />
-              <p class="text-xs text-surface-600 dark:text-surface-400">
-                Number of words before displaying live translation
-              </p>
-            </div>
-
-            <!-- Phrase List -->
-            <div class="flex flex-col gap-2 md:col-span-2">
-              <label for="phrases" class="font-medium text-sm"
-                >Phrase List (semicolon-separated)</label
-              >
-              <InputText
-                id="phrases"
-                v-model="store.settings.phraseList"
-                placeholder="Name1;Location2;TechnicalTerm3"
-                :disabled="inputsDisabled"
-                class="w-full"
-              />
-              <p class="text-xs text-surface-600 dark:text-surface-400">
-                Important words/phrases that should be recognized accurately
-                (names, locations, technical terms)
-              </p>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Input Language -->
+          <div class="flex flex-col gap-2">
+            <label for="input-lang" class="font-medium text-sm"
+              >Input Language (Speech)</label
+            >
+            <Select
+              id="input-lang"
+              v-model="store.settings.inputLanguage"
+              :options="inputLanguages"
+              optionLabel="name"
+              :disabled="inputsDisabled"
+              placeholder="Select input language"
+              class="w-full"
+            />
           </div>
-        </template>
-      </Card>
+
+          <!-- Output Language -->
+          <div class="flex flex-col gap-2">
+            <label for="output-lang" class="font-medium text-sm"
+              >Output Language (Translation)</label
+            >
+            <Select
+              id="output-lang"
+              v-model="store.settings.outputLanguage"
+              :options="outputLanguages"
+              optionLabel="name"
+              :disabled="inputsDisabled"
+              placeholder="Select output language"
+              class="w-full"
+            />
+          </div>
+
+          <!-- Profanity Filter -->
+          <div class="flex flex-col gap-2">
+            <label for="profanity" class="font-medium text-sm"
+              >Profanity Filter</label
+            >
+            <Select
+              id="profanity"
+              v-model="store.settings.profanityOption"
+              :options="profanityOptions"
+              :disabled="inputsDisabled"
+              placeholder="Select profanity option"
+              class="w-full"
+            />
+            <p class="text-xs text-surface-600 dark:text-surface-400">
+              How to handle profanity in the speech
+            </p>
+          </div>
+
+          <!-- Stable Partial Result Threshold -->
+          <div class="flex flex-col gap-2">
+            <label for="threshold" class="font-medium text-sm"
+              >Stable Partial Result Threshold</label
+            >
+            <Select
+              id="threshold"
+              v-model="store.settings.stablePartialResultThreshold"
+              :options="partialThresholds"
+              :disabled="inputsDisabled"
+              placeholder="Select threshold"
+              class="w-full"
+            />
+            <p class="text-xs text-surface-600 dark:text-surface-400">
+              Number of words before displaying live translation
+            </p>
+          </div>
+
+          <!-- Phrase List -->
+          <div class="flex flex-col gap-2 md:col-span-2">
+            <label for="phrases" class="font-medium text-sm"
+              >Phrase List (semicolon-separated)</label
+            >
+            <InputText
+              id="phrases"
+              v-model="store.settings.phraseList"
+              placeholder="Name1;Location2;TechnicalTerm3"
+              :disabled="inputsDisabled"
+              class="w-full"
+            />
+            <p class="text-xs text-surface-600 dark:text-surface-400">
+              Important words/phrases that should be recognized accurately
+              (names, locations, technical terms)
+            </p>
+          </div>
+        </div>
+      </Fieldset>
 
       <!-- Presentation Styling Options -->
-      <Card>
-        <template #title>
+      <Fieldset>
+        <template #legend>
           <div class="flex items-center gap-2">
             <i class="pi pi-palette"></i>
-            <span>Presentation Options</span>
+            <span class="font-semibold">Presentation Options</span>
           </div>
         </template>
-        <template #content>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Font -->
-            <div class="flex flex-col gap-2">
-              <label for="font" class="font-medium text-sm">Font</label>
-              <Listbox
-                id="font"
-                v-model="store.settings.presentation.font"
-                :options="presentationFonts"
-                :disabled="inputsDisabled"
-                class="w-full"
-              >
-                <template #option="{ option }">
-                  <span :style="{ fontFamily: option }">{{ option }}</span>
-                </template>
-              </Listbox>
-            </div>
-
-            <!-- Font Size -->
-            <div class="flex flex-col gap-2">
-              <label for="font-size" class="font-medium text-sm"
-                >Font Size</label
-              >
-              <InputText
-                id="font-size"
-                v-model="store.settings.presentation.fontSize"
-                placeholder="2em / 30px"
-                :disabled="inputsDisabled"
-              />
-            </div>
-
-            <!-- Margin -->
-            <div class="flex flex-col gap-2">
-              <label for="margin" class="font-medium text-sm"
-                >Paragraph Margin</label
-              >
-              <InputText
-                id="margin"
-                v-model="store.settings.presentation.margin"
-                placeholder="1em 2em"
-                :disabled="inputsDisabled"
-              />
-            </div>
-
-            <!-- Text Color -->
-            <div class="flex flex-col gap-2">
-              <label for="color" class="font-medium text-sm">Text Color</label>
-              <InputText
-                id="color"
-                v-model="store.settings.presentation.color"
-                placeholder="white / #fff"
-                :disabled="inputsDisabled"
-              />
-            </div>
-
-            <!-- Live Text Color -->
-            <div class="flex flex-col gap-2">
-              <label for="live-color" class="font-medium text-sm"
-                >Live Text Color</label
-              >
-              <InputText
-                id="live-color"
-                v-model="store.settings.presentation.liveColor"
-                placeholder="gray / #999"
-                :disabled="inputsDisabled"
-              />
-            </div>
-
-            <!-- Background -->
-            <div class="flex flex-col gap-2">
-              <label for="background" class="font-medium text-sm"
-                >Background</label
-              >
-              <InputText
-                id="background"
-                v-model="store.settings.presentation.background"
-                placeholder="black / #000"
-                :disabled="inputsDisabled"
-              />
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Font -->
+          <div class="flex flex-col gap-2">
+            <label for="font" class="font-medium text-sm">Font</label>
+            <Select
+              id="font"
+              v-model="store.settings.presentation.font"
+              :options="presentationFonts"
+              :disabled="inputsDisabled"
+              placeholder="Select font"
+              class="w-full"
+            >
+              <template #option="{ option }">
+                <span :style="{ fontFamily: option }">{{ option }}</span>
+              </template>
+            </Select>
           </div>
-        </template>
-      </Card>
+
+          <!-- Font Size -->
+          <div class="flex flex-col gap-2">
+            <label for="font-size" class="font-medium text-sm">Font Size</label>
+            <InputText
+              id="font-size"
+              v-model="store.settings.presentation.fontSize"
+              placeholder="2em / 30px"
+              :disabled="inputsDisabled"
+            />
+          </div>
+
+          <!-- Margin -->
+          <div class="flex flex-col gap-2">
+            <label for="margin" class="font-medium text-sm"
+              >Paragraph Margin</label
+            >
+            <InputText
+              id="margin"
+              v-model="store.settings.presentation.margin"
+              placeholder="1em 2em"
+              :disabled="inputsDisabled"
+            />
+          </div>
+
+          <!-- Text Color -->
+          <div class="flex flex-col gap-2">
+            <label for="color" class="font-medium text-sm">Text Color</label>
+            <InputText
+              id="color"
+              v-model="store.settings.presentation.color"
+              placeholder="white / #fff"
+              :disabled="inputsDisabled"
+            />
+          </div>
+
+          <!-- Live Text Color -->
+          <div class="flex flex-col gap-2">
+            <label for="live-color" class="font-medium text-sm"
+              >Live Text Color</label
+            >
+            <InputText
+              id="live-color"
+              v-model="store.settings.presentation.liveColor"
+              placeholder="gray / #999"
+              :disabled="inputsDisabled"
+            />
+          </div>
+
+          <!-- Background -->
+          <div class="flex flex-col gap-2">
+            <label for="background" class="font-medium text-sm"
+              >Background</label
+            >
+            <InputText
+              id="background"
+              v-model="store.settings.presentation.background"
+              placeholder="black / #000"
+              :disabled="inputsDisabled"
+            />
+          </div>
+        </div>
+      </Fieldset>
 
       <!-- Controls -->
-      <Card>
-        <template #title>
+      <Fieldset>
+        <template #legend>
           <div class="flex items-center gap-2">
             <i class="pi pi-sitemap"></i>
-            <span>Controls</span>
+            <span class="font-semibold">Controls</span>
           </div>
         </template>
-        <template #content>
-          <div class="flex flex-col gap-4 items-center">
-            <!-- Test Button -->
+        <div class="flex flex-col gap-4 items-center">
+          <!-- Test Button -->
+          <Button
+            label="Test in here"
+            icon="pi pi-compass"
+            @click="startTest"
+            :disabled="state.isPresentationRunning || state.isTestRunning"
+            class="w-full max-w-xs"
+          />
+
+          <!-- Presentation Controls -->
+          <div class="flex gap-2 flex-wrap justify-center">
             <Button
-              label="Test in here"
-              icon="pi pi-compass"
-              @click="startTest"
+              label="Start Presentation"
+              icon="pi pi-video"
+              severity="success"
+              @click="startPresentation"
               :disabled="state.isPresentationRunning || state.isTestRunning"
-              class="w-full max-w-xs"
             />
-
-            <!-- Presentation Controls -->
-            <div class="flex gap-2 flex-wrap justify-center">
-              <Button
-                label="Start Presentation"
-                icon="pi pi-video"
-                severity="success"
-                @click="startPresentation"
-                :disabled="state.isPresentationRunning || state.isTestRunning"
-              />
-              <Button
-                v-if="state.isPaused"
-                label="Resume"
-                icon="pi pi-play"
-                severity="success"
-                @click="pauseOrResume"
-                :disabled="
-                  !(state.isPresentationRunning || state.isTestRunning)
-                "
-              />
-              <Button
-                v-else
-                label="Pause"
-                icon="pi pi-pause"
-                severity="warning"
-                @click="pauseOrResume"
-                :disabled="
-                  !(state.isPresentationRunning || state.isTestRunning)
-                "
-              />
-              <Button
-                label="Stop"
-                icon="pi pi-stop"
-                severity="danger"
-                @click="stop"
-                :disabled="
-                  !(state.isPresentationRunning || state.isTestRunning)
-                "
-              />
-            </div>
-
-            <!-- Save/Load Settings -->
-            <div class="flex gap-2 flex-wrap justify-center pt-4 border-t">
-              <Button
-                label="Save Settings"
-                icon="pi pi-save"
-                severity="secondary"
-                @click="saveSettings"
-                :disabled="inputsDisabled || store.settingsSaving"
-                :loading="store.settingsSaving"
-              />
-            </div>
+            <Button
+              v-if="state.isPaused"
+              label="Resume"
+              icon="pi pi-play"
+              severity="success"
+              @click="pauseOrResume"
+              :disabled="!(state.isPresentationRunning || state.isTestRunning)"
+            />
+            <Button
+              v-else
+              label="Pause"
+              icon="pi pi-pause"
+              severity="warning"
+              @click="pauseOrResume"
+              :disabled="!(state.isPresentationRunning || state.isTestRunning)"
+            />
+            <Button
+              label="Stop"
+              icon="pi pi-stop"
+              severity="danger"
+              @click="stop"
+              :disabled="!(state.isPresentationRunning || state.isTestRunning)"
+            />
           </div>
-        </template>
-      </Card>
+
+          <!-- Save/Load Settings -->
+          <div class="flex gap-2 flex-wrap justify-center pt-4 border-t">
+            <Button
+              label="Save Settings"
+              icon="pi pi-save"
+              severity="secondary"
+              @click="saveSettings"
+              :disabled="inputsDisabled || store.settingsSaving"
+              :loading="store.settingsSaving"
+            />
+          </div>
+        </div>
+      </Fieldset>
 
       <!-- Test Mode Output -->
       <div
         v-if="state.isTestRunning"
         class="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
-        <Card>
-          <template #title>Speech to Text</template>
-          <template #content>
-            <div class="space-y-2 max-h-96 overflow-y-auto">
-              <p
-                v-for="(paragraph, index) in finalizedParagraphsOri"
-                :key="'ori-' + index"
-                class="text-sm"
-              >
-                {{ paragraph }}
-              </p>
-              <p
-                v-if="currentLiveTranslationOri"
-                class="text-sm text-surface-500"
-              >
-                {{ currentLiveTranslationOri }}
-              </p>
-            </div>
+        <Fieldset>
+          <template #legend>
+            <span class="font-semibold">Speech to Text</span>
           </template>
-        </Card>
+          <div class="space-y-2 max-h-96 overflow-y-auto">
+            <p
+              v-for="(paragraph, index) in finalizedParagraphsOri"
+              :key="'ori-' + index"
+              class="text-sm"
+            >
+              {{ paragraph }}
+            </p>
+            <p
+              v-if="currentLiveTranslationOri"
+              class="text-sm text-surface-500"
+            >
+              {{ currentLiveTranslationOri }}
+            </p>
+          </div>
+        </Fieldset>
 
-        <Card>
-          <template #title>Translation</template>
-          <template #content>
-            <div class="space-y-2 max-h-96 overflow-y-auto">
-              <p
-                v-for="(paragraph, index) in finalizedParagraphs"
-                :key="'trans-' + index"
-                class="text-sm"
-              >
-                {{ paragraph }}
-              </p>
-              <p v-if="currentLiveTranslation" class="text-sm text-surface-500">
-                {{ currentLiveTranslation }}
-              </p>
-            </div>
+        <Fieldset>
+          <template #legend>
+            <span class="font-semibold">Translation</span>
           </template>
-        </Card>
+          <div class="space-y-2 max-h-96 overflow-y-auto">
+            <p
+              v-for="(paragraph, index) in finalizedParagraphs"
+              :key="'trans-' + index"
+              class="text-sm"
+            >
+              {{ paragraph }}
+            </p>
+            <p v-if="currentLiveTranslation" class="text-sm text-surface-500">
+              {{ currentLiveTranslation }}
+            </p>
+          </div>
+        </Fieldset>
       </div>
     </div>
 
@@ -348,9 +339,9 @@ import { SessionLogger } from '../services/sessionLogger';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
+import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Listbox from '@churchtools-extensions/prime-volt/Listbox.vue';
+import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
