@@ -4,7 +4,7 @@ import {
   PersistanceCategory,
   type CategoryValue,
 } from '@churchtools-extensions/persistance';
-import { KEY } from '../main';
+import { KEY } from '../config';
 
 export interface RunningDinnerRecord {
   id?: number; // internal id in category
