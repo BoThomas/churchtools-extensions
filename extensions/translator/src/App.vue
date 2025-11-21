@@ -1,5 +1,9 @@
 <template>
-  <div class="min-h-screen flex flex-col">
+  <!-- Presentation Mode -->
+  <PresentationView v-if="isPresentationMode" />
+
+  <!-- Normal Mode -->
+  <div v-else class="min-h-screen flex flex-col">
     <div class="flex-1 p-4">
       <Tabs v-model:value="activeTab">
         <TabList>
@@ -24,18 +28,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import SettingsView from './views/SettingsView.vue';
 import TranslateView from './views/TranslateView.vue';
 import ReportsView from './views/ReportsView.vue';
+import PresentationView from './views/PresentationView.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
 import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
 import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
 import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
 import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import { useTranslatorStore } from './stores/translator';
+
+// Check if we're in presentation mode
+const isPresentationMode = computed(() => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('presentation') === 'true';
+});
 
 // Active tab state (default to translate)
 const activeTab = ref('translate');
@@ -54,6 +65,11 @@ const baseUrl = window.settings?.base_url ?? import.meta.env.VITE_API_BASE_URL;
 churchtoolsClient.setBaseUrl(baseUrl);
 
 async function init() {
+  // Skip initialization in presentation mode
+  if (isPresentationMode.value) {
+    return;
+  }
+
   try {
     const username = import.meta.env.VITE_USERNAME;
     const password = import.meta.env.VITE_PASSWORD;

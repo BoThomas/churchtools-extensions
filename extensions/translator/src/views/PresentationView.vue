@@ -1,0 +1,168 @@
+<template>
+  <div
+    ref="textEl"
+    class="fixed inset-0 overflow-auto"
+    :style="{
+      background: presentationSettings.background,
+      color: presentationSettings.color,
+      fontFamily: presentationSettings.font,
+      fontSize: presentationSettings.fontSize,
+    }"
+  >
+    <!-- Initialization Phase -->
+    <div
+      v-if="initPhase"
+      class="flex flex-col items-center justify-center gap-8 p-8 h-full w-full bg-black/50"
+    >
+      <Button
+        label="Start & Fullscreen"
+        icon="pi pi-video"
+        class="h-32 w-full max-w-2xl text-4xl"
+        severity="success"
+        @click="startPresentation"
+      />
+      <p class="text-2xl text-white">
+        Waiting for translation to start from control window...
+      </p>
+    </div>
+
+    <!-- Translation Display -->
+    <div v-else>
+      <p
+        v-for="(paragraph, index) in finalizedParagraphs"
+        :key="'para-' + index"
+        :style="{ margin: presentationSettings.margin }"
+      >
+        {{ paragraph }}
+      </p>
+      <p
+        v-if="currentLiveTranslation"
+        :style="{
+          margin: presentationSettings.margin,
+          color: presentationSettings.liveColor,
+        }"
+      >
+        {{ currentLiveTranslation }}
+      </p>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import type { TranslatorSettings } from '../stores/translator';
+
+const textEl = ref<HTMLDivElement>();
+const finalizedParagraphs = ref<string[]>([]);
+const currentLiveTranslation = ref('');
+const initPhase = ref(true);
+
+// Default presentation settings
+const presentationSettings = ref({
+  font: 'Arial',
+  fontSize: '2em',
+  margin: '1em 2em',
+  color: 'white',
+  liveColor: '#999',
+  background: 'black',
+});
+
+// Load settings from localStorage
+function loadSettings() {
+  const settingsStr = localStorage.getItem('translator_settings');
+  if (settingsStr) {
+    try {
+      const settings: TranslatorSettings = JSON.parse(settingsStr);
+      presentationSettings.value = settings.presentation;
+    } catch (e) {
+      console.error('Failed to load settings from localStorage', e);
+    }
+  }
+}
+
+// Listen for storage events (cross-window communication)
+function handleStorageEvent(e: StorageEvent) {
+  if (e.key === 'translator_presentation' && e.newValue) {
+    try {
+      const data = JSON.parse(e.newValue);
+      if (data.isLive) {
+        currentLiveTranslation.value = data.text;
+      } else {
+        finalizedParagraphs.value = data.finalized || [];
+        currentLiveTranslation.value = '';
+      }
+      scrollToBottom();
+    } catch (err) {
+      console.error('Failed to parse presentation data', err);
+    }
+  } else if (e.key === 'translator_settings' && e.newValue === null) {
+    // Settings removed means presentation stopped
+    window.close();
+  } else if (e.key === 'translator_paused') {
+    if (e.newValue === null) {
+      // Resumed
+      initPhase.value = false;
+    } else {
+      // Paused
+      finalizedParagraphs.value = [];
+      currentLiveTranslation.value = '';
+    }
+  }
+}
+
+// Scroll to bottom of text container
+function scrollToBottom() {
+  nextTick(() => {
+    if (textEl.value) {
+      textEl.value.scrollTop = textEl.value.scrollHeight;
+    }
+  });
+}
+
+// Start presentation and enter fullscreen
+function startPresentation() {
+  initPhase.value = false;
+
+  // Request fullscreen
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen().catch((err) => {
+      console.error('Failed to enter fullscreen', err);
+    });
+  }
+}
+
+// Check for existing presentation data on mount
+function checkExistingData() {
+  const presentationStr = localStorage.getItem('translator_presentation');
+  if (presentationStr) {
+    try {
+      const data = JSON.parse(presentationStr);
+      if (data.finalized && data.finalized.length > 0) {
+        finalizedParagraphs.value = data.finalized;
+        initPhase.value = false;
+      }
+    } catch (e) {
+      console.error('Failed to load existing presentation data', e);
+    }
+  }
+}
+
+onMounted(() => {
+  loadSettings();
+  checkExistingData();
+
+  // Listen for storage changes from the control window
+  window.addEventListener('storage', handleStorageEvent);
+
+  // Clean up on window close
+  window.addEventListener('beforeunload', () => {
+    // Don't remove settings here - control window manages it
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('storage', handleStorageEvent);
+});
+</script>

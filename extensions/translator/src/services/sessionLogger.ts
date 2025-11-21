@@ -23,14 +23,12 @@ export interface SessionCreateData {
 
 export class SessionLogger {
   private currentSessionId: number | null = null;
-  private currentSessionStart: Date | null = null;
 
   /**
    * Create a new translation session
    */
   createSession(data: SessionCreateData): TranslationSession {
     const now = new Date();
-    this.currentSessionStart = now;
 
     const session: TranslationSession = {
       userId: data.userId,
@@ -85,7 +83,6 @@ export class SessionLogger {
    */
   clearCurrentSession(): void {
     this.currentSessionId = null;
-    this.currentSessionStart = null;
   }
 
   /**
