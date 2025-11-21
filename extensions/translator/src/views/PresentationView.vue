@@ -21,6 +21,13 @@
         severity="success"
         @click="startPresentation"
       />
+      <Button
+        label="Test & Fullscreen"
+        icon="pi pi-compass"
+        class="h-24 w-full max-w-2xl text-3xl"
+        severity="secondary"
+        @click="startTestMode"
+      />
     </div>
 
     <!-- Translation Display -->
@@ -47,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { LoremIpsum } from 'lorem-ipsum';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import type { TranslatorSettings } from '../stores/translator';
 
@@ -54,6 +62,19 @@ const textEl = ref<HTMLDivElement>();
 const finalizedParagraphs = ref<string[]>([]);
 const currentLiveTranslation = ref('');
 const initPhase = ref(true);
+const isTestMode = ref(false);
+const isRunning = ref(false);
+
+const lorem = new LoremIpsum({
+  sentencesPerParagraph: {
+    max: 5,
+    min: 1,
+  },
+  wordsPerSentence: {
+    max: 20,
+    min: 4,
+  },
+});
 
 // Default presentation settings
 const presentationSettings = ref({
@@ -97,13 +118,22 @@ function handleStorageEvent(e: StorageEvent) {
     // Settings removed means presentation stopped
     window.close();
   } else if (e.key === 'translator_paused') {
+    if (initPhase.value) {
+      return;
+    }
     if (e.newValue === null) {
       // Resumed
       initPhase.value = false;
+      if (isTestMode.value) {
+        isRunning.value = true;
+      }
     } else {
       // Paused
       finalizedParagraphs.value = [];
       currentLiveTranslation.value = '';
+      if (isTestMode.value) {
+        isRunning.value = false;
+      }
     }
   }
 }
@@ -120,12 +150,43 @@ function scrollToBottom() {
 // Start presentation and enter fullscreen
 function startPresentation() {
   initPhase.value = false;
+  isRunning.value = true;
 
   // Signal to control window that we're ready to start recording
   localStorage.setItem(
     'translator_recording_started',
     JSON.stringify({ started: true, timestamp: Date.now() }),
   );
+
+  // Request fullscreen
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen().catch((err) => {
+      console.error('Failed to enter fullscreen', err);
+    });
+  }
+}
+
+// Start test mode with Lorem Ipsum text
+function startTestMode() {
+  initPhase.value = false;
+  isRunning.value = true;
+  isTestMode.value = true;
+
+  // Generate dummy text in an endless loop
+  (async function generateLoop() {
+    while (isTestMode.value) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (isRunning.value) {
+        // If not paused
+        const paragraph = lorem.generateParagraphs(1);
+        finalizedParagraphs.value.push(paragraph);
+        currentLiveTranslation.value =
+          finalizedParagraphs.value.length + ' ' + lorem.generateSentences(1);
+        scrollToBottom();
+      }
+    }
+  })();
 
   // Request fullscreen
   const elem = document.documentElement;
@@ -161,6 +222,10 @@ onMounted(() => {
 
   // Clean up on window close - signal to control window
   window.addEventListener('beforeunload', () => {
+    // Stop test mode
+    isTestMode.value = false;
+    isRunning.value = false;
+
     // Remove settings to signal the control window that presentation closed
     localStorage.removeItem('translator_settings');
     localStorage.removeItem('translator_paused');
