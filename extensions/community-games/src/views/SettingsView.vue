@@ -81,19 +81,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <template #title>
-          <div class="flex items-center justify-between">
-            <span>Active Games ({{ store.activeGames.length }})</span>
-            <Button
-              v-if="store.activeGames.length > 0"
-              icon="pi pi-trash"
-              label="Delete All"
-              severity="danger"
-              size="small"
-              outlined
-              @click="confirmDeleteAllActive"
-              :loading="deleting"
-            />
-          </div>
+          <span>Active Games ({{ store.activeGames.length }})</span>
         </template>
         <template #content>
           <div v-if="store.activeGames.length === 0" class="text-center py-4">
@@ -114,11 +102,11 @@
                 </div>
               </div>
               <Button
-                icon="pi pi-trash"
-                severity="danger"
+                icon="pi pi-times"
+                label="Close"
                 size="small"
-                text
-                @click="confirmDeleteGame(game.id, game.name)"
+                outlined
+                @click="confirmCloseGame(game.id, game.name)"
               />
             </div>
           </div>
@@ -129,11 +117,10 @@
         <template #title>
           <div class="flex items-center justify-between">
             <span>Finished Games ({{ store.finishedGames.length }})</span>
-            <Button
+            <DangerButton
               v-if="store.finishedGames.length > 0"
               icon="pi pi-trash"
               label="Delete All"
-              severity="danger"
               size="small"
               outlined
               @click="confirmDeleteAllFinished"
@@ -160,9 +147,8 @@
                   {{ formatDate(game.createdAt) }}
                 </div>
               </div>
-              <Button
+              <DangerButton
                 icon="pi pi-trash"
-                severity="danger"
                 size="small"
                 text
                 @click="confirmDeleteGame(game.id, game.name)"
@@ -262,6 +248,7 @@ import { ref } from 'vue';
 import { useGamesStore, type GameType } from '../stores/games';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import InputNumber from '@churchtools-extensions/prime-volt/InputNumber.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
@@ -355,38 +342,35 @@ function confirmDeleteGame(gameId: string, gameName: string) {
   });
 }
 
-function confirmDeleteAllActive() {
+function confirmCloseGame(gameId: string, gameName: string) {
   confirm.require({
-    message: `Are you sure you want to delete all ${store.activeGames.length} active games? This action cannot be undone.`,
-    header: 'Confirm Delete All Active Games',
+    message: `Are you sure you want to close the game "${gameName}"? The game will be marked as finished without a winner.`,
+    header: 'Confirm Close Game',
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
       label: 'Cancel',
       severity: 'secondary',
     },
     acceptProps: {
-      label: 'Delete All',
-      severity: 'danger',
+      label: 'Close Game',
+      severity: 'warning',
     },
     accept: async () => {
-      deleting.value = true;
       try {
-        await store.deleteAllActiveGames();
+        await store.closeGame(gameId);
         toast.add({
           severity: 'success',
-          summary: 'Games Deleted',
-          detail: 'All active games have been deleted',
+          summary: 'Game Closed',
+          detail: `Game "${gameName}" has been closed`,
           life: 3000,
         });
       } catch (e: any) {
         toast.add({
           severity: 'error',
           summary: 'Error',
-          detail: 'Failed to delete active games',
+          detail: 'Failed to close game',
           life: 5000,
         });
-      } finally {
-        deleting.value = false;
       }
     },
   });

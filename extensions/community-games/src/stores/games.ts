@@ -160,6 +160,21 @@ export const useGamesStore = defineStore('games', () => {
     games.value.splice(gameIndex, 1);
   }
 
+  async function closeGame(gameId: string) {
+    const gameIndex = games.value.findIndex((g: Game) => g.id === gameId);
+    if (gameIndex === -1) return;
+
+    const game = games.value[gameIndex];
+    game.status = 'finished';
+    game.winner = undefined; // No winner
+
+    const manager = getManager(game.type);
+    const updated = await manager.update(game.id, game);
+    if (updated) {
+      games.value[gameIndex] = updated;
+    }
+  }
+
   async function castVote(gameId: string, moveIndex: number) {
     const gameIndex = games.value.findIndex((g: Game) => g.id === gameId);
     if (gameIndex === -1 || !currentUser.value) return;
@@ -224,19 +239,6 @@ export const useGamesStore = defineStore('games', () => {
     if (idx !== -1 && updated) games.value[idx] = updated;
   }
 
-  async function deleteAllActiveGames() {
-    const activeGamesList = games.value.filter(
-      (g: Game) => g.status !== 'finished',
-    );
-
-    for (const game of activeGamesList) {
-      const manager = getManager(game.type);
-      await manager.delete(game.id);
-    }
-
-    games.value = games.value.filter((g: Game) => g.status === 'finished');
-  }
-
   async function deleteAllFinishedGames() {
     const finishedGamesList = games.value.filter(
       (g: Game) => g.status === 'finished',
@@ -260,7 +262,7 @@ export const useGamesStore = defineStore('games', () => {
     createGame,
     startGame,
     deleteGame,
-    deleteAllActiveGames,
+    closeGame,
     deleteAllFinishedGames,
     castVote,
   };
