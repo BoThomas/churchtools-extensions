@@ -24,7 +24,7 @@
               <Select
                 id="gameType"
                 v-model="newGameType"
-                :options="gameTypes"
+                :options="GAME_TYPES"
                 optionLabel="label"
                 optionValue="value"
                 class="w-full"
@@ -69,9 +69,10 @@
             </p>
             <p>Currently supported games:</p>
             <ul class="list-disc list-inside ml-4">
-              <li>Tic Tac Toe (Team vs Team)</li>
+              <li v-for="game in GAME_TYPES" :key="game.value">
+                {{ game.label }} (Team vs Team)
+              </li>
             </ul>
-            <p class="text-sm text-surface-500">More games coming soon!</p>
           </div>
         </template>
       </Card>
@@ -245,7 +246,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useGamesStore, type GameType } from '../stores/games';
+import { useGamesStore, GAME_TYPES, type GameType } from '../stores/games';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
@@ -266,8 +267,6 @@ const newGameType = ref<GameType>('tictactoe');
 const voteThreshold = ref(3);
 const creating = ref(false);
 const deleting = ref(false);
-
-const gameTypes = [{ label: 'Tic Tac Toe', value: 'tictactoe' }];
 
 function formatDate(isoDate: string): string {
   return new Date(isoDate).toLocaleString();

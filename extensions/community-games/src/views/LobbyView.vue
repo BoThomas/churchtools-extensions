@@ -24,16 +24,18 @@
           @click="$emit('select-game', game.id)"
         >
           <template #title>
-            <div class="flex justify-between items-center">
-              <span>{{ game.name }}</span>
+            <div class="flex flex-col gap-2">
               <div class="flex items-center gap-2">
-                <span class="text-xs text-surface-500">{{ game.type }}</span>
+                <span class="text-xl font-bold">{{
+                  getGameTypeLabel(game.type)
+                }}</span>
                 <Badge
                   v-if="game.status === 'lobby'"
                   value="Lobby"
                   severity="info"
                 />
               </div>
+              <span class="text-sm text-surface-500">{{ game.name }}</span>
             </div>
           </template>
           <template #subtitle>
@@ -201,7 +203,12 @@
 </template>
 
 <script setup lang="ts">
-import { useGamesStore, type Game } from '../stores/games';
+import {
+  useGamesStore,
+  GAME_TYPES,
+  type Game,
+  type GameType,
+} from '../stores/games';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
@@ -213,6 +220,10 @@ import Column from 'primevue/column';
 const store = useGamesStore();
 
 defineEmits(['select-game']);
+
+function getGameTypeLabel(type: GameType): string {
+  return GAME_TYPES.find((gt) => gt.value === type)?.label || type;
+}
 
 function getUserTeam(game: Game): 'red' | 'blue' | null {
   if (!store.currentUser) return null;

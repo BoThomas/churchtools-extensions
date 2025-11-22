@@ -5,8 +5,15 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { GameManager } from '../gameManagers/GameManager';
 import { TicTacToeManager } from '../gameManagers/TicTacToeManager';
+import { ConnectFourManager } from '../gameManagers/ConnectFourManager';
 
-export type GameType = 'tictactoe';
+export type GameType = 'tictactoe' | 'connectfour';
+
+// Centralized game type configuration
+export const GAME_TYPES = [
+  { label: 'Tic Tac Toe', value: 'tictactoe' as GameType },
+  { label: 'Connect Four', value: 'connectfour' as GameType },
+];
 
 export interface GameConfig {
   voteThreshold: number; // Number of votes needed to confirm a move
@@ -71,9 +78,14 @@ export const useGamesStore = defineStore('games', () => {
       await tictactoeManager.init(KEY);
       managers.set('tictactoe', tictactoeManager);
 
+      const connectfourManager = new ConnectFourManager(KEY);
+      await connectfourManager.init(KEY);
+      managers.set('connectfour', connectfourManager);
+
       // Load games from all managers
       const tictactoeGames = await tictactoeManager.getAll();
-      games.value = [...tictactoeGames];
+      const connectfourGames = await connectfourManager.getAll();
+      games.value = [...tictactoeGames, ...connectfourGames];
     } catch (e) {
       console.error('Failed to init games store', e);
     } finally {
@@ -214,9 +226,26 @@ export const useGamesStore = defineStore('games', () => {
   async function makeMove(game: Game, moveIndex: number, team: 'red' | 'blue') {
     const manager = getManager(game.type);
 
-    // Apply move (type-safe for tictactoe)
+    // Apply move based on game type
     if (game.state.board) {
-      game.state.board[moveIndex] = team;
+      if (game.type === 'connectfour') {
+        // For Connect Four, moveIndex is the column
+        // Find the lowest available row in that column
+        const ROWS = 6;
+        const COLS = 7;
+        const col = moveIndex;
+
+        for (let row = ROWS - 1; row >= 0; row--) {
+          const index = row * COLS + col;
+          if (game.state.board[index] === null) {
+            game.state.board[index] = team;
+            break;
+          }
+        }
+      } else {
+        // For TicTacToe and other games, moveIndex is the cell index
+        game.state.board[moveIndex] = team;
+      }
     }
 
     // Clear votes
