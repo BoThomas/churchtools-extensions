@@ -1,202 +1,209 @@
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-6">
-    <Card>
-      <template #title>Personal Information</template>
-      <template #content>
-        <div class="space-y-4">
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-user"></i>
+          <span class="font-semibold">Personal Information</span>
+        </div>
+      </template>
+      <div class="space-y-4">
+        <div class="flex flex-col gap-2">
+          <label for="name" class="font-medium text-sm">Name *</label>
+          <InputText
+            id="name"
+            v-model="formData.name"
+            placeholder="Your full name"
+            :invalid="!!errors.name"
+          />
+          <small v-if="errors.name" class="text-red-500">{{
+            errors.name
+          }}</small>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
           <div class="flex flex-col gap-2">
-            <label for="name" class="font-medium text-sm">Name *</label>
+            <label for="email" class="font-medium text-sm">Email *</label>
             <InputText
-              id="name"
-              v-model="formData.name"
-              placeholder="Your full name"
-              :invalid="!!errors.name"
+              id="email"
+              v-model="formData.email"
+              type="email"
+              placeholder="your.email@example.com"
+              :invalid="!!errors.email"
             />
-            <small v-if="errors.name" class="text-red-500">{{
-              errors.name
+            <small v-if="errors.email" class="text-red-500">{{
+              errors.email
             }}</small>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div class="flex flex-col gap-2">
-              <label for="email" class="font-medium text-sm">Email *</label>
-              <InputText
-                id="email"
-                v-model="formData.email"
-                type="email"
-                placeholder="your.email@example.com"
-                :invalid="!!errors.email"
-              />
-              <small v-if="errors.email" class="text-red-500">{{
-                errors.email
-              }}</small>
-            </div>
-
-            <div class="flex flex-col gap-2">
-              <label for="phone" class="font-medium text-sm">Phone *</label>
-              <InputText
-                id="phone"
-                v-model="formData.phone"
-                placeholder="+49 123 456789"
-                :invalid="!!errors.phone"
-              />
-              <small v-if="errors.phone" class="text-red-500">{{
-                errors.phone
-              }}</small>
-            </div>
+          <div class="flex flex-col gap-2">
+            <label for="phone" class="font-medium text-sm">Phone *</label>
+            <InputText
+              id="phone"
+              v-model="formData.phone"
+              placeholder="+49 123 456789"
+              :invalid="!!errors.phone"
+            />
+            <small v-if="errors.phone" class="text-red-500">{{
+              errors.phone
+            }}</small>
           </div>
         </div>
-      </template>
-    </Card>
+      </div>
+    </Fieldset>
 
-    <Card>
-      <template #title>Address</template>
-      <template #content>
-        <div class="space-y-4">
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-map-marker"></i>
+          <span class="font-semibold">Address</span>
+        </div>
+      </template>
+      <div class="space-y-4">
+        <div class="flex flex-col gap-2">
+          <label for="street" class="font-medium text-sm">Street *</label>
+          <InputText
+            id="street"
+            v-model="formData.address.street"
+            placeholder="Street and number"
+            :invalid="!!errors['address.street']"
+          />
+          <small v-if="errors['address.street']" class="text-red-500">{{
+            errors['address.street']
+          }}</small>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
           <div class="flex flex-col gap-2">
-            <label for="street" class="font-medium text-sm">Street *</label>
+            <label for="zip" class="font-medium text-sm">ZIP *</label>
             <InputText
-              id="street"
-              v-model="formData.address.street"
-              placeholder="Street and number"
-              :invalid="!!errors['address.street']"
+              id="zip"
+              v-model="formData.address.zip"
+              placeholder="12345"
+              :invalid="!!errors['address.zip']"
             />
-            <small v-if="errors['address.street']" class="text-red-500">{{
-              errors['address.street']
+            <small v-if="errors['address.zip']" class="text-red-500">{{
+              errors['address.zip']
             }}</small>
           </div>
 
-          <div class="grid grid-cols-3 gap-4">
-            <div class="flex flex-col gap-2">
-              <label for="zip" class="font-medium text-sm">ZIP *</label>
-              <InputText
-                id="zip"
-                v-model="formData.address.zip"
-                placeholder="12345"
-                :invalid="!!errors['address.zip']"
-              />
-              <small v-if="errors['address.zip']" class="text-red-500">{{
-                errors['address.zip']
-              }}</small>
-            </div>
-
-            <div class="flex flex-col gap-2 col-span-2">
-              <label for="city" class="font-medium text-sm">City *</label>
-              <InputText
-                id="city"
-                v-model="formData.address.city"
-                placeholder="City name"
-                :invalid="!!errors['address.city']"
-              />
-              <small v-if="errors['address.city']" class="text-red-500">{{
-                errors['address.city']
-              }}</small>
-            </div>
-          </div>
-        </div>
-      </template>
-    </Card>
-
-    <Card>
-      <template #title>Preferences</template>
-      <template #content>
-        <div class="space-y-4">
-          <div class="flex flex-col gap-2">
-            <label for="preferredPartners" class="font-medium text-sm"
-              >Preferred Partners (optional)</label
-            >
-            <small class="text-surface-600 dark:text-surface-400 -mt-1 mb-2"
-              >Enter email addresses of people you'd like to be grouped with.
-              They need to register too.</small
-            >
-            <Chip
-              v-for="(partner, index) in formData.preferredPartners"
-              :key="index"
-              :label="partner"
-              removable
-              @remove="removePreferredPartner(index)"
-              class="mb-2"
+          <div class="flex flex-col gap-2 col-span-2">
+            <label for="city" class="font-medium text-sm">City *</label>
+            <InputText
+              id="city"
+              v-model="formData.address.city"
+              placeholder="City name"
+              :invalid="!!errors['address.city']"
             />
-            <div class="flex gap-2">
-              <InputText
-                v-model="newPartnerEmail"
-                type="email"
-                placeholder="partner@example.com"
-                class="flex-1"
-                @keyup.enter="addPreferredPartner"
-              />
-              <Button
-                label="Add"
-                icon="pi pi-plus"
-                @click="addPreferredPartner"
-                :disabled="!newPartnerEmail"
-                type="button"
-              />
-            </div>
-            <small v-if="partnerEmailError" class="text-red-500">{{
-              partnerEmailError
+            <small v-if="errors['address.city']" class="text-red-500">{{
+              errors['address.city']
             }}</small>
           </div>
+        </div>
+      </div>
+    </Fieldset>
 
-          <div v-if="allowPreferredMeal" class="flex flex-col gap-2">
-            <label class="font-medium text-sm"
-              >Preferred Meal to Host (optional)</label
-            >
-            <small class="text-surface-600 dark:text-surface-400 -mt-1 mb-2"
-              >Select which course you'd prefer to host. We'll try to respect
-              preferences, but may need to assign a different meal to balance
-              the groups.</small
-            >
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <RadioButton
-                  v-model="formData.preferredMeal"
-                  inputId="meal-starter"
-                  name="preferredMeal"
-                  value="starter"
-                />
-                <label for="meal-starter" class="cursor-pointer">Starter</label>
-              </div>
-              <div class="flex items-center gap-2">
-                <RadioButton
-                  v-model="formData.preferredMeal"
-                  inputId="meal-main"
-                  name="preferredMeal"
-                  value="mainCourse"
-                />
-                <label for="meal-main" class="cursor-pointer"
-                  >Main Course</label
-                >
-              </div>
-              <div class="flex items-center gap-2">
-                <RadioButton
-                  v-model="formData.preferredMeal"
-                  inputId="meal-dessert"
-                  name="preferredMeal"
-                  value="dessert"
-                />
-                <label for="meal-dessert" class="cursor-pointer">Dessert</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <label for="dietaryRestrictions" class="font-medium text-sm"
-              >Dietary Restrictions & Allergies (optional)</label
-            >
-            <small class="text-surface-600 dark:text-surface-400 -mt-1 mb-2"
-              >Let hosts know about any dietary requirements, allergies, or food
-              preferences.</small
-            >
-            <InputText
-              id="dietaryRestrictions"
-              v-model="formData.dietaryRestrictions"
-              placeholder="e.g., vegetarian, gluten-free, nut allergy"
-            />
-          </div>
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-heart"></i>
+          <span class="font-semibold">Preferences</span>
         </div>
       </template>
-    </Card>
+      <div class="space-y-4">
+        <div class="flex flex-col gap-2">
+          <label for="preferredPartners" class="font-medium text-sm"
+            >Preferred Partners (optional)</label
+          >
+          <small class="text-surface-600 dark:text-surface-400 -mt-1 mb-2"
+            >Enter email addresses of people you'd like to be grouped with. They
+            need to register too.</small
+          >
+          <Chip
+            v-for="(partner, index) in formData.preferredPartners"
+            :key="index"
+            :label="partner"
+            removable
+            @remove="removePreferredPartner(index)"
+            class="mb-2"
+          />
+          <div class="flex gap-2">
+            <InputText
+              v-model="newPartnerEmail"
+              type="email"
+              placeholder="partner@example.com"
+              class="flex-1"
+              @keyup.enter="addPreferredPartner"
+            />
+            <Button
+              label="Add"
+              icon="pi pi-plus"
+              @click="addPreferredPartner"
+              :disabled="!newPartnerEmail"
+              type="button"
+            />
+          </div>
+          <small v-if="partnerEmailError" class="text-red-500">{{
+            partnerEmailError
+          }}</small>
+        </div>
+
+        <div v-if="allowPreferredMeal" class="flex flex-col gap-2">
+          <label class="font-medium text-sm"
+            >Preferred Meal to Host (optional)</label
+          >
+          <small class="text-surface-600 dark:text-surface-400 -mt-1 mb-2"
+            >Select which course you'd prefer to host. We'll try to respect
+            preferences, but may need to assign a different meal to balance the
+            groups.</small
+          >
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <RadioButton
+                v-model="formData.preferredMeal"
+                inputId="meal-starter"
+                name="preferredMeal"
+                value="starter"
+              />
+              <label for="meal-starter" class="cursor-pointer">Starter</label>
+            </div>
+            <div class="flex items-center gap-2">
+              <RadioButton
+                v-model="formData.preferredMeal"
+                inputId="meal-main"
+                name="preferredMeal"
+                value="mainCourse"
+              />
+              <label for="meal-main" class="cursor-pointer">Main Course</label>
+            </div>
+            <div class="flex items-center gap-2">
+              <RadioButton
+                v-model="formData.preferredMeal"
+                inputId="meal-dessert"
+                name="preferredMeal"
+                value="dessert"
+              />
+              <label for="meal-dessert" class="cursor-pointer">Dessert</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="dietaryRestrictions" class="font-medium text-sm"
+            >Dietary Restrictions & Allergies (optional)</label
+          >
+          <small class="text-surface-600 dark:text-surface-400 -mt-1 mb-2"
+            >Let hosts know about any dietary requirements, allergies, or food
+            preferences.</small
+          >
+          <InputText
+            id="dietaryRestrictions"
+            v-model="formData.dietaryRestrictions"
+            placeholder="e.g., vegetarian, gluten-free, nut allergy"
+          />
+        </div>
+      </div>
+    </Fieldset>
 
     <div
       v-if="validationMessage"
@@ -225,12 +232,13 @@ import { ref, computed, watch } from 'vue';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import type { Participant } from '../types/models';
 import { ParticipantSchema } from '../types/models';
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
+
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import RadioButton from '@churchtools-extensions/prime-volt/RadioButton.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
+import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import { z } from 'zod';
 
 interface Props {
