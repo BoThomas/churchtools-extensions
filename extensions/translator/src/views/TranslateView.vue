@@ -838,9 +838,19 @@ function updatePresentationWindow(text: string, isLive: boolean) {
   const data = {
     text,
     isLive,
-    finalized: isLive
-      ? finalizedParagraphs.value
-      : [...finalizedParagraphs.value, text],
+    finalized: finalizedParagraphs.value,
+    timestamp: Date.now(),
+  };
+  localStorage.setItem('translator_presentation', JSON.stringify(data));
+}
+
+// Clear presentation data in localStorage (used on pause/start to avoid showing
+// stale content in the presentation window)
+function clearPresentationWindowStorage() {
+  const data = {
+    text: '',
+    isLive: false,
+    finalized: [],
     timestamp: Date.now(),
   };
   localStorage.setItem('translator_presentation', JSON.stringify(data));
@@ -925,6 +935,14 @@ async function startPresentation() {
     return;
   }
 
+  // Clear previous output
+  finalizedParagraphs.value = [];
+  finalizedParagraphsOri.value = [];
+  currentLiveTranslation.value = '';
+  currentLiveTranslationOri.value = '';
+  // Clear any existing presentation data to avoid showing previous session
+  clearPresentationWindowStorage();
+
   try {
     state.value.isPresentationRunning = true;
 
@@ -964,6 +982,12 @@ function pauseOrResume() {
       captioningService?.start();
     }
     if (state.value.isPresentationRunning) {
+      // Clear presenter's state to avoid showing stale content when resuming
+      finalizedParagraphs.value = [];
+      finalizedParagraphsOri.value = [];
+      currentLiveTranslation.value = '';
+      currentLiveTranslationOri.value = '';
+      clearPresentationWindowStorage();
       localStorage.removeItem('translator_paused');
       captioningService?.start();
     }
@@ -973,6 +997,13 @@ function pauseOrResume() {
       captioningService.stop();
     }
     if (state.value.isPresentationRunning) {
+      // Clear presentation window and presenter's state to avoid showing
+      // stale content when paused
+      finalizedParagraphs.value = [];
+      finalizedParagraphsOri.value = [];
+      currentLiveTranslation.value = '';
+      currentLiveTranslationOri.value = '';
+      clearPresentationWindowStorage();
       localStorage.setItem(
         'translator_paused',
         JSON.stringify({ isPaused: true }),
@@ -1114,6 +1145,13 @@ async function startRecording() {
   }
 
   try {
+    // Ensure previous output is cleared before starting recording
+    finalizedParagraphs.value = [];
+    finalizedParagraphsOri.value = [];
+    currentLiveTranslation.value = '';
+    currentLiveTranslationOri.value = '';
+    clearPresentationWindowStorage();
+
     // Start session logging
     if (user.value) {
       const session = sessionLogger.createSession({
