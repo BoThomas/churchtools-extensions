@@ -27,12 +27,14 @@
       <div class="pt-0 px-5 pb-5 flex justify-end gap-2">
         <SecondaryButton
           @click="rejectCallback"
-          :label="message.rejectProps.label"
+          :label="message.rejectProps?.label || message.rejectLabel || 'Cancel'"
           size="small"
         />
         <Button
           @click="acceptCallback"
-          :label="message.acceptProps.label"
+          :label="
+            message.acceptProps?.label || message.acceptLabel || 'Confirm'
+          "
           size="small"
         />
       </div>
