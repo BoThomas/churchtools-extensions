@@ -1,9 +1,17 @@
 {
   "name": "churchtools-translator",
   "private": true,
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "Real-time translation extension for ChurchTools presentations",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BoThomas/churchtools-extensions"
+  },
+  "author": {
+    "name": "Thomas Boch",
+    "email": "churchtools@als.bochmail.de"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

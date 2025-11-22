@@ -4,6 +4,14 @@
   "version": "0.0.1",
   "description": "Running Dinner event management extension for ChurchTools",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BoThomas/churchtools-extensions"
+  },
+  "author": {
+    "name": "Thomas Boch",
+    "email": "churchtools@als.bochmail.de"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

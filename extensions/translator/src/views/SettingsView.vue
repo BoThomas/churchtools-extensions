@@ -96,13 +96,15 @@
           <span class="text-surface-500 dark:text-surface-400 text-sm"
             >Name</span
           >
-          <span class="font-mono text-sm">{{ extensionInfo.name }}</span>
+          <div>
+            <Badge :value="extensionInfo.name" severity="contrast" />
+          </div>
 
           <span class="text-surface-500 dark:text-surface-400 text-sm"
             >Version</span
           >
           <div class="flex items-center gap-2">
-            <Badge :value="extensionInfo.version" />
+            <Badge :value="extensionInfo.version" severity="contrast" />
           </div>
 
           <span class="text-surface-500 dark:text-surface-400 text-sm"
@@ -119,11 +121,50 @@
           <span class="text-surface-500 dark:text-surface-400 text-sm"
             >Built</span
           >
-          <span
-            class="font-mono text-xs text-surface-600 dark:text-surface-300"
+          <div>
+            <Badge
+              :value="formatDate(extensionInfo.buildDate)"
+              severity="secondary"
+            />
+          </div>
+
+          <template
+            v-if="extensionInfo.authorName || extensionInfo.authorEmail"
           >
-            {{ formatDate(extensionInfo.buildDate) }}
-          </span>
+            <span class="text-surface-500 dark:text-surface-400 text-sm"
+              >Author</span
+            >
+            <a
+              v-if="extensionInfo.authorEmail"
+              :href="'mailto:' + extensionInfo.authorEmail"
+              class="flex items-center gap-2 text-sm group"
+              target="_blank"
+            >
+              <i class="pi pi-envelope text-primary"></i>
+              <span class="group-hover:underline">{{
+                extensionInfo.authorName
+              }}</span>
+            </a>
+            <span v-else class="text-sm">{{ extensionInfo.authorName }}</span>
+          </template>
+
+          <template v-if="extensionInfo.repositoryUrl">
+            <span class="text-surface-500 dark:text-surface-400 text-sm"
+              >Repository</span
+            >
+            <a
+              :href="extensionInfo.repositoryUrl"
+              target="_blank"
+              class="flex items-center gap-2 text-xs font-mono group"
+            >
+              <i class="pi pi-github text-sm text-primary"></i>
+              <span
+                class="text-surface-500 dark:text-surface-400 group-hover:underline"
+              >
+                {{ extensionInfo.repositoryUrl }}
+              </span>
+            </a>
+          </template>
         </div>
       </template>
     </Card>

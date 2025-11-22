@@ -6,6 +6,9 @@ declare module 'virtual:extension-info' {
     gitHash: string;
     gitBranch: string;
     buildDate: string;
+    repositoryUrl: string;
+    authorName: string;
+    authorEmail: string;
   }
 
   const extensionInfo: ExtensionInfo;

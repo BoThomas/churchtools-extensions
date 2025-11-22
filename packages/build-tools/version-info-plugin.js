@@ -45,6 +45,35 @@ export function versionInfoPlugin() {
           console.warn('Warning: Could not get git info');
         }
 
+        // Extract repository URL
+        let repositoryUrl = '';
+        if (packageJson.repository) {
+          if (typeof packageJson.repository === 'string') {
+            repositoryUrl = packageJson.repository;
+          } else if (packageJson.repository.url) {
+            repositoryUrl = packageJson.repository.url
+              .replace(/^git\+/, '')
+              .replace(/\.git$/, '');
+          }
+        }
+
+        // Extract author information
+        let authorName = '';
+        let authorEmail = '';
+        if (packageJson.author) {
+          if (typeof packageJson.author === 'string') {
+            // Parse "Name <email>" format
+            const match = packageJson.author.match(/^([^<]+)(?:<([^>]+)>)?/);
+            if (match) {
+              authorName = match[1].trim();
+              authorEmail = match[2]?.trim() || '';
+            }
+          } else {
+            authorName = packageJson.author.name || '';
+            authorEmail = packageJson.author.email || '';
+          }
+        }
+
         const versionInfo = {
           name: packageJson.name,
           version: packageJson.version,
@@ -52,6 +81,9 @@ export function versionInfoPlugin() {
           gitHash,
           gitBranch,
           buildDate: new Date().toISOString(),
+          repositoryUrl,
+          authorName,
+          authorEmail,
         };
 
         return `export default ${JSON.stringify(versionInfo, null, 2)};`;
