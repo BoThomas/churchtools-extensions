@@ -258,6 +258,6 @@ function getResultClass(game: Game): string {
     return 'bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-200 text-xs';
   return game.winner === userTeam
     ? 'bg-green-500 dark:bg-green-600 text-white text-xs'
-    : 'bg-red-500 dark:bg-red-600 text-white text-xs';
+    : 'bg-surface-400 dark:bg-surface-600 text-white text-xs';
 }
 </script>
