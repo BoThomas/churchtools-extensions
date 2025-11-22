@@ -2,6 +2,19 @@
   <!-- Presentation Mode -->
   <PresentationView v-if="isPresentationMode" />
 
+  <!-- Loading State -->
+  <div
+    v-else-if="store.initializing"
+    class="min-h-screen flex items-center justify-center"
+  >
+    <div class="text-center space-y-4">
+      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+      <p class="text-lg text-surface-600 dark:text-surface-400">
+        Loading translator...
+      </p>
+    </div>
+  </div>
+
   <!-- Normal Mode -->
   <div v-else class="min-h-screen flex flex-col">
     <div class="flex-1 p-4">

@@ -60,6 +60,9 @@ const DEFAULT_SETTINGS: TranslatorSettings = {
 };
 
 export const useTranslatorStore = defineStore('translator', () => {
+  // Initial loading state
+  const initializing = ref(true);
+
   // Settings
   const settings = ref<TranslatorSettings>({ ...DEFAULT_SETTINGS });
   const settingsLoading = ref(false);
@@ -124,6 +127,7 @@ export const useTranslatorStore = defineStore('translator', () => {
       console.error('loadSettings failed', e);
     } finally {
       settingsLoading.value = false;
+      initializing.value = false;
     }
   }
 
@@ -497,6 +501,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   return {
     // State
+    initializing,
     settings,
     settingsLoading,
     settingsSaving,
