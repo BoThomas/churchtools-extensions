@@ -1,22 +1,5 @@
 <template>
   <div class="space-y-6">
-    <div v-if="stateText" class="flex items-center justify-end">
-      <div
-        class="inline-flex items-center rounded-2xl gap-2 px-3 py-2"
-        :class="{
-          'bg-orange-500 text-white': state.isPaused,
-          'bg-green-500 text-white':
-            state.isTestRunning || state.isPresentationRunning,
-          'bg-surface-100 dark:bg-surface-800 text-surface-800 dark:text-surface-0':
-            !state.isPaused &&
-            !state.isTestRunning &&
-            !state.isPresentationRunning,
-        }"
-      >
-        {{ stateText }}
-      </div>
-    </div>
-
     <Message
       v-if="!hasApiCredentials"
       severity="warn"
@@ -488,9 +471,16 @@
       <!-- Controls -->
       <Fieldset>
         <template #legend>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-sitemap"></i>
-            <span class="font-semibold">Controls</span>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-sitemap"></i>
+              <span class="font-semibold">Controls</span>
+            </div>
+            <Badge
+              v-if="stateText"
+              :value="stateText"
+              :severity="statusSeverity"
+            />
           </div>
         </template>
         <div class="flex flex-col gap-4">
@@ -746,6 +736,7 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import ContrastButton from '@churchtools-extensions/prime-volt/ContrastButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
@@ -875,6 +866,15 @@ const stateText = computed(() => {
     return 'Presenting';
   }
   return '';
+});
+
+const statusSeverity = computed(() => {
+  if (state.value.isPaused) {
+    return 'warn';
+  } else if (state.value.isTestRunning || state.value.isPresentationRunning) {
+    return 'success';
+  }
+  return 'secondary';
 });
 
 const isDefaultVariantSelected = computed(() => {
