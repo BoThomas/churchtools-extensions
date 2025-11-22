@@ -16,54 +16,10 @@
         />
       </div>
 
-      <!-- Game Title and Status -->
+      <!-- Game Title -->
       <div class="text-center">
-        <h1 class="text-3xl font-bold mb-2">{{ game.name }}</h1>
-        <Badge
-          :value="game.status"
-          :severity="
-            game.status === 'active'
-              ? 'success'
-              : game.status === 'finished'
-                ? 'secondary'
-                : 'info'
-          "
-        />
+        <h1 class="text-3xl font-bold">{{ game.name }}</h1>
       </div>
-
-      <!-- Current Turn Indicator -->
-      <Card
-        v-if="game.status === 'active' && !game.winner"
-        class="w-full max-w-md"
-      >
-        <template #content>
-          <div class="text-center">
-            <div class="flex items-center justify-center gap-3 mb-2">
-              <div
-                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2"
-                :class="
-                  game.currentTurn === 'red'
-                    ? 'bg-red-500 dark:bg-red-600 text-white'
-                    : 'bg-blue-500 dark:bg-blue-600 text-white'
-                "
-              >
-                {{ game.currentTurn.toUpperCase() + ' TEAM' }}
-              </div>
-              <span class="text-lg font-semibold">is playing</span>
-            </div>
-            <div class="flex items-center justify-center gap-2 mt-3">
-              <ProgressBar
-                :value="(currentVoteCount / game.config.voteThreshold) * 100"
-                class="w-48"
-                :show-value="false"
-              />
-              <span class="text-sm text-surface-600 dark:text-surface-400">
-                {{ currentVoteCount }} / {{ game.config.voteThreshold }} votes
-              </span>
-            </div>
-          </div>
-        </template>
-      </Card>
 
       <!-- Winner Message -->
       <Card v-if="game.winner" class="w-full max-w-md">
@@ -100,65 +56,141 @@
         />
       </div>
 
-      <!-- Team Info -->
-      <div class="flex gap-4 w-full max-w-md">
-        <Card class="flex-1">
-          <template #content>
-            <div class="text-center">
-              <div
-                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-red-500 dark:bg-red-600 text-white mb-2"
-              >
-                RED TEAM
-              </div>
-              <div class="text-3xl font-bold">
-                {{ game.teams.red.length }}
-              </div>
-              <div class="text-sm text-surface-500">players</div>
-            </div>
-          </template>
-        </Card>
-
-        <Card class="flex-1">
-          <template #content>
-            <div class="text-center">
-              <div
-                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-blue-500 dark:bg-blue-600 text-white mb-2"
-              >
-                BLUE TEAM
-              </div>
-              <div class="text-3xl font-bold">
-                {{ game.teams.blue.length }}
-              </div>
-              <div class="text-sm text-surface-500">players</div>
-            </div>
-          </template>
-        </Card>
-      </div>
-
-      <!-- Player Status -->
-      <Card class="w-full max-w-md">
+      <!-- Current Turn Indicator -->
+      <Card
+        v-if="game.status === 'active' && !game.winner"
+        class="w-full max-w-md"
+      >
         <template #content>
-          <div class="text-center text-surface-600 dark:text-surface-400">
-            <p v-if="myTeam">
-              You are playing on
-              <span
-                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2"
-                :class="
-                  myTeam === 'red'
-                    ? 'bg-red-500 dark:bg-red-600 text-white'
-                    : 'bg-blue-500 dark:bg-blue-600 text-white'
+          <div class="text-center">
+            <div class="flex items-center justify-center gap-2">
+              <ProgressBar
+                :value="(currentVoteCount / game.config.voteThreshold) * 100"
+                :show-value="false"
+                :pt:root:class="'w-48'"
+                :pt:value:class="
+                  game.currentTurn === 'red'
+                    ? 'p-determinate:bg-red-500 dark:p-determinate:bg-red-600'
+                    : 'p-determinate:bg-blue-500 dark:p-determinate:bg-blue-600'
                 "
-              >
-                {{ myTeam.toUpperCase() + ' TEAM' }}
+              />
+              <span class="text-sm text-surface-600 dark:text-surface-400">
+                {{ currentVoteCount }} / {{ game.config.voteThreshold }} votes
               </span>
-            </p>
-            <p v-else class="flex items-center justify-center gap-2">
-              <i class="pi pi-eye"></i>
-              <span>You are spectating this game</span>
-            </p>
+            </div>
           </div>
         </template>
       </Card>
+
+      <!-- Team Info -->
+      <div class="w-full max-w-md space-y-4">
+        <div class="flex gap-4">
+          <Card
+            class="flex-1 transition-all"
+            :class="{
+              'ring-2 ring-red-500 dark:ring-red-600 shadow-[0_0_15px_rgba(239,68,68,0.5)]':
+                game.status === 'active' &&
+                !game.winner &&
+                game.currentTurn === 'red',
+            }"
+          >
+            <template #content>
+              <div class="text-center">
+                <div
+                  class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-red-500 dark:bg-red-600 text-white mb-2"
+                >
+                  RED TEAM
+                  <i
+                    v-if="
+                      game.status === 'active' &&
+                      !game.winner &&
+                      game.currentTurn === 'red'
+                    "
+                    class="pi pi-clock animate-pulse"
+                  ></i>
+                </div>
+                <div class="text-3xl font-bold">
+                  {{ game.teams.red.length }}
+                </div>
+                <div class="text-sm text-surface-500">players</div>
+                <div
+                  v-if="
+                    game.status === 'active' &&
+                    !game.winner &&
+                    game.currentTurn === 'red'
+                  "
+                  class="mt-2 text-xs font-semibold text-red-600 dark:text-red-400 animate-pulse"
+                >
+                  PLAYING NOW
+                </div>
+              </div>
+            </template>
+          </Card>
+
+          <Card
+            class="flex-1 transition-all"
+            :class="{
+              'ring-2 ring-blue-500 dark:ring-blue-600 shadow-[0_0_15px_rgba(59,130,246,0.5)]':
+                game.status === 'active' &&
+                !game.winner &&
+                game.currentTurn === 'blue',
+            }"
+          >
+            <template #content>
+              <div class="text-center">
+                <div
+                  class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-blue-500 dark:bg-blue-600 text-white mb-2"
+                >
+                  BLUE TEAM
+                  <i
+                    v-if="
+                      game.status === 'active' &&
+                      !game.winner &&
+                      game.currentTurn === 'blue'
+                    "
+                    class="pi pi-clock animate-pulse"
+                  ></i>
+                </div>
+                <div class="text-3xl font-bold">
+                  {{ game.teams.blue.length }}
+                </div>
+                <div class="text-sm text-surface-500">players</div>
+                <div
+                  v-if="
+                    game.status === 'active' &&
+                    !game.winner &&
+                    game.currentTurn === 'blue'
+                  "
+                  class="mt-2 text-xs font-semibold text-blue-600 dark:text-blue-400 animate-pulse"
+                >
+                  PLAYING NOW
+                </div>
+              </div>
+            </template>
+          </Card>
+        </div>
+
+        <!-- User Status -->
+        <div v-if="myTeam" class="text-center">
+          <div
+            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-100 dark:bg-surface-800"
+          >
+            <i class="pi pi-user text-xs"></i>
+            <span class="text-xs font-medium">
+              You're on
+              <span
+                :class="
+                  myTeam === 'red'
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-blue-600 dark:text-blue-400'
+                "
+              >
+                {{ myTeam === 'red' ? 'Red' : 'Blue' }} Team
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -169,7 +201,6 @@ import { useGamesStore, type Game } from '../stores/games';
 import TicTacToeCanvas from '../components/games/TicTacToeCanvas.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
-import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import ProgressBar from '@churchtools-extensions/prime-volt/ProgressBar.vue';
 

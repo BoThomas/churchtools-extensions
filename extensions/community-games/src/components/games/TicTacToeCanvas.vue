@@ -8,7 +8,23 @@
       @click="handleClick"
     ></canvas>
     <div class="text-sm text-surface-500">
-      Click a cell to vote for the next move
+      <span v-if="myTeam && myTeam === currentTurn">
+        Click a cell to vote for the next move
+      </span>
+      <span v-else-if="myTeam">
+        Waiting for
+        <span
+          :class="
+            currentTurn === 'red'
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-blue-600 dark:text-blue-400'
+          "
+        >
+          {{ currentTurn === 'red' ? 'Red' : 'Blue' }} Team
+        </span>
+        to finish their turn
+      </span>
+      <span v-else>Spectating</span>
     </div>
   </div>
 </template>
