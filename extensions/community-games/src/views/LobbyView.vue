@@ -73,11 +73,11 @@
                 class="flex items-center justify-around gap-4 py-3 bg-surface-50 dark:bg-surface-800/50 rounded-lg"
               >
                 <div class="flex items-center gap-2">
-                  <div
-                    class="inline-flex items-center rounded-2xl px-2 py-1 text-xs gap-1 bg-red-500 dark:bg-red-600 text-white"
-                  >
-                    {{ game.teams.red.length }}
-                  </div>
+                  <Chip
+                    :label="String(game.teams.red.length)"
+                    size="small"
+                    :pt:root:class="'bg-red-500 dark:bg-red-600 text-white text-xs'"
+                  />
                   <span
                     class="text-xs font-medium text-red-600 dark:text-red-400"
                     >Red</span
@@ -89,33 +89,36 @@
                     class="text-xs font-medium text-blue-600 dark:text-blue-400"
                     >Blue</span
                   >
-                  <div
-                    class="inline-flex items-center rounded-2xl px-2 py-1 text-xs gap-1 bg-blue-500 dark:bg-blue-600 text-white"
-                  >
-                    {{ game.teams.blue.length }}
-                  </div>
+                  <Chip
+                    :label="String(game.teams.blue.length)"
+                    size="small"
+                    :pt:root:class="'bg-blue-500 dark:bg-blue-600 text-white text-xs'"
+                  />
                 </div>
               </div>
 
               <!-- User Status -->
               <div v-if="getUserTeam(game)" class="text-center">
-                <div
-                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-100 dark:bg-surface-800"
+                <Chip
+                  size="small"
+                  :pt:root:class="'bg-surface-100 dark:bg-surface-800'"
                 >
-                  <i class="pi pi-user text-xs"></i>
-                  <span class="text-xs font-medium">
-                    You're on
-                    <span
-                      :class="
-                        getUserTeam(game) === 'red'
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-blue-600 dark:text-blue-400'
-                      "
-                    >
-                      {{ getUserTeam(game) === 'red' ? 'Red' : 'Blue' }} Team
+                  <template #default>
+                    <i class="pi pi-user text-xs"></i>
+                    <span class="text-xs font-medium ml-2">
+                      You're on
+                      <span
+                        :class="
+                          getUserTeam(game) === 'red'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        "
+                      >
+                        {{ getUserTeam(game) === 'red' ? 'Red' : 'Blue' }} Team
+                      </span>
                     </span>
-                  </span>
-                </div>
+                  </template>
+                </Chip>
               </div>
 
               <!-- Click hint -->
@@ -170,8 +173,12 @@
             <Chip
               v-if="getUserTeam(data)"
               :label="getUserTeam(data) === 'red' ? 'Red' : 'Blue'"
-              :severity="getUserTeam(data) === 'red' ? 'danger' : 'info'"
               size="small"
+              :pt:root:class="
+                getUserTeam(data) === 'red'
+                  ? 'bg-red-500 dark:bg-red-600 text-white text-xs'
+                  : 'bg-blue-500 dark:bg-blue-600 text-white text-xs'
+              "
             />
             <span v-else class="text-xs text-surface-500 italic"
               >Spectator</span
@@ -183,8 +190,8 @@
           <template #body="{ data }">
             <Chip
               :label="getResultLabel(data)"
-              :severity="getResultSeverity(data)"
               size="small"
+              :pt:root:class="getResultClass(data)"
             />
           </template>
         </Column>
@@ -223,9 +230,12 @@ function getResultLabel(game: Game): string {
   return 'Defeat';
 }
 
-function getResultSeverity(game: Game): 'success' | 'danger' | 'secondary' {
+function getResultClass(game: Game): string {
   const userTeam = getUserTeam(game);
-  if (!game.winner || !userTeam) return 'secondary';
-  return game.winner === userTeam ? 'success' : 'danger';
+  if (!game.winner || !userTeam)
+    return 'bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-200 text-xs';
+  return game.winner === userTeam
+    ? 'bg-green-500 dark:bg-green-600 text-white text-xs'
+    : 'bg-red-500 dark:bg-red-600 text-white text-xs';
 }
 </script>

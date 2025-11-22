@@ -29,16 +29,15 @@
               🤝 It's a Draw!
             </div>
             <div v-else class="text-2xl font-bold">
-              <div
-                class="inline-flex items-center rounded-2xl px-4 py-3 text-base gap-2"
-                :class="
+              <Chip
+                :label="game.winner.toUpperCase() + ' TEAM WINS!'"
+                size="small"
+                :pt:root:class="
                   game.winner === 'red'
                     ? 'bg-red-500 dark:bg-red-600 text-white'
                     : 'bg-blue-500 dark:bg-blue-600 text-white'
                 "
-              >
-                {{ game.winner.toUpperCase() + ' TEAM WINS!' }}
-              </div>
+              />
             </div>
           </div>
         </template>
@@ -56,31 +55,29 @@
         />
       </div>
 
-      <!-- Current Turn Indicator -->
-      <Card
-        v-if="game.status === 'active' && !game.winner"
-        class="w-full max-w-md"
-      >
-        <template #content>
-          <div class="text-center">
-            <div class="flex items-center justify-center gap-2">
-              <ProgressBar
-                :value="(currentVoteCount / game.config.voteThreshold) * 100"
-                :show-value="false"
-                :pt:root:class="'w-48'"
-                :pt:value:class="
-                  game.currentTurn === 'red'
-                    ? 'p-determinate:bg-red-500 dark:p-determinate:bg-red-600'
-                    : 'p-determinate:bg-blue-500 dark:p-determinate:bg-blue-600'
+      <!-- User Status -->
+      <div v-if="myTeam" class="text-center">
+        <Chip
+          size="small"
+          :pt:root:class="'bg-surface-100 dark:bg-surface-800'"
+        >
+          <template #default>
+            <i class="pi pi-user text-xs"></i>
+            <span class="text-xs font-medium ml-2">
+              You're on
+              <span
+                :class="
+                  myTeam === 'red'
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-blue-600 dark:text-blue-400'
                 "
-              />
-              <span class="text-sm text-surface-600 dark:text-surface-400">
-                {{ currentVoteCount }} / {{ game.config.voteThreshold }} votes
+              >
+                {{ myTeam === 'red' ? 'Red' : 'Blue' }} Team
               </span>
-            </div>
-          </div>
-        </template>
-      </Card>
+            </span>
+          </template>
+        </Chip>
+      </div>
 
       <!-- Team Info -->
       <div class="w-full max-w-md space-y-4">
@@ -96,19 +93,11 @@
           >
             <template #content>
               <div class="text-center">
-                <div
-                  class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-red-500 dark:bg-red-600 text-white mb-2"
-                >
-                  RED TEAM
-                  <i
-                    v-if="
-                      game.status === 'active' &&
-                      !game.winner &&
-                      game.currentTurn === 'red'
-                    "
-                    class="pi pi-clock animate-pulse"
-                  ></i>
-                </div>
+                <Chip
+                  label="RED TEAM"
+                  size="small"
+                  :pt:root:class="'bg-red-500 dark:bg-red-600 text-white mb-2'"
+                />
                 <div class="text-3xl font-bold">
                   {{ game.teams.red.length }}
                 </div>
@@ -138,19 +127,11 @@
           >
             <template #content>
               <div class="text-center">
-                <div
-                  class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-blue-500 dark:bg-blue-600 text-white mb-2"
-                >
-                  BLUE TEAM
-                  <i
-                    v-if="
-                      game.status === 'active' &&
-                      !game.winner &&
-                      game.currentTurn === 'blue'
-                    "
-                    class="pi pi-clock animate-pulse"
-                  ></i>
-                </div>
+                <Chip
+                  label="BLUE TEAM"
+                  size="small"
+                  :pt:root:class="'bg-blue-500 dark:bg-blue-600 text-white mb-2'"
+                />
                 <div class="text-3xl font-bold">
                   {{ game.teams.blue.length }}
                 </div>
@@ -169,28 +150,33 @@
             </template>
           </Card>
         </div>
-
-        <!-- User Status -->
-        <div v-if="myTeam" class="text-center">
-          <div
-            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-100 dark:bg-surface-800"
-          >
-            <i class="pi pi-user text-xs"></i>
-            <span class="text-xs font-medium">
-              You're on
-              <span
-                :class="
-                  myTeam === 'red'
-                    ? 'text-red-600 dark:text-red-400'
-                    : 'text-blue-600 dark:text-blue-400'
-                "
-              >
-                {{ myTeam === 'red' ? 'Red' : 'Blue' }} Team
-              </span>
-            </span>
-          </div>
-        </div>
       </div>
+
+      <!-- Current Turn Indicator -->
+      <Card
+        v-if="game.status === 'active' && !game.winner"
+        class="w-full max-w-md"
+      >
+        <template #content>
+          <div class="text-center">
+            <div class="flex items-center justify-center gap-2">
+              <ProgressBar
+                :value="(currentVoteCount / game.config.voteThreshold) * 100"
+                :show-value="false"
+                :pt:root:class="'w-48'"
+                :pt:value:class="
+                  game.currentTurn === 'red'
+                    ? 'p-determinate:bg-red-500 dark:p-determinate:bg-red-600'
+                    : 'p-determinate:bg-blue-500 dark:p-determinate:bg-blue-600'
+                "
+              />
+              <span class="text-sm text-surface-600 dark:text-surface-400">
+                {{ currentVoteCount }} / {{ game.config.voteThreshold }} votes
+              </span>
+            </div>
+          </div>
+        </template>
+      </Card>
     </template>
   </div>
 </template>
@@ -201,6 +187,7 @@ import { useGamesStore, type Game } from '../stores/games';
 import TicTacToeCanvas from '../components/games/TicTacToeCanvas.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
+import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import ProgressBar from '@churchtools-extensions/prime-volt/ProgressBar.vue';
 
