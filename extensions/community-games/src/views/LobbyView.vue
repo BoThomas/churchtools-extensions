@@ -3,9 +3,19 @@
     <!-- Active Games Section -->
     <Fieldset>
       <template #legend>
-        <div class="flex items-center gap-2">
-          <i class="pi pi-bolt"></i>
-          <span class="font-semibold">Active Games</span>
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-bolt"></i>
+            <span class="font-semibold">Active Games</span>
+          </div>
+          <Button
+            icon="pi pi-refresh"
+            text
+            rounded
+            size="small"
+            :loading="store.refreshing"
+            @click="store.init()"
+          />
         </div>
       </template>
 
@@ -211,6 +221,7 @@ import {
 } from '../stores/games';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';

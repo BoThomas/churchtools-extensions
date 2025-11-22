@@ -46,6 +46,7 @@ export interface Game<
 export const useGamesStore = defineStore('games', () => {
   const games = ref<Game[]>([]);
   const initializing = ref(true);
+  const refreshing = ref(false);
   const currentUser = ref<Person | null>(null);
 
   // Game managers registry
@@ -68,7 +69,12 @@ export const useGamesStore = defineStore('games', () => {
   }
 
   async function init() {
-    initializing.value = true;
+    const isInitialLoad = initializing.value;
+    if (isInitialLoad) {
+      initializing.value = true;
+    } else {
+      refreshing.value = true;
+    }
     try {
       // Load user
       currentUser.value = await churchtoolsClient.get<Person>('/whoami');
@@ -90,6 +96,7 @@ export const useGamesStore = defineStore('games', () => {
       console.error('Failed to init games store', e);
     } finally {
       initializing.value = false;
+      refreshing.value = false;
     }
   }
 
@@ -286,6 +293,7 @@ export const useGamesStore = defineStore('games', () => {
     activeGames,
     finishedGames,
     initializing,
+    refreshing,
     currentUser,
     init,
     createGame,

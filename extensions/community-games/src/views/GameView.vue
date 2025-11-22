@@ -7,12 +7,19 @@
 
     <template v-else>
       <!-- Header with Back Button -->
-      <div class="w-full max-w-2xl">
+      <div class="w-full max-w-2xl flex justify-between items-center">
         <Button
           icon="pi pi-arrow-left"
           label="Back to Lobby"
           text
           @click="$emit('back')"
+        />
+        <Button
+          icon="pi pi-refresh"
+          label="Refresh"
+          text
+          :loading="store.refreshing"
+          @click="store.init()"
         />
       </div>
 
