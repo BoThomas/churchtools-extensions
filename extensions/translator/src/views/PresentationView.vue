@@ -1,7 +1,7 @@
 <template>
   <div
     ref="textEl"
-    class="fixed inset-0 overflow-auto"
+    class="fixed inset-0 overflow-auto translator-presentation-root"
     :style="{
       background: presentationSettings.background,
       color: presentationSettings.color,
@@ -238,3 +238,16 @@ onUnmounted(() => {
   window.removeEventListener('storage', handleStorageEvent);
 });
 </script>
+
+<style scoped>
+/* Hide scrollbars without removing scrolling support. Applies cross-browser. */
+.translator-presentation-root {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.translator-presentation-root::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+}
+</style>
