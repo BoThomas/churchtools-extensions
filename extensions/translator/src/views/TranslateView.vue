@@ -1,21 +1,19 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <div v-if="stateText" class="flex items-center gap-2 ml-auto">
-        <div
-          class="inline-flex items-center rounded-2xl gap-2 px-3 py-2"
-          :class="{
-            'bg-orange-500 text-white': state.isPaused,
-            'bg-green-500 text-white':
-              state.isTestRunning || state.isPresentationRunning,
-            'bg-surface-100 dark:bg-surface-800 text-surface-800 dark:text-surface-0':
-              !state.isPaused &&
-              !state.isTestRunning &&
-              !state.isPresentationRunning,
-          }"
-        >
-          {{ stateText }}
-        </div>
+    <div v-if="stateText" class="flex items-center justify-end">
+      <div
+        class="inline-flex items-center rounded-2xl gap-2 px-3 py-2"
+        :class="{
+          'bg-orange-500 text-white': state.isPaused,
+          'bg-green-500 text-white':
+            state.isTestRunning || state.isPresentationRunning,
+          'bg-surface-100 dark:bg-surface-800 text-surface-800 dark:text-surface-0':
+            !state.isPaused &&
+            !state.isTestRunning &&
+            !state.isPresentationRunning,
+        }"
+      >
+        {{ stateText }}
       </div>
     </div>
 

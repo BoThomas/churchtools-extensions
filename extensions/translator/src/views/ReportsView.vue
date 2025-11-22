@@ -1,29 +1,27 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <div class="flex gap-2">
-        <Button
-          icon="pi pi-refresh"
-          label="Refresh"
-          @click="loadData"
-          :loading="store.sessionsLoading"
-          severity="secondary"
-        />
-        <SecondaryButton
-          icon="pi pi-database"
-          label="Add 100 Dummy Sessions"
-          @click="addDummySessions"
-          :loading="store.sessionsSaving"
-          severity="help"
-        />
-        <DangerButton
-          icon="pi pi-trash"
-          label="Clear All Sessions"
-          @click="confirmClearSessions"
-          :disabled="store.sessionsLoading || totalSessions === 0"
-          :loading="store.sessionsSaving"
-        />
-      </div>
+    <div class="flex gap-2">
+      <Button
+        icon="pi pi-refresh"
+        label="Refresh"
+        @click="loadData"
+        :loading="store.sessionsLoading"
+        severity="secondary"
+      />
+      <SecondaryButton
+        icon="pi pi-database"
+        label="Add 100 Dummy Sessions"
+        @click="addDummySessions"
+        :loading="store.sessionsSaving"
+        severity="help"
+      />
+      <DangerButton
+        icon="pi pi-trash"
+        label="Clear All Sessions"
+        @click="confirmClearSessions"
+        :disabled="store.sessionsLoading || totalSessions === 0"
+        :loading="store.sessionsSaving"
+      />
     </div>
 
     <Message v-if="store.error" severity="error" :closable="true">
