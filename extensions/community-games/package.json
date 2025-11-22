@@ -1,0 +1,39 @@
+{
+  "name": "churchtools-community-games",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Community games extension for ChurchTools",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BoThomas/churchtools-extensions"
+  },
+  "author": {
+    "name": "Thomas Boch",
+    "email": "churchtools@als.bochmail.de"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "type-check": "tsc --noEmit",
+    "preview": "vite preview",
+    "deploy": "pnpm build && ct-package"
+  },
+  "devDependencies": {
+    "@churchtools/churchtools-client": "^1.4.2"
+  },
+  "dependencies": {
+    "@churchtools-extensions/build-tools": "workspace:*",
+    "@churchtools-extensions/ct-utils": "workspace:*",
+    "@churchtools-extensions/persistance": "workspace:*",
+    "@churchtools-extensions/prime-volt": "workspace:*",
+    "@churchtools-extensions/shared-styles": "workspace:*",
+    "@primevue/forms": "^4.3.9",
+    "@primevue/icons": "^4.3.9",
+    "@tailwindcss/vite": "^4.1.13",
+    "pinia": "^3.0.3",
+    "primevue": "^4.3.9",
+    "tailwind-merge": "^3.3.1",
+    "vue": "^3.5.22"
+  }
+}
