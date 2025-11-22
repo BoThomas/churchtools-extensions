@@ -201,6 +201,18 @@
         </div>
       </template>
 
+      <div class="mb-4">
+        <InputText
+          v-model="sessionSearchText"
+          placeholder="Search sessions by user, email, language, or status..."
+          class="w-full"
+        >
+          <template #prefix>
+            <i class="pi pi-search"></i>
+          </template>
+        </InputText>
+      </div>
+
       <DataTable
         :value="filteredSessions"
         :loading="store.sessionsLoading"
@@ -308,6 +320,7 @@ import Column from 'primevue/column';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import DatePicker from '@churchtools-extensions/prime-volt/DatePicker.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
+import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 
@@ -323,6 +336,7 @@ const filters = ref({
   endDate: null as Date | null,
   mode: null as string | null,
 });
+const sessionSearchText = ref<string>('');
 
 // Sort state for statistics table
 const statsSortField = ref<string | undefined>(undefined);
@@ -386,6 +400,22 @@ const filteredSessions = computed(() => {
       (s: CategoryValue<TranslationSession>) =>
         s.value.mode === filters.value.mode,
     );
+  }
+
+  // Text search filter
+  if (sessionSearchText.value.trim()) {
+    const searchLower = sessionSearchText.value.toLowerCase().trim();
+    filtered = filtered.filter((s: CategoryValue<TranslationSession>) => {
+      const session = s.value;
+      return (
+        session.userName.toLowerCase().includes(searchLower) ||
+        session.userEmail.toLowerCase().includes(searchLower) ||
+        session.inputLanguage.toLowerCase().includes(searchLower) ||
+        session.outputLanguage.toLowerCase().includes(searchLower) ||
+        session.mode.toLowerCase().includes(searchLower) ||
+        session.status.toLowerCase().includes(searchLower)
+      );
+    });
   }
 
   return filtered;
