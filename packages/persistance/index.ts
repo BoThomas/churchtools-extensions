@@ -12,6 +12,7 @@ import {
   createCustomDataValue,
   updateCustomDataValue,
   deleteCustomDataValue,
+  deleteCustomDataCategory,
 } from '@churchtools-extensions/ct-utils/kv-store';
 import type { CustomModuleDataValue } from '@churchtools-extensions/ct-utils/ct-types';
 
@@ -115,5 +116,9 @@ export class PersistanceCategory<T = unknown> {
 
   async delete(id: number): Promise<void> {
     await deleteCustomDataValue(this.categoryId, id, this.moduleId);
+  }
+
+  async deleteCategory(): Promise<void> {
+    await deleteCustomDataCategory(this.categoryId, this.moduleId);
   }
 }

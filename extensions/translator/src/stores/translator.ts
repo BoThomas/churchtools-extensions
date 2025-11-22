@@ -670,7 +670,7 @@ export const useTranslatorStore = defineStore('translator', () => {
   }
 
   /**
-   * Clear all session records
+   * Clear all session records by deleting and recreating the category
    */
   async function clearAllSessions() {
     sessionsSaving.value = true;
@@ -679,18 +679,14 @@ export const useTranslatorStore = defineStore('translator', () => {
       await ensureCategories();
       if (!sessionsCategory) return;
 
-      // Delete all sessions in small batches with delays to avoid rate limiting
-      const batchSize = 20;
-      for (let i = 0; i < sessions.value.length; i += batchSize) {
-        const batch = sessions.value.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map((session) => sessionsCategory!.delete(session.id)),
-        );
-        // Small delay between batches to avoid HTTP 429
-        if (i + batchSize < sessions.value.length) {
-          await new Promise((resolve) => setTimeout(resolve, 300));
-        }
-      }
+      // Delete the entire category
+      await sessionsCategory.deleteCategory();
+
+      // Reset the category reference so ensureCategories will recreate it
+      sessionsCategory = null;
+
+      // Recreate the category
+      await ensureCategories();
 
       // Clear local state
       sessions.value = [];
