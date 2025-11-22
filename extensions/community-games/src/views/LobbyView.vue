@@ -23,13 +23,7 @@
           class="relative overflow-hidden"
         >
           <template #title>
-            <div class="flex justify-between items-start">
-              <span>{{ game.name }}</span>
-              <Badge
-                :value="game.status"
-                :severity="getSeverity(game.status)"
-              />
-            </div>
+            <span>{{ game.name }}</span>
           </template>
           <template #subtitle>
             {{ game.type }}
@@ -114,14 +108,12 @@
           </template>
         </Column>
 
-        <Column field="winner" header="Winner" sortable style="width: 8rem">
+        <Column header="Teams" style="width: 10rem">
           <template #body="{ data }">
-            <Badge
-              v-if="data.winner"
-              :value="`${data.winner.toUpperCase()} WON`"
-              :severity="data.winner === 'red' ? 'danger' : 'info'"
-            />
-            <Badge v-else value="No Winner" severity="secondary" />
+            <div class="flex flex-col text-xs">
+              <span>Red: {{ data.teams.red.length }}</span>
+              <span>Blue: {{ data.teams.blue.length }}</span>
+            </div>
           </template>
         </Column>
 
@@ -139,22 +131,13 @@
           </template>
         </Column>
 
-        <Column header="Result" style="width: 8rem">
+        <Column header="Result" style="width: 10rem">
           <template #body="{ data }">
             <Chip
               :label="getResultLabel(data)"
               :severity="getResultSeverity(data)"
               size="small"
             />
-          </template>
-        </Column>
-
-        <Column header="Teams" style="width: 10rem">
-          <template #body="{ data }">
-            <div class="flex flex-col text-xs">
-              <span>Red: {{ data.teams.red.length }}</span>
-              <span>Blue: {{ data.teams.blue.length }}</span>
-            </div>
           </template>
         </Column>
       </DataTable>
@@ -166,7 +149,6 @@
 import { useGamesStore, type Game } from '../stores/games';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
@@ -176,19 +158,6 @@ import Column from 'primevue/column';
 const store = useGamesStore();
 
 defineEmits(['select-game']);
-
-function getSeverity(status: string) {
-  switch (status) {
-    case 'lobby':
-      return 'info';
-    case 'active':
-      return 'success';
-    case 'finished':
-      return 'secondary';
-    default:
-      return 'info';
-  }
-}
 
 function isUserInTeam(game: Game, team: 'red' | 'blue') {
   if (!store.currentUser) return false;
