@@ -361,10 +361,18 @@ export const useTranslatorStore = defineStore('translator', () => {
       await ensureCategories();
       if (!sessionsCategory) return;
 
-      // Delete all sessions in parallel
-      await Promise.all(
-        sessions.value.map((session) => sessionsCategory!.delete(session.id)),
-      );
+      // Delete all sessions in small batches with delays to avoid rate limiting
+      const batchSize = 20;
+      for (let i = 0; i < sessions.value.length; i += batchSize) {
+        const batch = sessions.value.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map((session) => sessionsCategory!.delete(session.id)),
+        );
+        // Small delay between batches to avoid HTTP 429
+        if (i + batchSize < sessions.value.length) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+      }
 
       // Clear local state
       sessions.value = [];
