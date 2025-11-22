@@ -9,6 +9,9 @@
       "cache": false,
       "persistent": true
     },
+    "type-check": {
+      "dependsOn": ["^type-check"]
+    },
     "deploy": {
       "dependsOn": ["build"],
       "outputs": ["releases/**"]

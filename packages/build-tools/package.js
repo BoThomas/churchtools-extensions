@@ -7,12 +7,18 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '..');
 
-// Read package.json for project info
-const packageJson = JSON.parse(
-  fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'),
-);
+// Get the extension directory (where the script is called from)
+const extensionDir = process.cwd();
+
+// Read package.json for project info from the extension directory
+const packageJsonPath = path.join(extensionDir, 'package.json');
+if (!fs.existsSync(packageJsonPath)) {
+  console.error('❌ Error: package.json not found in current directory');
+  process.exit(1);
+}
+
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const projectName = packageJson.name;
 const version = packageJson.version;
 
@@ -25,8 +31,19 @@ try {
   gitHash = Date.now().toString(36);
 }
 
-// Create releases directory
-const releasesDir = path.join(rootDir, 'releases');
+// Find the monorepo root by looking for pnpm-workspace.yaml
+let monorepoRoot = extensionDir;
+let currentDir = extensionDir;
+while (currentDir !== path.parse(currentDir).root) {
+  if (fs.existsSync(path.join(currentDir, 'pnpm-workspace.yaml'))) {
+    monorepoRoot = currentDir;
+    break;
+  }
+  currentDir = path.dirname(currentDir);
+}
+
+// Create releases directory at monorepo root
+const releasesDir = path.join(monorepoRoot, 'releases');
 if (!fs.existsSync(releasesDir)) {
   fs.mkdirSync(releasesDir, { recursive: true });
 }
@@ -42,18 +59,25 @@ console.log(`   Git Hash: ${gitHash}`);
 console.log(`   Archive: ${archiveName}`);
 
 // Check if dist directory exists
-const distDir = path.join(rootDir, 'dist');
+const distDir = path.join(extensionDir, 'dist');
 if (!fs.existsSync(distDir)) {
   console.error(
-    '❌ Error: dist directory not found. Run "npm run build" first.',
+    '❌ Error: dist directory not found. Run "pnpm build" or "npm run build" first.',
   );
   process.exit(1);
 }
 
 try {
+  // Remove old archive if exists
+  if (fs.existsSync(archivePath)) {
+    fs.unlinkSync(archivePath);
+    console.log('   Removed old archive');
+  }
+
   // Create ZIP archive using system zip command
-  const zipCommand = `cd "${rootDir}" && zip -r "${archivePath}" dist/ -x "*.map" "*.DS_Store"`;
-  execSync(zipCommand, { stdio: 'inherit' });
+  execSync(`cd "${distDir}" && zip -r "${archivePath}" .`, {
+    stdio: 'inherit',
+  });
 
   console.log('✅ Package created successfully!');
   console.log(`📁 Location: ${archivePath}`);
@@ -66,9 +90,14 @@ try {
 
   // Show file size
   const stats = fs.statSync(archivePath);
-  const fileSizeInBytes = stats.size;
-  const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
-  console.log(`📊 Package size: ${fileSizeInMB} MB`);
+  const fileSizeInKB = (stats.size / 1024).toFixed(2);
+  const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+  if (stats.size > 1024 * 1024) {
+    console.log(`📊 Package size: ${fileSizeInMB} MB`);
+  } else {
+    console.log(`📊 Package size: ${fileSizeInKB} KB`);
+  }
 } catch (error) {
   console.error('❌ Error creating package:', error.message);
   process.exit(1);

@@ -7,14 +7,10 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "emitDeclarationOnly": true,
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
+    "noEmit": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["./**/*.ts", "./**/*.d.ts"],
-  "references": [{ "path": "../ct-utils" }]
+  "include": ["./**/*.ts", "./**/*.d.ts"]
 }

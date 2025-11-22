@@ -12,10 +12,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../../packages/ct-utils" },
-    { "path": "../../packages/persistance" },
-    { "path": "../../packages/prime-volt" }
-  ]
+  "include": ["src"]
 }

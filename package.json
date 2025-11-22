@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "type-check": "turbo type-check",
     "deploy": "turbo deploy",
     "format": "prettier --write ."
   },
