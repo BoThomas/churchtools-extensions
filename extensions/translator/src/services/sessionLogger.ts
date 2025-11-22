@@ -6,6 +6,8 @@ export interface TranslationSession {
   startTime: string; // ISO timestamp
   endTime?: string; // ISO timestamp
   lastHeartbeat?: string; // ISO timestamp - updated every 30s while running
+  pausedAt?: string; // ISO timestamp - when session was paused (if currently paused)
+  pausedDurationMinutes?: number; // cumulative paused time (for accurate billing)
   durationMinutes?: number; // calculated from start/end or lastHeartbeat
   inputLanguage: string; // e.g., "de-DE"
   outputLanguage: string; // e.g., "en"
@@ -81,11 +83,53 @@ export class SessionLogger {
 
   /**
    * Update heartbeat timestamp
+   * Also recovers from abandoned state if session resumes
    */
   updateHeartbeat(session: TranslationSession): TranslationSession {
+    const updates: Partial<TranslationSession> = {
+      lastHeartbeat: new Date().toISOString(),
+    };
+
+    // Auto-recover from abandoned state when heartbeat resumes
+    if (session.status === 'abandoned') {
+      updates.status = 'running';
+    }
+
     return {
       ...session,
-      lastHeartbeat: new Date().toISOString(),
+      ...updates,
+    };
+  }
+
+  /**
+   * Mark session as paused
+   */
+  pauseSession(session: TranslationSession): TranslationSession {
+    return {
+      ...session,
+      pausedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Mark session as resumed, calculating paused duration
+   */
+  resumeSession(session: TranslationSession): TranslationSession {
+    if (!session.pausedAt) return session;
+
+    const pausedAt = new Date(session.pausedAt);
+    const now = new Date();
+    const pauseDurationMinutes = Math.round(
+      (now.getTime() - pausedAt.getTime()) / 1000 / 60,
+    );
+
+    const currentPausedDuration = session.pausedDurationMinutes || 0;
+
+    return {
+      ...session,
+      pausedAt: undefined,
+      pausedDurationMinutes: currentPausedDuration + pauseDurationMinutes,
+      lastHeartbeat: now.toISOString(),
     };
   }
 
@@ -107,7 +151,8 @@ export class SessionLogger {
   }
 
   /**
-   * Calculate duration from session data (handles abandoned sessions)
+   * Calculate total duration from session data (handles abandoned sessions)
+   * Returns gross duration (including paused time)
    */
   static calculateSessionDuration(session: TranslationSession): number {
     const start = new Date(session.startTime);
@@ -129,7 +174,29 @@ export class SessionLogger {
   }
 
   /**
-   * Check if a session is abandoned (no heartbeat in last 5 minutes)
+   * Calculate active duration (excluding paused time)
+   * This represents actual Azure API usage time
+   */
+  static calculateActiveDuration(session: TranslationSession): number {
+    const totalDuration = SessionLogger.calculateSessionDuration(session);
+    const pausedDuration = session.pausedDurationMinutes || 0;
+
+    // If currently paused, add current pause duration
+    if (session.pausedAt) {
+      const pausedAt = new Date(session.pausedAt);
+      const now = new Date();
+      const currentPauseDuration = Math.round(
+        (now.getTime() - pausedAt.getTime()) / 1000 / 60,
+      );
+      return Math.max(0, totalDuration - pausedDuration - currentPauseDuration);
+    }
+
+    return Math.max(0, totalDuration - pausedDuration);
+  }
+
+  /**
+   * Check if a session is abandoned (no heartbeat in last 15 minutes)
+   * Sessions can auto-recover from abandoned state when heartbeat resumes
    */
   static isSessionAbandoned(session: TranslationSession): boolean {
     if (session.status !== 'running') return false;
@@ -140,7 +207,7 @@ export class SessionLogger {
     const minutesSinceHeartbeat =
       (now.getTime() - lastBeat.getTime()) / 1000 / 60;
 
-    return minutesSinceHeartbeat > 5;
+    return minutesSinceHeartbeat > 15;
   }
 }
 

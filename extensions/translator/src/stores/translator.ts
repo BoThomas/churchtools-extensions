@@ -44,9 +44,11 @@ export interface UsageStats {
   userEmail: string;
   userName: string;
   totalMinutes: number;
+  activeMinutes: number;
+  pausedMinutes: number;
   sessionCount: number;
   lastUsed: string;
-  sessions: { date: string; minutes: number }[];
+  sessions: { date: string; activeMinutes: number; pausedMinutes: number }[];
 }
 
 const DEFAULT_SETTINGS: TranslatorSettings = {
@@ -527,6 +529,7 @@ export const useTranslatorStore = defineStore('translator', () => {
   /**
    * Update session heartbeat (non-blocking, silent errors)
    * Uses optimistic update to avoid fetching all sessions
+   * Auto-recovers from abandoned state when heartbeat resumes
    */
   async function updateHeartbeat(sessionId: number) {
     // Non-blocking update - don't throw errors to avoid disrupting translation
@@ -552,11 +555,10 @@ export const useTranslatorStore = defineStore('translator', () => {
       }
 
       if (baseSession) {
-        // Optimistic update with known session data
-        const updated: TranslationSession = {
-          ...baseSession,
-          lastHeartbeat: new Date().toISOString(),
-        };
+        // Use SessionLogger to update heartbeat (handles auto-recovery from abandoned)
+        const sessionLogger = new SessionLogger();
+        const updated = sessionLogger.updateHeartbeat(baseSession);
+
         await sessionsCategory.update(sessionId, updated);
 
         // Update current session in memory if it matches
@@ -574,15 +576,51 @@ export const useTranslatorStore = defineStore('translator', () => {
         );
         if (!found) return;
 
-        const updated: TranslationSession = {
-          ...found.value,
-          lastHeartbeat: new Date().toISOString(),
-        };
+        const sessionLogger = new SessionLogger();
+        const updated = sessionLogger.updateHeartbeat(found.value);
         await sessionsCategory.update(sessionId, updated);
       }
     } catch (e) {
       // Silent fail - log but don't disrupt translation
       console.warn('Failed to update heartbeat (non-critical):', e);
+    }
+  }
+
+  /**
+   * Pause the current session (stops accumulating active time)
+   */
+  async function pauseSession(sessionId: number) {
+    try {
+      if (!sessionsCategory) await ensureCategories();
+      if (!sessionsCategory) return;
+
+      if (currentSession.value && currentSession.value.id === sessionId) {
+        const sessionLogger = new SessionLogger();
+        const updated = sessionLogger.pauseSession(currentSession.value);
+        await sessionsCategory.update(sessionId, updated);
+        currentSession.value = updated;
+      }
+    } catch (e) {
+      console.warn('Failed to pause session (non-critical):', e);
+    }
+  }
+
+  /**
+   * Resume the current session (starts accumulating active time again)
+   */
+  async function resumeSession(sessionId: number) {
+    try {
+      if (!sessionsCategory) await ensureCategories();
+      if (!sessionsCategory) return;
+
+      if (currentSession.value && currentSession.value.id === sessionId) {
+        const sessionLogger = new SessionLogger();
+        const updated = sessionLogger.resumeSession(currentSession.value);
+        await sessionsCategory.update(sessionId, updated);
+        currentSession.value = updated;
+      }
+    } catch (e) {
+      console.warn('Failed to resume session (non-critical):', e);
     }
   }
 
@@ -625,6 +663,8 @@ export const useTranslatorStore = defineStore('translator', () => {
             userEmail: session.userEmail,
             userName: session.userName,
             totalMinutes: 0,
+            activeMinutes: 0,
+            pausedMinutes: 0,
             sessionCount: 0,
             lastUsed: session.startTime,
             sessions: [],
@@ -634,26 +674,33 @@ export const useTranslatorStore = defineStore('translator', () => {
         const stats = userMap.get(userId)!;
         stats.sessionCount++;
 
-        // Use smart duration calculation that handles abandoned sessions
-        const duration =
+        // Calculate durations using smart duration calculation
+        const totalDuration =
           session.durationMinutes ||
           SessionLogger.calculateSessionDuration(session);
-        stats.totalMinutes += duration;
+        const activeDuration = SessionLogger.calculateActiveDuration(session);
+        const pausedDuration = session.pausedDurationMinutes || 0;
+
+        stats.totalMinutes += totalDuration;
+        stats.activeMinutes += activeDuration;
+        stats.pausedMinutes += pausedDuration;
 
         // Update last used if this session is more recent
         if (new Date(session.startTime) > new Date(stats.lastUsed)) {
           stats.lastUsed = session.startTime;
         }
 
-        // Add to per-day breakdown
+        // Add to per-day breakdown (using active duration for charts)
         const date = session.startTime.split('T')[0]; // Get YYYY-MM-DD
         const existingDay = stats.sessions.find((s) => s.date === date);
         if (existingDay) {
-          existingDay.minutes += duration;
+          existingDay.activeMinutes += activeDuration;
+          existingDay.pausedMinutes += pausedDuration;
         } else {
           stats.sessions.push({
             date,
-            minutes: duration,
+            activeMinutes: activeDuration,
+            pausedMinutes: pausedDuration,
           });
         }
       },
@@ -665,7 +712,7 @@ export const useTranslatorStore = defineStore('translator', () => {
     });
 
     return Array.from(userMap.values()).sort(
-      (a, b) => b.totalMinutes - a.totalMinutes,
+      (a, b) => b.activeMinutes - a.activeMinutes,
     );
   }
 
@@ -766,6 +813,16 @@ export const useTranslatorStore = defineStore('translator', () => {
         ];
         const status = statuses[Math.floor(Math.random() * statuses.length)];
 
+        // Simulate some sessions with pauses (30% chance)
+        const hasPaused = Math.random() < 0.3;
+        const pausedDurationMinutes = hasPaused
+          ? Math.floor(Math.random() * Math.min(durationMinutes * 0.4, 30))
+          : 0;
+
+        // 10% chance session is currently paused (only for running sessions)
+        const isCurrentlyPaused =
+          status === 'running' && Math.random() < 0.1 && hasPaused;
+
         const session: TranslationSession = {
           userId: user.id,
           userEmail: user.email,
@@ -778,6 +835,13 @@ export const useTranslatorStore = defineStore('translator', () => {
                   start.getTime() + (durationMinutes - 1) * 60 * 1000,
                 ).toISOString()
               : undefined,
+          pausedAt: isCurrentlyPaused
+            ? new Date(
+                start.getTime() + (durationMinutes - 5) * 60 * 1000,
+              ).toISOString()
+            : undefined,
+          pausedDurationMinutes:
+            pausedDurationMinutes > 0 ? pausedDurationMinutes : undefined,
           durationMinutes: status === 'completed' ? durationMinutes : undefined,
           inputLanguage: lang.in,
           outputLanguage: lang.out,
@@ -844,6 +908,8 @@ export const useTranslatorStore = defineStore('translator', () => {
     startSession,
     endSession,
     updateHeartbeat,
+    pauseSession,
+    resumeSession,
     fetchSessions,
     getUsageStats,
     clearAllSessions,

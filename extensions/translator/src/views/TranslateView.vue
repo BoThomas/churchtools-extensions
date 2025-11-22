@@ -1108,6 +1108,8 @@ async function startPresentation() {
 
 // Pause or resume
 function pauseOrResume() {
+  const sessionId = sessionLogger.getCurrentSessionId();
+
   if (state.value.isPaused) {
     // Resume
     if (state.value.isTestRunning) {
@@ -1122,6 +1124,12 @@ function pauseOrResume() {
       clearPresentationWindowStorage();
       localStorage.removeItem('translator_paused');
       captioningService?.start();
+    }
+
+    // Resume heartbeat and session tracking
+    if (sessionId) {
+      store.resumeSession(sessionId);
+      startHeartbeat();
     }
   } else {
     // Pause
@@ -1140,6 +1148,12 @@ function pauseOrResume() {
         'translator_paused',
         JSON.stringify({ isPaused: true }),
       );
+    }
+
+    // Stop heartbeat and mark session as paused
+    if (sessionId) {
+      stopHeartbeat();
+      store.pauseSession(sessionId);
     }
   }
   state.value.isPaused = !state.value.isPaused;

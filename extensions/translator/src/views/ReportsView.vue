@@ -66,9 +66,15 @@
         <div class="flex items-center gap-3">
           <i class="pi pi-clock text-3xl text-primary"></i>
           <div>
-            <div class="text-2xl font-semibold">{{ totalMinutes }}</div>
+            <div class="text-2xl font-semibold">{{ totalActiveMinutes }}</div>
             <div class="text-sm text-surface-600 dark:text-surface-400">
-              Total Minutes
+              Active Minutes
+            </div>
+            <div
+              v-if="totalPausedMinutes > 0"
+              class="text-xs text-surface-500 mt-1"
+            >
+              ({{ totalPausedMinutes }} min paused)
             </div>
           </div>
         </div>
@@ -165,10 +171,15 @@
 
         <Column field="totalMinutes" header="Total Minutes" sortable>
           <template #body="{ data }">
-            <span class="font-semibold">{{ data.totalMinutes }}</span> min
-            <span class="text-sm text-surface-500"
-              >({{ formatDuration(data.totalMinutes) }})</span
-            >
+            <div>
+              <span class="font-semibold">{{ data.activeMinutes }}</span> min
+              <span class="text-sm text-surface-500">
+                ({{ formatDuration(data.activeMinutes) }})
+              </span>
+            </div>
+            <div v-if="data.pausedMinutes > 0" class="text-xs text-surface-500">
+              {{ data.pausedMinutes }} min paused
+            </div>
           </template>
         </Column>
 
@@ -255,9 +266,17 @@
 
         <Column field="value.durationMinutes" header="Duration" sortable>
           <template #body="{ data }">
-            <span v-if="getSessionDuration(data.value) > 0">
-              {{ getSessionDuration(data.value) }} min
-            </span>
+            <div v-if="getSessionDuration(data.value) > 0">
+              <div class="font-semibold">
+                {{ getSessionActiveDuration(data.value) }} min
+              </div>
+              <div
+                v-if="data.value.pausedDurationMinutes"
+                class="text-xs text-surface-500"
+              >
+                ({{ data.value.pausedDurationMinutes }} min paused)
+              </div>
+            </div>
             <span v-else class="text-surface-400">N/A</span>
           </template>
         </Column>
@@ -372,8 +391,12 @@ const totalSessions = computed(() => {
   return usageStats.value.reduce((sum, user) => sum + user.sessionCount, 0);
 });
 
-const totalMinutes = computed(() => {
-  return usageStats.value.reduce((sum, user) => sum + user.totalMinutes, 0);
+const totalActiveMinutes = computed(() => {
+  return usageStats.value.reduce((sum, user) => sum + user.activeMinutes, 0);
+});
+
+const totalPausedMinutes = computed(() => {
+  return usageStats.value.reduce((sum, user) => sum + user.pausedMinutes, 0);
 });
 
 const filteredSessions = computed(() => {
@@ -446,6 +469,8 @@ const filteredStats = computed(() => {
           userEmail: session.userEmail,
           userName: session.userName,
           totalMinutes: 0,
+          activeMinutes: 0,
+          pausedMinutes: 0,
           sessionCount: 0,
           lastUsed: session.startTime,
           sessions: [],
@@ -456,8 +481,13 @@ const filteredStats = computed(() => {
       stats.sessionCount++;
 
       // Use smart duration calculation
-      const duration = SessionLogger.calculateSessionDuration(session);
-      stats.totalMinutes += duration;
+      const totalDuration = SessionLogger.calculateSessionDuration(session);
+      const activeDuration = SessionLogger.calculateActiveDuration(session);
+      const pausedDuration = session.pausedDurationMinutes || 0;
+
+      stats.totalMinutes += totalDuration;
+      stats.activeMinutes += activeDuration;
+      stats.pausedMinutes += pausedDuration;
 
       if (new Date(session.startTime) > new Date(stats.lastUsed)) {
         stats.lastUsed = session.startTime;
@@ -466,11 +496,13 @@ const filteredStats = computed(() => {
       const date = session.startTime.split('T')[0];
       const existingDay = stats.sessions.find((s) => s.date === date);
       if (existingDay) {
-        existingDay.minutes += duration;
+        existingDay.activeMinutes += activeDuration;
+        existingDay.pausedMinutes += pausedDuration;
       } else {
         stats.sessions.push({
           date,
-          minutes: duration,
+          activeMinutes: activeDuration,
+          pausedMinutes: pausedDuration,
         });
       }
     },
@@ -481,13 +513,17 @@ const filteredStats = computed(() => {
   });
 
   return Array.from(userMap.values()).sort(
-    (a, b) => b.totalMinutes - a.totalMinutes,
+    (a, b) => b.activeMinutes - a.activeMinutes,
   );
 });
 
 // Helper functions for session display
 function getSessionDuration(session: TranslationSession): number {
   return SessionLogger.calculateSessionDuration(session);
+}
+
+function getSessionActiveDuration(session: TranslationSession): number {
+  return SessionLogger.calculateActiveDuration(session);
 }
 
 function getSessionStatus(session: TranslationSession): string {
@@ -590,16 +626,30 @@ const chartOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      display: false,
+      display: true,
+      position: 'top' as const,
+    },
+    tooltip: {
+      callbacks: {
+        footer: (tooltipItems: any[]) => {
+          const total = tooltipItems.reduce(
+            (sum, item) => sum + item.parsed.y,
+            0,
+          );
+          return `Total: ${total} min`;
+        },
+      },
     },
   },
   scales: {
     x: {
+      stacked: true,
       grid: {
         display: false,
       },
     },
     y: {
+      stacked: true,
       beginAtZero: true,
       ticks: {
         stepSize: 30,
@@ -612,7 +662,13 @@ const chartOptions = {
   },
 };
 
-function getChartData(sessions: { date: string; minutes: number }[]) {
+function getChartData(
+  sessions: {
+    date: string;
+    activeMinutes: number;
+    pausedMinutes: number;
+  }[],
+) {
   // Sort sessions by date
   const sortedSessions = [...sessions].sort((a, b) =>
     a.date.localeCompare(b.date),
@@ -622,10 +678,17 @@ function getChartData(sessions: { date: string; minutes: number }[]) {
     labels: sortedSessions.map((s) => formatDate(s.date)),
     datasets: [
       {
-        label: 'Minutes',
-        data: sortedSessions.map((s) => s.minutes),
+        label: 'Active Minutes',
+        data: sortedSessions.map((s) => s.activeMinutes),
         backgroundColor: 'rgba(99, 102, 241, 0.8)',
         borderColor: 'rgb(99, 102, 241)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Paused Minutes',
+        data: sortedSessions.map((s) => s.pausedMinutes),
+        backgroundColor: 'rgba(156, 163, 175, 0.6)',
+        borderColor: 'rgb(156, 163, 175)',
         borderWidth: 1,
       },
     ],
