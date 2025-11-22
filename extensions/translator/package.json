@@ -18,6 +18,7 @@
     "@churchtools-extensions/ct-utils": "workspace:*",
     "@churchtools-extensions/persistance": "workspace:*",
     "@churchtools-extensions/prime-volt": "workspace:*",
+    "@churchtools-extensions/shared-styles": "workspace:*",
     "@primevue/forms": "^4.3.9",
     "@primevue/icons": "^4.3.9",
     "@tailwindcss/vite": "^4.1.13",

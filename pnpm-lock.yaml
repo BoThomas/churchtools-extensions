@@ -44,6 +44,9 @@ importers:
       '@churchtools-extensions/prime-volt':
         specifier: workspace:*
         version: link:../../packages/prime-volt
+      '@churchtools-extensions/shared-styles':
+        specifier: workspace:*
+        version: link:../../packages/shared-styles
       '@primevue/forms':
         specifier: ^4.3.9
         version: 4.4.1(vue@3.5.24(typescript@5.9.3))
@@ -96,6 +99,9 @@ importers:
       '@churchtools-extensions/prime-volt':
         specifier: workspace:*
         version: link:../../packages/prime-volt
+      '@churchtools-extensions/shared-styles':
+        specifier: workspace:*
+        version: link:../../packages/shared-styles
       '@primevue/forms':
         specifier: ^4.3.9
         version: 4.4.1(vue@3.5.24(typescript@5.9.3))
@@ -168,6 +174,18 @@ importers:
       vue:
         specifier: ^3.5.22
         version: 3.5.24(typescript@5.9.3)
+
+  packages/shared-styles:
+    dependencies:
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      tailwindcss:
+        specifier: ^4.1.13
+        version: 4.1.17
+      tailwindcss-primeui:
+        specifier: ^0.6.1
+        version: 0.6.1(tailwindcss@4.1.17)
 
 packages:
 

@@ -1,0 +1,17 @@
+{
+  "name": "@churchtools-extensions/shared-styles",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./style.css": "./style.css"
+  },
+  "files": [
+    "style.css"
+  ],
+  "dependencies": {
+    "primeicons": "^7.0.0",
+    "tailwindcss": "^4.1.13",
+    "tailwindcss-primeui": "^0.6.1"
+  }
+}
