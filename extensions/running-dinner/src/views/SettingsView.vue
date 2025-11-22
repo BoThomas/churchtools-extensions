@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 max-w-5xl">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl">
     <Card>
       <template #title>About Running Dinner</template>
       <template #content>

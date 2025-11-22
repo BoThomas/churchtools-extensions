@@ -1,7 +1,5 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-3xl font-bold">Participate in Running Dinners</h1>
-
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center py-12">
       <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>

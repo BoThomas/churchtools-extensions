@@ -1,10 +1,10 @@
 <template>
   <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <h1 class="text-3xl font-bold">Organize Running Dinners</h1>
+    <div class="mt-2 flex justify-center items-center">
       <Button
         label="Create New Dinner"
         icon="pi pi-plus"
+        class="w-full max-w-md"
         @click="openCreateDialog"
       />
     </div>
@@ -23,10 +23,15 @@
         </p>
       </div>
 
-      <div v-else>
+      <div v-else class="space-y-4">
         <!-- Active Dinners -->
-        <div v-if="dinnerStore.activeDinners.length > 0">
-          <h2 class="text-xl font-semibold mb-3">Active Dinners</h2>
+        <Fieldset v-if="dinnerStore.activeDinners.length > 0">
+          <template #legend>
+            <div class="flex items-center gap-2">
+              <i class="pi pi-calendar-check"></i>
+              <span class="font-semibold">Active Dinners</span>
+            </div>
+          </template>
           <div class="grid gap-4">
             <DinnerCard
               v-for="dinner in dinnerStore.activeDinners"
@@ -55,11 +60,16 @@
               </template>
             </DinnerCard>
           </div>
-        </div>
+        </Fieldset>
 
         <!-- Draft Dinners -->
-        <div v-if="dinnerStore.draftDinners.length > 0" class="mt-6">
-          <h2 class="text-xl font-semibold mb-3">Drafts</h2>
+        <Fieldset v-if="dinnerStore.draftDinners.length > 0">
+          <template #legend>
+            <div class="flex items-center gap-2">
+              <i class="pi pi-file-edit"></i>
+              <span class="font-semibold">Drafts</span>
+            </div>
+          </template>
           <div class="grid gap-4">
             <DinnerCard
               v-for="dinner in dinnerStore.draftDinners"
@@ -79,7 +89,7 @@
               </template>
             </DinnerCard>
           </div>
-        </div>
+        </Fieldset>
       </div>
     </div>
 
@@ -113,6 +123,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
+import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import DinnerCard from '../components/DinnerCard.vue';
 import DinnerForm from '../components/DinnerForm.vue';
 
