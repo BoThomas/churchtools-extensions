@@ -1,74 +1,62 @@
 <template>
-  <div class="min-h-screen flex flex-col">
+  <!-- Loading State -->
+  <div
+    v-if="initializing"
+    class="min-h-screen flex items-center justify-center"
+  >
+    <div class="text-center space-y-4">
+      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+      <p class="text-lg text-surface-600 dark:text-surface-400">
+        Loading Running Dinner...
+      </p>
+    </div>
+  </div>
+
+  <!-- Main Application -->
+  <div v-else class="min-h-screen flex flex-col">
     <div class="flex-1 p-4">
-      <Tabs :value="activeTab">
+      <Tabs v-model:value="activeTab">
         <TabList>
-          <Tab value="user">User Demo</Tab>
-          <Tab value="showcase">Showcase</Tab>
-          <Tab value="running-dinner">Running Dinner</Tab>
-          <Tab value="mitmachen">Mitmachen</Tab>
+          <Tab value="organizer">Organize</Tab>
+          <Tab value="participant">Participate</Tab>
+          <Tab value="public">Browse</Tab>
         </TabList>
         <TabPanels>
-          <TabPanel value="user">
-            <div class="space-y-4">
-              <h2 class="text-xl font-semibold">User Demo</h2>
-              <div v-if="user" class="text-sm space-y-2">
-                <p><span class="font-medium">ID:</span> {{ user.id }}</p>
-                <p>
-                  <span class="font-medium">Name:</span> {{ user.firstName }}
-                  {{ user.lastName }}
-                </p>
-                <p><span class="font-medium">Email:</span> {{ user.email }}</p>
-                <details class="mt-4">
-                  <summary class="cursor-pointer text-primary text-sm">
-                    Raw user object
-                  </summary>
-                  <pre
-                    class="mt-2 text-xs rounded bg-surface-100 dark:bg-surface-800 p-3 overflow-auto"
-                    >{{ user }}</pre
-                  >
-                </details>
-              </div>
-              <div
-                v-else
-                class="text-sm text-surface-500 dark:text-surface-400"
-              >
-                Benutzerdaten werden geladen…
-              </div>
-            </div>
+          <TabPanel value="organizer">
+            <OrganizerView />
           </TabPanel>
-          <TabPanel value="showcase">
-            <Showcase />
+          <TabPanel value="participant">
+            <ParticipantView />
           </TabPanel>
-          <TabPanel value="running-dinner">
-            <RunningDinner />
-          </TabPanel>
-          <TabPanel value="mitmachen">
-            <Mitmachen />
+          <TabPanel value="public">
+            <PublicView />
           </TabPanel>
         </TabPanels>
       </Tabs>
     </div>
   </div>
+
+  <!-- Global Dialogs -->
+  <ConfirmDialog />
+  <Toast />
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
-import Showcase from './Showcase.vue';
-import RunningDinner from './RunningDinner.vue';
-import Mitmachen from './Mitmachen.vue';
+import OrganizerView from './views/OrganizerView.vue';
+import ParticipantView from './views/ParticipantView.vue';
+import PublicView from './views/PublicView.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
 import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
 import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
 import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
 import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
+import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
+import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
 
-// Active tab state (default to user demo)
-const activeTab = ref('user');
-
-const user = ref<Person | null>(null);
+const activeTab = ref('organizer');
+const initializing = ref(true);
 
 declare const window: Window &
   typeof globalThis & {
@@ -87,14 +75,14 @@ async function init() {
     if (import.meta.env.MODE === 'development' && username && password) {
       await churchtoolsClient.post('/login', { username, password });
     }
-    user.value = await churchtoolsClient.get<Person>(`/whoami`);
   } catch (e) {
-    // optionally surface error state in UI later
-    console.error('Failed to init user', e);
+    console.error('Failed to init', e);
+  } finally {
+    initializing.value = false;
   }
 }
 
 onMounted(() => {
-  void init();
+  init();
 });
 </script>

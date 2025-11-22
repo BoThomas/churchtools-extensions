@@ -5,38 +5,40 @@ import {
   type CategoryValue,
 } from '@churchtools-extensions/persistance';
 import { KEY } from '../config';
-
-export interface RunningDinnerRecord {
-  id?: number; // internal id in category
-  name: string;
-  description?: string;
-  date?: string; // ISO
-  city?: string;
-  maxParticipants?: number;
-  allowPreferredPartners: boolean;
-  publicSingleSignins: boolean;
-  preferredGroupSize?: number;
-  allowPreferredMeal: boolean;
-  registrationDeadline?: string; // ISO
-  createdAt: string;
-}
+import type { RunningDinner } from '../types/models';
+import { RunningDinnerSchema, getCurrentTimestamp } from '../types/models';
 
 export const useRunningDinnerStore = defineStore('runningDinner', () => {
-  const dinners = ref<CategoryValue<RunningDinnerRecord>[]>([]);
+  const dinners = ref<CategoryValue<RunningDinner>[]>([]);
   const loading = ref(false);
   const saving = ref(false);
   const error = ref<string | null>(null);
-  let category: PersistanceCategory<RunningDinnerRecord> | null = null;
+  let category: PersistanceCategory<RunningDinner> | null = null;
+  let categoryInitPromise: Promise<void> | null = null;
 
   async function ensureCategory() {
-    if (!category) {
-      category = await PersistanceCategory.init({
-        extensionkey: KEY,
-        categoryShorty: 'runningdinners',
-        categoryName: 'Running Dinners',
-      });
+    if (category) return;
+    if (categoryInitPromise) {
+      await categoryInitPromise;
+      return;
     }
+
+    categoryInitPromise = (async () => {
+      try {
+        category = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'runningdinners',
+          categoryName: 'Running Dinners',
+        });
+      } finally {
+        categoryInitPromise = null;
+      }
+    })();
+
+    await categoryInitPromise;
   }
+
+  // ==================== CRUD Operations ====================
 
   async function fetchAll() {
     loading.value = true;
@@ -44,7 +46,7 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
     try {
       await ensureCategory();
       if (!category) return;
-      const list = await category.list<RunningDinnerRecord>();
+      const list = await category.list<RunningDinner>();
       dinners.value = list;
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to load running dinners';
@@ -54,20 +56,36 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
     }
   }
 
-  async function create(record: Omit<RunningDinnerRecord, 'id'>) {
+  async function fetchById(id: number) {
+    try {
+      await ensureCategory();
+      if (!category) return null;
+      const dinner = await category.getById<RunningDinner>(id);
+      return dinner;
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to load running dinner';
+      console.error('fetchById running dinner failed', e);
+      return null;
+    }
+  }
+
+  async function create(
+    record: Omit<RunningDinner, 'id' | 'createdAt' | 'updatedAt'>,
+  ) {
     saving.value = true;
     error.value = null;
     try {
       await ensureCategory();
       if (!category) return;
-      const normalised: RunningDinnerRecord = {
+
+      const now = getCurrentTimestamp();
+      const validated = RunningDinnerSchema.parse({
         ...record,
-        date: record.date ? normaliseDate(record.date) : undefined,
-        registrationDeadline: record.registrationDeadline
-          ? normaliseDate(record.registrationDeadline)
-          : undefined,
-      };
-      const { id } = await category.create(normalised);
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const { id } = await category.create(validated);
       await fetchAll();
       return id;
     } catch (e: any) {
@@ -78,23 +96,22 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
     }
   }
 
-  async function update(id: number, patch: Partial<RunningDinnerRecord>) {
+  async function update(id: number, patch: Partial<RunningDinner>) {
     saving.value = true;
     error.value = null;
     try {
       if (!category) await ensureCategory();
       if (!category) return;
+
       const existing = dinners.value.find((i) => i.id === id);
       if (!existing) throw new Error('Running dinner not found');
-      const merged: RunningDinnerRecord = {
+
+      const merged = RunningDinnerSchema.parse({
         ...existing.value,
         ...patch,
-      };
-      if (merged.date) merged.date = normaliseDate(merged.date);
-      if (merged.registrationDeadline)
-        merged.registrationDeadline = normaliseDate(
-          merged.registrationDeadline,
-        );
+        updatedAt: getCurrentTimestamp(),
+      });
+
       await category.update(id, merged);
       await fetchAll();
     } catch (e: any) {
@@ -112,7 +129,7 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
       if (!category) await ensureCategory();
       if (!category) return;
       await category.delete(id);
-      dinners.value = dinners.value.filter((i) => i.id !== id);
+      await fetchAll();
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to delete running dinner';
       console.error('delete running dinner failed', e);
@@ -121,28 +138,82 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
     }
   }
 
-  const count = computed(() => dinners.value.length);
+  // ==================== Status Management ====================
 
-  function normaliseDate(value: string | Date): string {
-    if (value instanceof Date) return value.toISOString();
-    // attempt parse only if it looks like a date without time
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return d.toISOString();
-    return value; // fallback (already ISO?)
+  async function publish(id: number) {
+    await update(id, {
+      status: 'published',
+      publishedAt: getCurrentTimestamp(),
+    });
+  }
+
+  async function closeRegistration(id: number) {
+    await update(id, { status: 'registration-closed' });
+  }
+
+  async function markGroupsCreated(id: number) {
+    await update(id, { status: 'groups-created' });
+  }
+
+  async function markRoutesAssigned(id: number) {
+    await update(id, { status: 'routes-assigned' });
+  }
+
+  async function markCompleted(id: number) {
+    await update(id, { status: 'completed' });
+  }
+
+  // ==================== Computed & Queries ====================
+
+  const publishedDinners = computed(() => {
+    return dinners.value.filter(
+      (d) => d.value.status !== 'draft' && d.value.status !== 'completed',
+    );
+  });
+
+  const draftDinners = computed(() => {
+    return dinners.value.filter((d) => d.value.status === 'draft');
+  });
+
+  const activeDinners = computed(() => {
+    return dinners.value.filter(
+      (d) =>
+        d.value.status === 'published' ||
+        d.value.status === 'registration-closed' ||
+        d.value.status === 'groups-created' ||
+        d.value.status === 'routes-assigned',
+    );
+  });
+
+  function getDinnerById(id: number) {
+    return dinners.value.find((d) => d.id === id);
   }
 
   return {
-    // state
+    // State
     dinners,
     loading,
     saving,
     error,
-    count,
-    // getters
-    // actions
+
+    // CRUD
     fetchAll,
+    fetchById,
     create,
     update,
     remove,
+
+    // Status management
+    publish,
+    closeRegistration,
+    markGroupsCreated,
+    markRoutesAssigned,
+    markCompleted,
+
+    // Computed
+    publishedDinners,
+    draftDinners,
+    activeDinners,
+    getDinnerById,
   };
 });
