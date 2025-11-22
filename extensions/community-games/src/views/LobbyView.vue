@@ -1,0 +1,263 @@
+<template>
+  <div class="space-y-6 p-4">
+    <!-- Active Games Section -->
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-bolt"></i>
+            <span class="font-semibold">Active Games</span>
+          </div>
+          <Button
+            icon="pi pi-refresh"
+            text
+            rounded
+            size="small"
+            :loading="store.refreshing"
+            @click="store.init()"
+          />
+        </div>
+      </template>
+
+      <div
+        v-if="store.activeGames.length === 0"
+        class="text-center text-surface-500 py-8"
+      >
+        No active games found. Create one in Settings!
+      </div>
+
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card
+          v-for="game in store.activeGames"
+          :key="game.id"
+          class="relative cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02]"
+          @click="$emit('select-game', game.id)"
+        >
+          <template #title>
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xl font-bold">{{
+                  getGameTypeLabel(game.type)
+                }}</span>
+                <Badge
+                  v-if="game.status === 'lobby'"
+                  value="Lobby"
+                  severity="info"
+                />
+              </div>
+              <span class="text-sm text-surface-500">{{ game.name }}</span>
+            </div>
+          </template>
+          <template #subtitle>
+            <!-- Empty or can be removed -->
+          </template>
+          <template #content>
+            <div class="space-y-4">
+              <!-- Current Turn Indicator (for active games) -->
+              <div
+                v-if="game.status === 'active'"
+                class="text-center py-2 rounded-lg"
+                :class="
+                  game.currentTurn === 'red'
+                    ? 'bg-red-50 dark:bg-red-900/20'
+                    : 'bg-blue-50 dark:bg-blue-900/20'
+                "
+              >
+                <div class="flex items-center justify-center gap-2">
+                  <i class="pi pi-clock text-xs"></i>
+                  <span class="text-xs font-semibold">
+                    <span
+                      :class="
+                        game.currentTurn === 'red'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-blue-600 dark:text-blue-400'
+                      "
+                    >
+                      {{ game.currentTurn === 'red' ? 'Red' : 'Blue' }} Team
+                    </span>
+                    's Turn
+                  </span>
+                </div>
+              </div>
+
+              <!-- Team Stats in Horizontal Layout -->
+              <div
+                class="flex items-center justify-around gap-4 py-3 bg-surface-50 dark:bg-surface-800/50 rounded-lg"
+              >
+                <div class="flex items-center gap-2">
+                  <Chip
+                    :label="String(game.teams.red.length)"
+                    size="small"
+                    :pt:root:class="'bg-red-500 dark:bg-red-600 text-white text-xs'"
+                  />
+                  <span
+                    class="text-xs font-medium text-red-600 dark:text-red-400"
+                    >Red</span
+                  >
+                </div>
+                <span class="text-surface-400 text-xs font-bold">VS</span>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="text-xs font-medium text-blue-600 dark:text-blue-400"
+                    >Blue</span
+                  >
+                  <Chip
+                    :label="String(game.teams.blue.length)"
+                    size="small"
+                    :pt:root:class="'bg-blue-500 dark:bg-blue-600 text-white text-xs'"
+                  />
+                </div>
+              </div>
+
+              <!-- User Status -->
+              <div v-if="getUserTeam(game)" class="text-center">
+                <Chip
+                  size="small"
+                  :pt:root:class="'bg-surface-100 dark:bg-surface-800'"
+                >
+                  <template #default>
+                    <i class="pi pi-user text-xs"></i>
+                    <span class="text-xs font-medium ml-2">
+                      You're on
+                      <span
+                        :class="
+                          getUserTeam(game) === 'red'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        "
+                      >
+                        {{ getUserTeam(game) === 'red' ? 'Red' : 'Blue' }} Team
+                      </span>
+                    </span>
+                  </template>
+                </Chip>
+              </div>
+
+              <!-- Click hint -->
+              <div class="text-center text-xs text-surface-400 italic">
+                Click to participate
+              </div>
+            </div>
+          </template>
+        </Card>
+      </div>
+    </Fieldset>
+
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-history"></i>
+          <span class="font-semibold">Past Games</span>
+        </div>
+      </template>
+
+      <DataTable
+        :value="store.finishedGames"
+        dataKey="id"
+        stripedRows
+        removableSort
+        responsiveLayout="scroll"
+      >
+        <template #empty>
+          <Message severity="secondary" icon="pi pi-clock" class="w-full">
+            No finished games yet.
+          </Message>
+        </template>
+
+        <Column field="name" header="Game" sortable>
+          <template #body="{ data }">
+            <div class="font-semibold">{{ data.name }}</div>
+            <div class="text-xs text-surface-500">{{ data.type }}</div>
+          </template>
+        </Column>
+
+        <Column header="Teams" style="width: 10rem">
+          <template #body="{ data }">
+            <div class="flex flex-col text-xs">
+              <span>Red: {{ data.teams.red.length }}</span>
+              <span>Blue: {{ data.teams.blue.length }}</span>
+            </div>
+          </template>
+        </Column>
+
+        <Column header="Your Team" style="width: 8rem">
+          <template #body="{ data }">
+            <Chip
+              v-if="getUserTeam(data)"
+              :label="getUserTeam(data) === 'red' ? 'Red' : 'Blue'"
+              size="small"
+              :pt:root:class="
+                getUserTeam(data) === 'red'
+                  ? 'bg-red-500 dark:bg-red-600 text-white text-xs'
+                  : 'bg-blue-500 dark:bg-blue-600 text-white text-xs'
+              "
+            />
+            <span v-else class="text-xs text-surface-500 italic"
+              >Spectator</span
+            >
+          </template>
+        </Column>
+
+        <Column header="Result" style="width: 10rem">
+          <template #body="{ data }">
+            <Chip
+              :label="getResultLabel(data)"
+              size="small"
+              :pt:root:class="getResultClass(data)"
+            />
+          </template>
+        </Column>
+      </DataTable>
+    </Fieldset>
+  </div>
+</template>
+
+<script setup lang="ts">
+import {
+  useGamesStore,
+  GAME_TYPES,
+  type Game,
+  type GameType,
+} from '../stores/games';
+import Card from '@churchtools-extensions/prime-volt/Card.vue';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
+import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
+import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
+import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import Column from 'primevue/column';
+
+const store = useGamesStore();
+
+defineEmits(['select-game']);
+
+function getGameTypeLabel(type: GameType): string {
+  return GAME_TYPES.find((gt) => gt.value === type)?.label || type;
+}
+
+function getUserTeam(game: Game): 'red' | 'blue' | null {
+  if (!store.currentUser) return null;
+  if (game.teams.red.includes(store.currentUser.id)) return 'red';
+  if (game.teams.blue.includes(store.currentUser.id)) return 'blue';
+  return null;
+}
+
+function getResultLabel(game: Game): string {
+  const userTeam = getUserTeam(game);
+
+  if (!game.winner) return 'Draw';
+  if (!userTeam) return 'Not Playing';
+  if (game.winner === userTeam) return 'Victory';
+  return 'Defeat';
+}
+
+function getResultClass(game: Game): string {
+  const userTeam = getUserTeam(game);
+  if (!game.winner || !userTeam)
+    return 'bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-200 text-xs';
+  return game.winner === userTeam
+    ? 'bg-green-500 dark:bg-green-600 text-white text-xs'
+    : 'bg-surface-400 dark:bg-surface-600 text-white text-xs';
+}
+</script>
