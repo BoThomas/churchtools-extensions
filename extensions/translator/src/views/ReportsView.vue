@@ -175,18 +175,12 @@
         <template #expansion="{ data }">
           <div class="p-4">
             <h4 class="font-semibold mb-3">Daily Usage Breakdown</h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div
-                v-for="session in data.sessions"
-                :key="session.date"
-                class="bg-surface-50 dark:bg-surface-800 p-3 rounded"
-              >
-                <div class="font-medium">{{ formatDate(session.date) }}</div>
-                <div class="text-sm text-surface-600 dark:text-surface-400">
-                  {{ session.minutes }} minutes
-                </div>
-              </div>
-            </div>
+            <Chart
+              type="bar"
+              :data="getChartData(data.sessions)"
+              :options="chartOptions"
+              class="h-80"
+            />
           </div>
         </template>
       </DataTable>
@@ -321,6 +315,7 @@ import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import DatePicker from '@churchtools-extensions/prime-volt/DatePicker.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
+import Chart from 'primevue/chart';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 
@@ -580,6 +575,54 @@ function confirmClearSessions() {
       }
     },
   });
+}
+
+// Chart data and options for daily usage breakdown
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: false,
+    },
+  },
+  scales: {
+    x: {
+      grid: {
+        display: false,
+      },
+    },
+    y: {
+      beginAtZero: true,
+      ticks: {
+        stepSize: 30,
+      },
+      title: {
+        display: true,
+        text: 'Minutes',
+      },
+    },
+  },
+};
+
+function getChartData(sessions: { date: string; minutes: number }[]) {
+  // Sort sessions by date
+  const sortedSessions = [...sessions].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+
+  return {
+    labels: sortedSessions.map((s) => formatDate(s.date)),
+    datasets: [
+      {
+        label: 'Minutes',
+        data: sortedSessions.map((s) => s.minutes),
+        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+        borderColor: 'rgb(99, 102, 241)',
+        borderWidth: 1,
+      },
+    ],
+  };
 }
 
 // Initialize

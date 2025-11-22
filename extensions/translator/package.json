@@ -19,6 +19,7 @@
     "@primevue/forms": "^4.3.9",
     "@primevue/icons": "^4.3.9",
     "@tailwindcss/vite": "^4.1.13",
+    "chart.js": "^4.5.1",
     "lorem-ipsum": "^2.0.8",
     "microsoft-cognitiveservices-speech-sdk": "^1.28.0",
     "pinia": "^3.0.3",
