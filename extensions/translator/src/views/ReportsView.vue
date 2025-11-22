@@ -11,6 +11,7 @@
       <SecondaryButton
         icon="pi pi-database"
         label="Add 100 Dummy Sessions"
+        outlined
         @click="addDummySessions"
         :loading="store.sessionsSaving"
         severity="help"
@@ -18,6 +19,7 @@
       <DangerButton
         icon="pi pi-trash"
         label="Clear All Sessions"
+        outlined
         @click="confirmClearSessions"
         :disabled="store.sessionsLoading || totalSessions === 0"
         :loading="store.sessionsSaving"
