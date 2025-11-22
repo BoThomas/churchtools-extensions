@@ -1,8 +1,7 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-semibold">Translation Control</h2>
-      <div v-if="stateText" class="flex items-center gap-2">
+      <div v-if="stateText" class="flex items-center gap-2 ml-auto">
         <div
           class="inline-flex items-center rounded-2xl gap-2 px-3 py-2"
           :class="{
@@ -576,7 +575,9 @@
           </div>
 
           <!-- Save/Load Settings -->
-          <div class="flex flex-col gap-4 pt-4 border-t">
+          <div
+            class="flex flex-col gap-4 pt-4 border-t border-surface-300 dark:border-surface-700"
+          >
             <div class="flex flex-col md:flex-row gap-3">
               <!-- Variant Selector -->
               <div class="flex-1 flex flex-col gap-2">

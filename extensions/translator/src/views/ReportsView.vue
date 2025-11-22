@@ -1,21 +1,20 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-semibold">Usage Reports</h2>
       <div class="flex gap-2">
-        <SecondaryButton
-          icon="pi pi-database"
-          label="Add 100 Dummy Sessions"
-          @click="addDummySessions"
-          :loading="store.sessionsSaving"
-          severity="help"
-        />
         <Button
           icon="pi pi-refresh"
           label="Refresh"
           @click="loadData"
           :loading="store.sessionsLoading"
           severity="secondary"
+        />
+        <SecondaryButton
+          icon="pi pi-database"
+          label="Add 100 Dummy Sessions"
+          @click="addDummySessions"
+          :loading="store.sessionsSaving"
+          severity="help"
         />
         <DangerButton
           icon="pi pi-trash"
