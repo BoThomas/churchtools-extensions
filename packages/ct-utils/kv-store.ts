@@ -260,14 +260,15 @@ export async function getCustomDataValues<T extends object>(
  * @param payload - the data to create
  * @param moduleId - the module id
  * @param extensionkey - the extension key (required if moduleId is not provided)
+ * @returns the created custom data value with its ID
  */
 export async function createCustomDataValue(
   payload: CustomModuleDataValueCreate,
   moduleId?: number,
   extensionkey?: string,
-): Promise<void> {
+): Promise<CustomModuleDataValue> {
   moduleId = await resolveModuleId(moduleId, extensionkey);
-  const newValue: string = await churchtoolsClient.post(
+  const newValue: CustomModuleDataValue = await churchtoolsClient.post(
     `/custommodules/${moduleId}/customdatacategories/${payload.dataCategoryId}/customdatavalues`,
     payload,
   );
@@ -275,6 +276,7 @@ export async function createCustomDataValue(
     `Created data value in category ${payload.dataCategoryId}:`,
     newValue,
   );
+  return newValue;
 }
 
 /**

@@ -89,16 +89,13 @@ export class PersistanceCategory<T = unknown> {
   }
 
   async create<TIn = T>(value: TIn) {
-    await createCustomDataValue(
+    const created = await createCustomDataValue(
       {
         dataCategoryId: this.categoryId,
         value: JSON.stringify(value),
       },
       this.moduleId,
     );
-    // kv-store createCustomDataValue doesn't return the created object, so we fetch the list to get the ID
-    const vals = await this.listRaw();
-    const created = vals[vals.length - 1];
     return { id: created.id };
   }
 
