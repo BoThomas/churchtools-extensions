@@ -496,72 +496,112 @@
             <span class="font-semibold">Controls</span>
           </div>
         </template>
-        <div class="flex flex-col gap-4 items-center">
-          <!-- Test Button -->
-          <Button
-            label="Test in here"
-            icon="pi pi-compass"
-            @click="startTest"
-            :disabled="state.isPresentationRunning || state.isTestRunning"
-            class="w-full max-w-xs"
-          />
+        <div class="flex flex-col gap-4">
+          <!-- Main Flow: Test & Presentation -->
+          <div
+            class="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 items-stretch"
+          >
+            <!-- Test in here -->
+            <div class="flex flex-col gap-1">
+              <span class="text-xs font-medium uppercase text-surface-500">
+                Quick check
+              </span>
+              <div class="flex flex-col md:flex-row gap-2">
+                <Button
+                  label="Test in here"
+                  icon="pi pi-compass"
+                  @click="startTest"
+                  :disabled="state.isPresentationRunning || state.isTestRunning"
+                  class="w-full md:w-auto"
+                />
+              </div>
+            </div>
 
-          <!-- Presentation Controls -->
-          <div class="flex gap-2 flex-wrap justify-center">
-            <Button
-              label="Start Presentation"
-              icon="pi pi-video"
-              @click="startPresentation"
-              :disabled="state.isPresentationRunning || state.isTestRunning"
-            />
-            <Button
-              v-if="state.isPaused"
-              label="Resume"
-              icon="pi pi-play"
-              @click="pauseOrResume"
-              :disabled="
-                !(
-                  (state.isPresentationRunning && state.isRecordingStarted) ||
-                  state.isTestRunning
-                )
-              "
-            />
-            <SecondaryButton
-              v-else
-              label="Pause"
-              icon="pi pi-pause"
-              @click="pauseOrResume"
-              :disabled="
-                !(
-                  (state.isPresentationRunning && state.isRecordingStarted) ||
-                  state.isTestRunning
-                )
-              "
-            />
-            <DangerButton
-              label="Stop"
-              icon="pi pi-stop"
-              @click="stop"
-              :disabled="!(state.isPresentationRunning || state.isTestRunning)"
-            />
+            <!-- Presentation flow as input group -->
+            <div class="flex flex-col gap-1">
+              <span class="text-xs font-medium uppercase text-surface-500">
+                Live presentation
+              </span>
+              <div
+                class="flex flex-col md:flex-row gap-2 md:items-stretch md:[&>button]:flex-1"
+              >
+                <Button
+                  label="Presentation"
+                  icon="pi pi-external-link"
+                  @click="startPresentation"
+                  :disabled="state.isPresentationRunning || state.isTestRunning"
+                  severity="secondary"
+                />
+                <Button
+                  v-if="state.isPaused"
+                  label="Resume"
+                  icon="pi pi-play"
+                  @click="pauseOrResume"
+                  :disabled="
+                    !(
+                      (state.isPresentationRunning &&
+                        state.isRecordingStarted) ||
+                      state.isTestRunning
+                    )
+                  "
+                />
+                <Button
+                  v-else
+                  label="Pause"
+                  icon="pi pi-pause"
+                  @click="pauseOrResume"
+                  :disabled="
+                    !(
+                      (state.isPresentationRunning &&
+                        state.isRecordingStarted) ||
+                      state.isTestRunning
+                    )
+                  "
+                  severity="warning"
+                />
+                <Button
+                  label="Stop"
+                  icon="pi pi-stop"
+                  @click="stop"
+                  :disabled="
+                    !(state.isPresentationRunning || state.isTestRunning)
+                  "
+                  severity="danger"
+                  outlined
+                />
+              </div>
+            </div>
           </div>
 
           <!-- Save/Load Settings -->
-          <div class="flex gap-2 flex-wrap justify-center pt-4 border-t">
-            <ContrastButton
-              label="Save Settings"
-              icon="pi pi-save"
-              @click="saveSettings"
-              :disabled="inputsDisabled || store.settingsSaving"
-              :loading="store.settingsSaving"
-            />
-            <ContrastButton
-              label="Restore Defaults"
-              icon="pi pi-refresh"
-              variant="outlined"
-              @click="confirmRestoreDefaults"
-              :disabled="inputsDisabled"
-            />
+          <div
+            class="flex flex-col md:flex-row gap-2 justify-between pt-4 border-t"
+          >
+            <div class="flex gap-2 flex-wrap">
+              <ContrastButton
+                label="Save Settings"
+                icon="pi pi-save"
+                @click="saveSettings"
+                :disabled="inputsDisabled || store.settingsSaving"
+                :loading="store.settingsSaving"
+              />
+              <ContrastButton
+                label="Restore Defaults"
+                icon="pi pi-refresh"
+                variant="outlined"
+                @click="confirmRestoreDefaults"
+                :disabled="inputsDisabled"
+              />
+            </div>
+
+            <div
+              class="mt-2 md:mt-0 text-xs text-surface-500 flex items-center md:justify-end"
+            >
+              <span>
+                Open the presentation window first, then control pause / stop
+                from here.
+              </span>
+            </div>
           </div>
         </div>
       </Fieldset>
@@ -626,8 +666,6 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
-import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import ContrastButton from '@churchtools-extensions/prime-volt/ContrastButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
