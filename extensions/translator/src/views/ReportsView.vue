@@ -4,6 +4,13 @@
       <h2 class="text-2xl font-semibold">Usage Reports</h2>
       <div class="flex gap-2">
         <Button
+          icon="pi pi-database"
+          label="Add 100 Dummy Sessions"
+          @click="addDummySessions"
+          :loading="store.sessionsSaving"
+          severity="help"
+        />
+        <Button
           icon="pi pi-refresh"
           label="Refresh"
           @click="loadData"
@@ -623,6 +630,27 @@ function getChartData(sessions: { date: string; minutes: number }[]) {
       },
     ],
   };
+}
+
+// Generate dummy data for performance testing
+async function addDummySessions() {
+  try {
+    await store.generateDummySessions(100);
+    await loadData();
+    toast.add({
+      severity: 'success',
+      summary: 'Dummy Sessions Added',
+      detail: '100 dummy sessions were created for testing.',
+      life: 3000,
+    });
+  } catch (e: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to generate dummy sessions',
+      life: 5000,
+    });
+  }
 }
 
 // Initialize

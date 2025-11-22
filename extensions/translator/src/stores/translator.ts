@@ -379,6 +379,114 @@ export const useTranslatorStore = defineStore('translator', () => {
     }
   }
 
+  /**
+   * Generate dummy sessions for testing/reporting
+   * Creates the given amount of random sessions and persists them.
+   */
+  // TODO: remove later
+  async function generateDummySessions(count: number = 50) {
+    sessionsSaving.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!sessionsCategory) return;
+
+      const users = [
+        { id: 1, name: 'Alice Example', email: 'alice@example.com' },
+        { id: 2, name: 'Bob Example', email: 'bob@example.com' },
+        { id: 3, name: 'Charlie Example', email: 'charlie@example.com' },
+        { id: 4, name: 'Dana Example', email: 'dana@example.com' },
+        { id: 5, name: 'Eve Example', email: 'eve@example.com' },
+      ];
+
+      const modes: TranslationSession['mode'][] = ['presentation', 'test'];
+      const languages = [
+        { in: 'de-DE', out: 'en' },
+        { in: 'en', out: 'de-DE' },
+        { in: 'es', out: 'en' },
+        { in: 'fr', out: 'en' },
+      ];
+
+      const now = new Date();
+
+      const sessionPayloads: TranslationSession[] = [];
+
+      for (let i = 0; i < count; i++) {
+        const user = users[Math.floor(Math.random() * users.length)];
+        const lang = languages[Math.floor(Math.random() * languages.length)];
+        const mode = modes[Math.floor(Math.random() * modes.length)];
+
+        // Spread across the last 6 years
+        const daysAgo = Math.floor(Math.random() * 6 * 365);
+        const dayStart = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - daysAgo,
+          0,
+          0,
+          0,
+          0,
+        );
+        const startOffsetMinutes = Math.floor(Math.random() * 24 * 60);
+        const durationMinutes = Math.max(5, Math.floor(Math.random() * 180));
+
+        const start = new Date(
+          dayStart.getTime() + startOffsetMinutes * 60 * 1000,
+        );
+        const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+        const statuses: TranslationSession['status'][] = [
+          'completed',
+          'completed',
+          'completed',
+          'running',
+          'error',
+        ];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+
+        const session: TranslationSession = {
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.name,
+          startTime: start.toISOString(),
+          endTime: status === 'completed' ? end.toISOString() : undefined,
+          lastHeartbeat:
+            status === 'running'
+              ? new Date(
+                  start.getTime() + (durationMinutes - 1) * 60 * 1000,
+                ).toISOString()
+              : undefined,
+          durationMinutes: status === 'completed' ? durationMinutes : undefined,
+          inputLanguage: lang.in,
+          outputLanguage: lang.out,
+          mode,
+          status,
+        };
+
+        sessionPayloads.push(session);
+      }
+
+      // Persist in small chunks with delays to avoid rate limiting
+      const chunkSize = 10;
+      for (let i = 0; i < sessionPayloads.length; i += chunkSize) {
+        const chunk = sessionPayloads.slice(i, i + chunkSize);
+        await Promise.all(chunk.map((s) => sessionsCategory!.create(s)));
+        // Small delay between chunks to avoid HTTP 429
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      // Refresh local cache
+      const list = await sessionsCategory.list<TranslationSession>();
+      sessions.value = list;
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to generate dummy sessions';
+      console.error('generateDummySessions failed', e);
+      throw e;
+    } finally {
+      sessionsSaving.value = false;
+    }
+  }
+
   return {
     // State
     settings,
@@ -403,5 +511,6 @@ export const useTranslatorStore = defineStore('translator', () => {
     fetchSessions,
     getUsageStats,
     clearAllSessions,
+    generateDummySessions,
   };
 });
