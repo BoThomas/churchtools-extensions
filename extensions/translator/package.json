@@ -26,11 +26,8 @@
     "lorem-ipsum": "^2.0.8",
     "microsoft-cognitiveservices-speech-sdk": "^1.28.0",
     "pinia": "^3.0.3",
-    "primeicons": "^7.0.0",
     "primevue": "^4.3.9",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^4.1.13",
-    "tailwindcss-primeui": "^0.6.1",
     "vue": "^3.5.22"
   }
 }
