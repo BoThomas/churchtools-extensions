@@ -568,35 +568,81 @@
               </div>
             </div>
           </div>
+          <div class="text-xs text-surface-500 flex items-center justify-end">
+            <span>
+              Open the presentation window first, then control pause / stop from
+              here.
+            </span>
+          </div>
 
           <!-- Save/Load Settings -->
-          <div
-            class="flex flex-col md:flex-row gap-2 justify-between pt-4 border-t"
-          >
-            <div class="flex gap-2 flex-wrap">
-              <ContrastButton
-                label="Save Settings"
-                icon="pi pi-save"
-                @click="saveSettings"
-                :disabled="inputsDisabled || store.settingsSaving"
-                :loading="store.settingsSaving"
-              />
-              <ContrastButton
-                label="Restore Defaults"
-                icon="pi pi-refresh"
-                variant="outlined"
-                @click="confirmRestoreDefaults"
-                :disabled="inputsDisabled"
-              />
-            </div>
+          <div class="flex flex-col gap-4 pt-4 border-t">
+            <div class="flex flex-col md:flex-row gap-3">
+              <!-- Variant Selector -->
+              <div class="flex-1 flex flex-col gap-2">
+                <label for="variant-select" class="font-medium text-sm"
+                  >Setting Variant</label
+                >
+                <div class="flex gap-2">
+                  <Select
+                    id="variant-select"
+                    v-model="selectedVariantForDisplay"
+                    :options="store.settingVariants"
+                    optionLabel="value.name"
+                    optionValue="id"
+                    placeholder="Select a variant"
+                    @change="onVariantChange"
+                    :disabled="inputsDisabled"
+                    class="flex-1"
+                  />
+                  <Button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    outlined
+                    @click="confirmDeleteVariant"
+                    :disabled="
+                      inputsDisabled ||
+                      store.settingVariants.length <= 1 ||
+                      isDefaultVariantSelected
+                    "
+                    v-tooltip.top="'Delete variant'"
+                  />
+                </div>
+              </div>
 
+              <!-- Save Buttons -->
+              <div class="flex gap-2 items-end">
+                <ContrastButton
+                  label="Save"
+                  icon="pi pi-save"
+                  @click="saveCurrentVariant"
+                  :disabled="
+                    inputsDisabled ||
+                    store.settingsSaving ||
+                    !store.hasUnsavedChanges ||
+                    isDefaultVariantSelected
+                  "
+                  :loading="store.settingsSaving"
+                />
+                <ContrastButton
+                  label="Save As..."
+                  icon="pi pi-plus"
+                  variant="outlined"
+                  @click="promptSaveAsNewVariant"
+                  :disabled="inputsDisabled"
+                />
+              </div>
+            </div>
             <div
-              class="mt-2 md:mt-0 text-xs text-surface-500 flex items-center md:justify-end"
+              v-if="store.hasUnsavedChanges"
+              class="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1"
             >
-              <span>
-                Open the presentation window first, then control pause / stop
-                from here.
+              <i class="pi pi-exclamation-triangle"></i>
+              <span v-if="isDefaultVariantSelected">
+                You have unsaved changes. Use "Save As..." to create a new
+                variant.
               </span>
+              <span v-else> You have unsaved changes </span>
             </div>
           </div>
         </div>
@@ -648,10 +694,49 @@
       </div>
     </div>
   </div>
+
+  <!-- Save As Dialog -->
+  <Dialog
+    v-model:visible="saveAsDialogVisible"
+    header="Save As New Variant"
+    :modal="true"
+    :closable="true"
+    :style="{ width: '450px' }"
+  >
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-2">
+        <label for="variant-name" class="font-medium text-sm"
+          >Variant Name</label
+        >
+        <InputText
+          id="variant-name"
+          v-model="newVariantName"
+          placeholder="Enter variant name"
+          @keyup.enter="saveAsNewVariant"
+          autofocus
+        />
+      </div>
+    </div>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <Button
+          label="Cancel"
+          severity="secondary"
+          outlined
+          @click="saveAsDialogVisible = false"
+        />
+        <Button
+          label="Save"
+          @click="saveAsNewVariant"
+          :disabled="!newVariantName.trim()"
+        />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useTranslatorStore } from '../stores/translator';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -667,6 +752,7 @@ import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
+import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -696,6 +782,11 @@ const state = ref({
 const error = ref<string | null>(null);
 const user = ref<Person | null>(null);
 const currentSession = ref<any>(null);
+
+// Variant management
+const selectedVariantForDisplay = ref<number | null>(null);
+const saveAsDialogVisible = ref(false);
+const newVariantName = ref('');
 
 // Captioning service instance
 let captioningService: CaptioningService | null = null;
@@ -785,6 +876,13 @@ const stateText = computed(() => {
     return 'Presenting';
   }
   return '';
+});
+
+const isDefaultVariantSelected = computed(() => {
+  const currentVariant = store.settingVariants.find(
+    (v) => v.id === store.selectedVariantId,
+  );
+  return currentVariant?.value.name === 'Default';
 });
 
 // Load current user
@@ -1117,10 +1215,43 @@ function stop() {
   }
 }
 
-// Save settings
-async function saveSettings() {
+// Variant management methods
+function onVariantChange(event: any) {
+  const newVariantId = event.value;
+
+  // Check for unsaved changes
+  if (store.hasUnsavedChanges) {
+    confirm.require({
+      message:
+        'You have unsaved changes. Do you want to discard them and switch variants?',
+      header: 'Unsaved Changes',
+      icon: 'pi pi-exclamation-triangle',
+      rejectProps: {
+        label: 'Cancel',
+        severity: 'secondary',
+      },
+      acceptProps: {
+        label: 'Discard Changes',
+        severity: 'danger',
+      },
+      accept: async () => {
+        await store.selectVariant(newVariantId, user.value?.id);
+        selectedVariantForDisplay.value = newVariantId;
+      },
+      reject: () => {
+        // Revert to current selection
+        selectedVariantForDisplay.value = store.selectedVariantId;
+      },
+    });
+  } else {
+    store.selectVariant(newVariantId, user.value?.id);
+    selectedVariantForDisplay.value = newVariantId;
+  }
+}
+
+async function saveCurrentVariant() {
   try {
-    await store.saveSettings(store.settings);
+    await store.saveCurrentVariant(undefined, user.value?.id);
     toast.add({
       severity: 'success',
       summary: 'Settings Saved',
@@ -1137,34 +1268,75 @@ async function saveSettings() {
   }
 }
 
-// Restore default settings with confirmation
-function confirmRestoreDefaults() {
+function promptSaveAsNewVariant() {
+  newVariantName.value = '';
+  saveAsDialogVisible.value = true;
+}
+
+async function saveAsNewVariant() {
+  if (!newVariantName.value.trim()) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Name Required',
+      detail: 'Please enter a name for the new variant',
+      life: 3000,
+    });
+    return;
+  }
+
+  try {
+    await store.saveCurrentVariant(newVariantName.value.trim(), user.value?.id);
+    saveAsDialogVisible.value = false;
+    selectedVariantForDisplay.value = store.selectedVariantId;
+    toast.add({
+      severity: 'success',
+      summary: 'Variant Created',
+      detail: `"${newVariantName.value}" has been created`,
+      life: 3000,
+    });
+  } catch (e: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to create variant',
+      life: 5000,
+    });
+  }
+}
+
+function confirmDeleteVariant() {
+  const currentVariant = store.settingVariants.find(
+    (v) => v.id === store.selectedVariantId,
+  );
+  if (!currentVariant) return;
+
   confirm.require({
-    message:
-      'Are you sure you want to restore default settings? This will reset translation and presentation options, but keep your Azure credentials.',
-    header: 'Confirm Restore Defaults',
+    message: `Are you sure you want to delete the variant "${currentVariant.value.name}"?`,
+    header: 'Delete Variant',
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
       label: 'Cancel',
       severity: 'secondary',
     },
     acceptProps: {
-      label: 'Restore',
+      label: 'Delete',
+      severity: 'danger',
     },
     accept: async () => {
       try {
-        await store.resetSettings();
+        await store.deleteVariant(store.selectedVariantId!);
+        selectedVariantForDisplay.value = store.selectedVariantId;
         toast.add({
           severity: 'success',
-          summary: 'Settings Restored',
-          detail: 'Default settings have been restored',
+          summary: 'Variant Deleted',
+          detail: `"${currentVariant.value.name}" has been deleted`,
           life: 3000,
         });
       } catch (e: any) {
         toast.add({
           severity: 'error',
           summary: 'Error',
-          detail: 'Failed to restore default settings',
+          detail: 'Failed to delete variant',
           life: 5000,
         });
       }
@@ -1246,6 +1418,28 @@ async function startRecording() {
 
 // Initialize
 loadUser();
+
+// Sync selectedVariantForDisplay with store
+watch(
+  () => store.selectedVariantId,
+  (newId) => {
+    if (newId !== null) {
+      selectedVariantForDisplay.value = newId;
+    }
+  },
+  { immediate: true },
+);
+
+// Mark settings as changed when they're modified
+watch(
+  () => store.settings,
+  () => {
+    if (!store.settingsLoading && !store.selectingVariant) {
+      store.markSettingsChanged();
+    }
+  },
+  { deep: true },
+);
 
 // Listen for presentation window close via storage events
 function handleStorageEvent(e: StorageEvent) {

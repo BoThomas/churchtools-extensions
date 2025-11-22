@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import {
   PersistanceCategory,
   type CategoryValue,
@@ -32,6 +32,11 @@ export interface TranslatorSettings {
     liveColor: string;
     background: string;
   };
+}
+
+export interface SettingVariant {
+  name: string;
+  settings: TranslatorSettings;
 }
 
 export interface UsageStats {
@@ -74,6 +79,12 @@ export const useTranslatorStore = defineStore('translator', () => {
   const settingsLoading = ref(false);
   const settingsSaving = ref(false);
 
+  // Setting Variants
+  const settingVariants = ref<CategoryValue<SettingVariant>[]>([]);
+  const selectedVariantId = ref<number | null>(null);
+  const hasUnsavedChanges = ref(false);
+  const selectingVariant = ref(false);
+
   // Sessions
   const sessions = ref<CategoryValue<TranslationSession>[]>([]);
   const sessionsLoading = ref(false);
@@ -88,8 +99,11 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   // Categories
   let apiSettingsCategory: PersistanceCategory<ApiSettings> | null = null;
-  let settingsCategory: PersistanceCategory<TranslatorSettings> | null = null;
+  let settingsCategory: PersistanceCategory<SettingVariant> | null = null;
   let sessionsCategory: PersistanceCategory<TranslationSession> | null = null;
+  let userPreferencesCategory: PersistanceCategory<{
+    lastVariantId: number;
+  }> | null = null;
 
   // Track initialization to prevent duplicate category creation during parallel calls
   let categoriesInitializing: Promise<void> | null = null;
@@ -105,7 +119,12 @@ export const useTranslatorStore = defineStore('translator', () => {
     }
 
     // If all categories are already initialized, return early
-    if (apiSettingsCategory && settingsCategory && sessionsCategory) {
+    if (
+      apiSettingsCategory &&
+      settingsCategory &&
+      sessionsCategory &&
+      userPreferencesCategory
+    ) {
       return;
     }
 
@@ -121,8 +140,8 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (!settingsCategory) {
         settingsCategory = await PersistanceCategory.init({
           extensionkey: KEY,
-          categoryShorty: 'settings',
-          categoryName: 'Translator Settings',
+          categoryShorty: 'setting-variants',
+          categoryName: 'Setting Variants',
         });
       }
       if (!sessionsCategory) {
@@ -130,6 +149,13 @@ export const useTranslatorStore = defineStore('translator', () => {
           extensionkey: KEY,
           categoryShorty: 'sessions',
           categoryName: 'Translation Sessions',
+        });
+      }
+      if (!userPreferencesCategory) {
+        userPreferencesCategory = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'user-prefs',
+          categoryName: 'User Preferences',
         });
       }
     })();
@@ -165,26 +191,59 @@ export const useTranslatorStore = defineStore('translator', () => {
   }
 
   /**
-   * Load settings from persistence
+   * Load all setting variants and user's last selected variant
    */
-  async function loadSettings() {
+  async function loadSettingVariants(userId?: number) {
     settingsLoading.value = true;
     error.value = null;
     try {
       await ensureCategories();
-      if (!settingsCategory) return;
+      if (!settingsCategory || !userPreferencesCategory) return;
 
-      const list = await settingsCategory.list<TranslatorSettings>();
-      if (list.length > 0) {
-        // Use first settings record
-        settings.value = { ...DEFAULT_SETTINGS, ...list[0].value };
-      } else {
-        // No settings yet, use defaults
+      // Load all variants
+      const list = await settingsCategory.list<SettingVariant>();
+      settingVariants.value = list;
+
+      // If no variants exist, create a default one
+      if (list.length === 0) {
+        const defaultVariant: SettingVariant = {
+          name: 'Default',
+          settings: { ...DEFAULT_SETTINGS },
+        };
+        const { id } = await settingsCategory.create(defaultVariant);
+        settingVariants.value = [{ id, value: defaultVariant, raw: {} as any }];
+        selectedVariantId.value = id;
         settings.value = { ...DEFAULT_SETTINGS };
+      } else {
+        // Load user's last selected variant
+        let lastVariantId: number | null = null;
+
+        if (userId) {
+          const userPrefs =
+            await userPreferencesCategory.list<
+              Record<string, { lastVariantId: number }>
+            >();
+          if (userPrefs.length > 0) {
+            const userPref = userPrefs[0].value[userId.toString()];
+            lastVariantId = userPref?.lastVariantId || null;
+          }
+        }
+
+        // Try to load the last selected variant
+        const variantToLoad = lastVariantId
+          ? list.find((v) => v.id === lastVariantId) || list[0]
+          : list[0];
+
+        selectedVariantId.value = variantToLoad.id;
+        settings.value = JSON.parse(
+          JSON.stringify(variantToLoad.value.settings),
+        );
       }
+
+      hasUnsavedChanges.value = false;
     } catch (e: any) {
-      error.value = e?.message ?? 'Failed to load settings';
-      console.error('loadSettings failed', e);
+      error.value = e?.message ?? 'Failed to load setting variants';
+      console.error('loadSettingVariants failed', e);
     } finally {
       settingsLoading.value = false;
       initializing.value = false;
@@ -222,29 +281,48 @@ export const useTranslatorStore = defineStore('translator', () => {
   }
 
   /**
-   * Save settings to persistence
+   * Save current settings to the selected variant (or create new)
    */
-  async function saveSettings(newSettings: TranslatorSettings) {
+  async function saveCurrentVariant(variantName?: string, userId?: number) {
     settingsSaving.value = true;
     error.value = null;
     try {
       await ensureCategories();
       if (!settingsCategory) return;
 
-      const list = await settingsCategory.list<TranslatorSettings>();
+      const currentVariant = settingVariants.value.find(
+        (v) => v.id === selectedVariantId.value,
+      );
 
-      if (list.length > 0) {
-        // Update existing settings
-        await settingsCategory.update(list[0].id, newSettings);
-      } else {
-        // Create new settings record
-        await settingsCategory.create(newSettings);
+      // If saving to "Default" with changes, or no variant name and creating new
+      if (variantName) {
+        // Create new variant
+        const newVariant: SettingVariant = {
+          name: variantName,
+          settings: { ...settings.value },
+        };
+        const { id } = await settingsCategory.create(newVariant);
+        settingVariants.value.push({ id, value: newVariant, raw: {} as any });
+        selectedVariantId.value = id;
+        hasUnsavedChanges.value = false;
+
+        // Save user preference for the new variant
+        if (userId) {
+          await saveUserPreference(id, userId);
+        }
+      } else if (selectedVariantId.value && currentVariant) {
+        // Update existing variant
+        const updatedVariant: SettingVariant = {
+          name: currentVariant.value.name,
+          settings: { ...settings.value },
+        };
+        await settingsCategory.update(selectedVariantId.value, updatedVariant);
+        currentVariant.value = updatedVariant;
+        hasUnsavedChanges.value = false;
       }
-
-      settings.value = { ...newSettings };
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to save settings';
-      console.error('saveSettings failed', e);
+      console.error('saveCurrentVariant failed', e);
       throw e;
     } finally {
       settingsSaving.value = false;
@@ -252,10 +330,105 @@ export const useTranslatorStore = defineStore('translator', () => {
   }
 
   /**
-   * Reset settings to defaults
+   * Select a different variant
    */
-  async function resetSettings() {
-    await saveSettings({ ...DEFAULT_SETTINGS });
+  async function selectVariant(variantId: number, userId?: number) {
+    selectingVariant.value = true;
+
+    // Reload variants from database to ensure fresh data
+    await ensureCategories();
+    if (!settingsCategory) return;
+
+    const list = await settingsCategory.list<SettingVariant>();
+    settingVariants.value = list;
+
+    const variant = list.find((v) => v.id === variantId);
+    if (!variant) {
+      selectingVariant.value = false;
+      return;
+    }
+
+    selectedVariantId.value = variantId;
+    // Deep clone to ensure no shared references
+    settings.value = JSON.parse(JSON.stringify(variant.value.settings));
+    hasUnsavedChanges.value = false;
+
+    // Wait for Vue to process watchers before clearing the flag
+    await nextTick();
+    selectingVariant.value = false;
+
+    // Save user preference
+    if (userId) {
+      await saveUserPreference(variantId, userId);
+    }
+  }
+
+  /**
+   * Delete a variant
+   */
+  async function deleteVariant(variantId: number) {
+    try {
+      await ensureCategories();
+      if (!settingsCategory) return;
+
+      await settingsCategory.delete(variantId);
+      settingVariants.value = settingVariants.value.filter(
+        (v) => v.id !== variantId,
+      );
+
+      // If we deleted the selected variant, switch to the first available
+      if (
+        selectedVariantId.value === variantId &&
+        settingVariants.value.length > 0
+      ) {
+        await selectVariant(settingVariants.value[0].id);
+      }
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to delete variant';
+      console.error('deleteVariant failed', e);
+      throw e;
+    }
+  }
+
+  /**
+   * Save user's last selected variant preference
+   */
+  async function saveUserPreference(variantId: number, userId: number) {
+    try {
+      await ensureCategories();
+      if (!userPreferencesCategory) return;
+
+      const prefs =
+        await userPreferencesCategory.list<
+          Record<string, { lastVariantId: number }>
+        >();
+
+      let allUserPrefs: Record<string, { lastVariantId: number }> = {};
+
+      // Load existing preferences for all users
+      if (prefs.length > 0) {
+        allUserPrefs = { ...prefs[0].value };
+      }
+
+      // Update this user's preference
+      allUserPrefs[userId.toString()] = { lastVariantId: variantId };
+
+      if (prefs.length > 0) {
+        await userPreferencesCategory.update(prefs[0].id, allUserPrefs);
+      } else {
+        await userPreferencesCategory.create(allUserPrefs);
+      }
+    } catch (e: any) {
+      // Non-critical, just log
+      console.warn('Failed to save user preference:', e);
+    }
+  }
+
+  /**
+   * Mark settings as modified
+   */
+  function markSettingsChanged() {
+    hasUnsavedChanges.value = true;
   }
 
   /**
@@ -592,6 +765,10 @@ export const useTranslatorStore = defineStore('translator', () => {
     settings,
     settingsLoading,
     settingsSaving,
+    settingVariants,
+    selectedVariantId,
+    hasUnsavedChanges,
+    selectingVariant,
     sessions,
     sessionsLoading,
     sessionsSaving,
@@ -604,9 +781,11 @@ export const useTranslatorStore = defineStore('translator', () => {
     saveApiSettings,
 
     // Settings methods
-    loadSettings,
-    saveSettings,
-    resetSettings,
+    loadSettingVariants,
+    saveCurrentVariant,
+    selectVariant,
+    deleteVariant,
+    markSettingsChanged,
 
     // Session methods
     startSession,
