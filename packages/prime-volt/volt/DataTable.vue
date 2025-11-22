@@ -112,7 +112,19 @@ const theme = ref<DataTablePassThroughOptions>({
   thead: `p-scrollable:bg-surface-0 dark:p-scrollable:bg-surface-900 p-scrollable:top-0 p-scrollable:z-10`,
   tbody: `p-hoverable:*:hover:bg-surface-100 p-hoverable:*:hover:text-surface-800 dark:p-hoverable:*:hover:bg-surface-800 dark:p-hoverable:*:hover:text-surface-0
         p-frozen:sticky p-frozen:z-10`,
-  bodyRow: `bg-surface-0 dark:bg-surface-900 text-surface-700 dark:text-surface-0 p-selectable:cursor-pointer p-selected:bg-highlight!`,
+  bodyRow: ({ context }: any) => ({
+    class: [
+      'text-surface-700 dark:text-surface-0',
+      'p-selectable:cursor-pointer',
+      'p-selected:bg-highlight!',
+      {
+        'bg-surface-0 dark:bg-surface-900':
+          !context.stripedRows || context.index % 2 === 0,
+        'bg-surface-50 dark:bg-surface-800/50':
+          context.stripedRows && context.index % 2 === 1,
+      },
+    ],
+  }),
   tfoot: `p-scrollable:bg-surface-0 dark:p-scrollable:bg-surface-900 p-scrollable:bottom-0 p-scrollable:z-10`,
   footer: `py-3 px-4 border-b border-surface-200 dark:border-surface-700
         bg-surface-0 dark:bg-surface-900

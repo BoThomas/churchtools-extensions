@@ -128,10 +128,12 @@
       <DataTable
         :value="filteredStats"
         :loading="store.sessionsLoading"
+        removableSort
         stripedRows
-        showGridlines
         v-model:expandedRows="expandedRows"
         dataKey="userId"
+        v-model:sortField="statsSortField"
+        v-model:sortOrder="statsSortOrder"
       >
         <template #empty>
           <div class="text-center py-4 text-surface-500">
@@ -202,13 +204,13 @@
       <DataTable
         :value="filteredSessions"
         :loading="store.sessionsLoading"
+        removableSort
         stripedRows
-        showGridlines
         paginator
         :rows="10"
         :rowsPerPageOptions="[10, 25, 50]"
-        sortField="startTime"
-        :sortOrder="-1"
+        v-model:sortField="sessionsSortField"
+        v-model:sortOrder="sessionsSortOrder"
       >
         <template #empty>
           <div class="text-center py-4 text-surface-500">
@@ -216,7 +218,7 @@
           </div>
         </template>
 
-        <Column field="userName" header="User" sortable>
+        <Column field="value.userName" header="User" sortable>
           <template #body="{ data }">
             <div>{{ data.value.userName }}</div>
             <div class="text-xs text-surface-500">
@@ -225,13 +227,13 @@
           </template>
         </Column>
 
-        <Column field="startTime" header="Start Time" sortable>
+        <Column field="value.startTime" header="Start Time" sortable>
           <template #body="{ data }">
             {{ formatDateTime(data.value.startTime) }}
           </template>
         </Column>
 
-        <Column field="endTime" header="End Time" sortable>
+        <Column field="value.endTime" header="End Time" sortable>
           <template #body="{ data }">
             {{
               data.value.endTime ? formatDateTime(data.value.endTime) : 'N/A'
@@ -239,7 +241,7 @@
           </template>
         </Column>
 
-        <Column field="durationMinutes" header="Duration" sortable>
+        <Column field="value.durationMinutes" header="Duration" sortable>
           <template #body="{ data }">
             <span v-if="getSessionDuration(data.value) > 0">
               {{ getSessionDuration(data.value) }} min
@@ -248,7 +250,7 @@
           </template>
         </Column>
 
-        <Column field="mode" header="Mode" sortable>
+        <Column field="value.mode" header="Mode" sortable>
           <template #body="{ data }">
             <Chip
               :label="data.value.mode"
@@ -259,7 +261,7 @@
           </template>
         </Column>
 
-        <Column field="inputLanguage" header="Languages" sortable>
+        <Column field="value.inputLanguage" header="Languages" sortable>
           <template #body="{ data }">
             <div class="text-sm">
               <div>
@@ -274,7 +276,7 @@
           </template>
         </Column>
 
-        <Column field="status" header="Status" sortable>
+        <Column field="value.status" header="Status" sortable>
           <template #body="{ data }">
             <Chip
               :label="getSessionStatus(data.value)"
@@ -321,6 +323,14 @@ const filters = ref({
   endDate: null as Date | null,
   mode: null as string | null,
 });
+
+// Sort state for statistics table
+const statsSortField = ref<string | undefined>(undefined);
+const statsSortOrder = ref<number | undefined>(undefined);
+
+// Sort state for sessions table
+const sessionsSortField = ref<string>('value.startTime');
+const sessionsSortOrder = ref<number>(-1);
 
 const modeOptions = ref(['test', 'presentation']);
 
