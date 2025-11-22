@@ -20,60 +20,78 @@
         <Card
           v-for="game in store.activeGames"
           :key="game.id"
-          class="relative overflow-hidden"
+          class="relative cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02]"
+          @click="$emit('select-game', game.id)"
         >
           <template #title>
-            <span>{{ game.name }}</span>
+            <div class="flex justify-between items-center">
+              <span>{{ game.name }}</span>
+              <Badge
+                v-if="game.status === 'lobby'"
+                value="Lobby"
+                severity="info"
+              />
+            </div>
           </template>
           <template #subtitle>
-            {{ game.type }}
+            <div class="text-xs text-surface-500">{{ game.type }}</div>
           </template>
           <template #content>
-            <div class="flex justify-between gap-4 mb-4">
-              <div class="flex-1 text-center">
-                <div
-                  class="font-semibold text-sm mb-2 text-red-600 dark:text-red-400"
-                >
-                  Red Team
+            <div class="space-y-4">
+              <!-- Team Stats in Horizontal Layout -->
+              <div
+                class="flex items-center justify-around gap-4 py-3 bg-surface-50 dark:bg-surface-800/50 rounded-lg"
+              >
+                <div class="flex items-center gap-2">
+                  <Chip
+                    :label="String(game.teams.red.length)"
+                    severity="danger"
+                    size="small"
+                  />
+                  <span
+                    class="text-xs font-medium text-red-600 dark:text-red-400"
+                    >Red</span
+                  >
                 </div>
-                <Chip
-                  :label="String(game.teams.red.length)"
-                  severity="danger"
-                  size="small"
-                />
-                <div
-                  v-if="isUserInTeam(game, 'red')"
-                  class="mt-2 text-xs font-semibold text-red-600 dark:text-red-400"
-                >
-                  You're on this team!
-                </div>
-              </div>
-              <div class="flex-1 text-center">
-                <div
-                  class="font-semibold text-sm mb-2 text-blue-600 dark:text-blue-400"
-                >
-                  Blue Team
-                </div>
-                <Chip
-                  :label="String(game.teams.blue.length)"
-                  severity="info"
-                  size="small"
-                />
-                <div
-                  v-if="isUserInTeam(game, 'blue')"
-                  class="mt-2 text-xs font-semibold text-blue-600 dark:text-blue-400"
-                >
-                  You're on this team!
+                <span class="text-surface-400 text-xs font-bold">VS</span>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="text-xs font-medium text-blue-600 dark:text-blue-400"
+                    >Blue</span
+                  >
+                  <Chip
+                    :label="String(game.teams.blue.length)"
+                    severity="info"
+                    size="small"
+                  />
                 </div>
               </div>
-            </div>
 
-            <div class="text-center">
-              <Button
-                label="Go to Game"
-                severity="secondary"
-                @click="$emit('select-game', game.id)"
-              />
+              <!-- User Status -->
+              <div v-if="getUserTeam(game)" class="text-center">
+                <div
+                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-100 dark:bg-surface-800"
+                >
+                  <i class="pi pi-user text-xs"></i>
+                  <span class="text-xs font-medium">
+                    You're on
+                    <span
+                      :class="
+                        getUserTeam(game) === 'red'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-blue-600 dark:text-blue-400'
+                      "
+                    >
+                      {{ getUserTeam(game) === 'red' ? 'Red' : 'Blue' }} Team
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Click hint -->
+              <div class="text-center text-xs text-surface-400 italic">
+                Click to participate
+              </div>
             </div>
           </template>
         </Card>
@@ -148,7 +166,7 @@
 <script setup lang="ts">
 import { useGamesStore, type Game } from '../stores/games';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
-import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
@@ -158,11 +176,6 @@ import Column from 'primevue/column';
 const store = useGamesStore();
 
 defineEmits(['select-game']);
-
-function isUserInTeam(game: Game, team: 'red' | 'blue') {
-  if (!store.currentUser) return false;
-  return game.teams[team].includes(store.currentUser.id);
-}
 
 function getUserTeam(game: Game): 'red' | 'blue' | null {
   if (!store.currentUser) return null;
