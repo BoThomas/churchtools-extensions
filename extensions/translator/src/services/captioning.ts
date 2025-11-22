@@ -1,7 +1,5 @@
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 
-const LOGGING_INTERVAL = 5 * 60 * 1000; // 5min
-
 export interface CaptioningConfig {
   inputLanguage: { name: string; code: string };
   outputLanguage: { name: string; code: string };
@@ -22,13 +20,11 @@ export interface CaptioningCallbacks {
   onTranslating: (translation: string, original: string) => void;
   onTranslated: (translation: string, original: string) => void;
   onError: (error: string) => void;
-  onSessionLog?: (type: string, message: string) => void;
 }
 
 export class CaptioningService {
   private recognizer: sdk.TranslationRecognizer | null = null;
   private recognizerRunning = false;
-  private loggingInterval: NodeJS.Timeout | null = null;
   private config: CaptioningConfig;
   private callbacks: CaptioningCallbacks;
   private apiKey: string;
@@ -156,35 +152,13 @@ export class CaptioningService {
     if (!this.recognizer) return;
 
     this.recognizer.startContinuousRecognitionAsync();
-    if (!this.recognizerRunning) {
-      this.recognizerRunning = true;
-      this.loggingInterval = setInterval(
-        () => this.intervalLog(),
-        LOGGING_INTERVAL,
-      );
-      this.log('logging', 'Translation started');
-    }
+    this.recognizerRunning = true;
   }
 
   public stop(): void {
-    if (this.loggingInterval) {
-      clearInterval(this.loggingInterval);
-      this.loggingInterval = null;
-    }
     if (this.recognizerRunning && this.recognizer) {
       this.recognizerRunning = false;
       this.recognizer.stopContinuousRecognitionAsync();
-      this.log('logging', 'Translation stopped');
-    }
-  }
-
-  private intervalLog(): void {
-    this.log('logging', 'Translation running');
-  }
-
-  private log(type: string, message: string): void {
-    if (this.callbacks.onSessionLog) {
-      this.callbacks.onSessionLog(type, message);
     }
   }
 }

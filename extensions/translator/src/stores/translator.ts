@@ -90,7 +90,7 @@ export const useTranslatorStore = defineStore('translator', () => {
   const sessionsLoading = ref(false);
   const sessionsSaving = ref(false);
 
-  // Current session
+  // Current session (tracked for optimistic updates)
   const currentSessionId = ref<number | null>(null);
   const currentSession = ref<TranslationSession | null>(null);
 
@@ -433,6 +433,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Start a new translation session
+   * Stores session in memory for optimistic updates
    */
   async function startSession(sessionData: TranslationSession) {
     sessionsSaving.value = true;
@@ -443,6 +444,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
       const { id } = await sessionsCategory.create(sessionData);
       currentSessionId.value = id;
+      // Store complete session for optimistic updates
       currentSession.value = { ...sessionData, id };
       return id;
     } catch (e: any) {
@@ -467,28 +469,48 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (!sessionsCategory) await ensureCategories();
       if (!sessionsCategory) return;
 
+      // Optimistic update: use cached session if available
       const existing = sessions.value.find(
         (s: CategoryValue<TranslationSession>) => s.id === sessionId,
       );
-      if (!existing) {
-        // If not in cache, we still need to update it
-        const allSessions = await sessionsCategory.list<TranslationSession>();
-        const found = allSessions.find(
-          (s: CategoryValue<TranslationSession>) => s.id === sessionId,
-        );
-        if (!found) throw new Error('Session not found');
 
-        const merged: TranslationSession = {
-          ...found.value,
-          ...updates,
-        };
-        await sessionsCategory.update(sessionId, merged);
-      } else {
+      if (existing) {
+        // Cache hit - merge and update directly
         const merged: TranslationSession = {
           ...existing.value,
           ...updates,
         };
         await sessionsCategory.update(sessionId, merged);
+      } else {
+        // Cache miss - check if updates contain all required fields
+        const hasRequiredFields =
+          updates.userId &&
+          updates.startTime &&
+          updates.inputLanguage &&
+          updates.outputLanguage &&
+          updates.mode &&
+          updates.status;
+
+        if (hasRequiredFields) {
+          // Updates are complete, use optimistic update
+          await sessionsCategory.update(
+            sessionId,
+            updates as TranslationSession,
+          );
+        } else {
+          // Need to fetch to get complete session data
+          const allSessions = await sessionsCategory.list<TranslationSession>();
+          const found = allSessions.find(
+            (s: CategoryValue<TranslationSession>) => s.id === sessionId,
+          );
+          if (!found) throw new Error('Session not found');
+
+          const merged: TranslationSession = {
+            ...found.value,
+            ...updates,
+          };
+          await sessionsCategory.update(sessionId, merged);
+        }
       }
 
       currentSessionId.value = null;
@@ -504,6 +526,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Update session heartbeat (non-blocking, silent errors)
+   * Uses optimistic update to avoid fetching all sessions
    */
   async function updateHeartbeat(sessionId: number) {
     // Non-blocking update - don't throw errors to avoid disrupting translation
@@ -511,18 +534,52 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (!sessionsCategory) await ensureCategories();
       if (!sessionsCategory) return;
 
-      const allSessions = await sessionsCategory.list<TranslationSession>();
-      const found = allSessions.find(
+      // Optimistic approach: use cached session or current session
+      let baseSession: TranslationSession | undefined;
+
+      // Try cache first
+      const cached = sessions.value.find(
         (s: CategoryValue<TranslationSession>) => s.id === sessionId,
       );
-      if (!found) return;
+      if (cached) {
+        baseSession = cached.value;
+      } else if (
+        currentSession.value &&
+        currentSession.value.id === sessionId
+      ) {
+        // Use tracked current session
+        baseSession = currentSession.value;
+      }
 
-      const updated: TranslationSession = {
-        ...found.value,
-        lastHeartbeat: new Date().toISOString(),
-      };
+      if (baseSession) {
+        // Optimistic update with known session data
+        const updated: TranslationSession = {
+          ...baseSession,
+          lastHeartbeat: new Date().toISOString(),
+        };
+        await sessionsCategory.update(sessionId, updated);
 
-      await sessionsCategory.update(sessionId, updated);
+        // Update current session in memory if it matches
+        if (currentSession.value && currentSession.value.id === sessionId) {
+          currentSession.value = updated;
+        }
+      } else {
+        // Fallback: fetch if we have no session data (shouldn't happen in normal flow)
+        console.warn(
+          'Heartbeat update without cached session data, fetching...',
+        );
+        const allSessions = await sessionsCategory.list<TranslationSession>();
+        const found = allSessions.find(
+          (s: CategoryValue<TranslationSession>) => s.id === sessionId,
+        );
+        if (!found) return;
+
+        const updated: TranslationSession = {
+          ...found.value,
+          lastHeartbeat: new Date().toISOString(),
+        };
+        await sessionsCategory.update(sessionId, updated);
+      }
     } catch (e) {
       // Silent fail - log but don't disrupt translation
       console.warn('Failed to update heartbeat (non-critical):', e);

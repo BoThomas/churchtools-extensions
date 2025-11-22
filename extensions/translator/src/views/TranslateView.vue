@@ -921,13 +921,14 @@ function handleWindowClose() {
   const sessionId = sessionLogger.getCurrentSessionId();
   if (sessionId && currentSession.value) {
     try {
-      // Attempt to end session (may not complete if browser closes quickly)
+      // Attempt to end session, but browser may close before async call completes
+      // Sessions without endTime will be detected as "abandoned" based on lastHeartbeat
       const endedSession = sessionLogger.endSession(
         currentSession.value,
         'completed',
       );
-      // Use navigator.sendBeacon for better reliability on page unload
-      // Note: This is best-effort, not guaranteed to complete
+      // Note: This async call will likely not complete before page unload
+      // The session will be marked as abandoned (status='running' with old lastHeartbeat)
       store.endSession(sessionId, endedSession);
     } catch (e) {
       // Silent fail on unload
@@ -1157,13 +1158,18 @@ function stop() {
     // End session
     const sessionId = sessionLogger.getCurrentSessionId();
     if (sessionId && currentSession.value) {
-      const endedSession = sessionLogger.endSession(
-        currentSession.value,
-        'completed',
-      );
-      store.endSession(sessionId, endedSession);
-      sessionLogger.clearCurrentSession();
-      currentSession.value = null;
+      try {
+        const endedSession = sessionLogger.endSession(
+          currentSession.value,
+          'completed',
+        );
+        store.endSession(sessionId, endedSession);
+      } catch (e) {
+        console.error('Failed to end session:', e);
+      } finally {
+        sessionLogger.clearCurrentSession();
+        currentSession.value = null;
+      }
     }
   }
 
@@ -1195,13 +1201,18 @@ function stop() {
         // End session
         const sessionId = sessionLogger.getCurrentSessionId();
         if (sessionId && currentSession.value) {
-          const endedSession = sessionLogger.endSession(
-            currentSession.value,
-            'completed',
-          );
-          store.endSession(sessionId, endedSession);
-          sessionLogger.clearCurrentSession();
-          currentSession.value = null;
+          try {
+            const endedSession = sessionLogger.endSession(
+              currentSession.value,
+              'completed',
+            );
+            store.endSession(sessionId, endedSession);
+          } catch (e) {
+            console.error('Failed to end session:', e);
+          } finally {
+            sessionLogger.clearCurrentSession();
+            currentSession.value = null;
+          }
         }
 
         toast.add({
@@ -1462,13 +1473,18 @@ function handleStorageEvent(e: StorageEvent) {
     // End session
     const sessionId = sessionLogger.getCurrentSessionId();
     if (sessionId && currentSession.value) {
-      const endedSession = sessionLogger.endSession(
-        currentSession.value,
-        'completed',
-      );
-      store.endSession(sessionId, endedSession);
-      sessionLogger.clearCurrentSession();
-      currentSession.value = null;
+      try {
+        const endedSession = sessionLogger.endSession(
+          currentSession.value,
+          'completed',
+        );
+        store.endSession(sessionId, endedSession);
+      } catch (e) {
+        console.error('Failed to end session:', e);
+      } finally {
+        sessionLogger.clearCurrentSession();
+        currentSession.value = null;
+      }
     }
 
     toast.add({
