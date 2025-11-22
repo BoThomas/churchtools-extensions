@@ -1,7 +1,7 @@
 {
   "name": "churchtools-running-dinner",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Running Dinner event management extension for ChurchTools",
   "type": "module",
   "repository": {
