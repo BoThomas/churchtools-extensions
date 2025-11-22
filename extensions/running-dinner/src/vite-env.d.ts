@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@churchtools-extensions/build-tools/extension-info" />
 
 // Type declaration for importing .vue Single File Components
 declare module '*.vue' {

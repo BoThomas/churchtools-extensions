@@ -79,6 +79,38 @@
         <li>Paste them into the fields above</li>
       </ol>
     </div>
+
+    <div
+      class="mt-8 p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700"
+    >
+      <h3 class="text-lg font-semibold mb-3">Extension Information</h3>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-surface-600 dark:text-surface-400">Name:</span>
+          <span class="font-mono">{{ extensionInfo.name }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-surface-600 dark:text-surface-400">Version:</span>
+          <span class="font-mono">{{ extensionInfo.version }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-surface-600 dark:text-surface-400">Git Hash:</span>
+          <span class="font-mono text-xs">{{ extensionInfo.gitHash }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-surface-600 dark:text-surface-400">Branch:</span>
+          <span class="font-mono text-xs">{{ extensionInfo.gitBranch }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-surface-600 dark:text-surface-400"
+            >Build Date:</span
+          >
+          <span class="font-mono text-xs">{{
+            formatDate(extensionInfo.buildDate)
+          }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -88,6 +120,7 @@ import { useTranslatorStore } from '../stores/translator';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import extensionInfo from 'virtual:extension-info';
 
 const store = useTranslatorStore();
 
@@ -108,6 +141,10 @@ const isValid = computed(() => {
     !!localApiSettings.value.azureApiKey && !!localApiSettings.value.azureRegion
   );
 });
+
+function formatDate(isoDate: string): string {
+  return new Date(isoDate).toLocaleString();
+}
 
 async function saveSettings() {
   try {

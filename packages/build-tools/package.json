@@ -6,7 +6,9 @@
     "type-check": "echo 'No TypeScript files to check'"
   },
   "exports": {
-    "./package": "./package.js"
+    "./package": "./package.js",
+    "./version-info-plugin": "./version-info-plugin.js",
+    "./extension-info": "./extension-info.d.ts"
   },
   "bin": {
     "ct-package": "./package.js"

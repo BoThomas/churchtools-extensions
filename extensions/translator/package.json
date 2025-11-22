@@ -1,7 +1,8 @@
 {
   "name": "churchtools-translator",
   "private": true,
-  "version": "0.0.6",
+  "version": "0.0.7",
+  "description": "Real-time translation extension for ChurchTools presentations",
   "type": "module",
   "scripts": {
     "dev": "vite",
