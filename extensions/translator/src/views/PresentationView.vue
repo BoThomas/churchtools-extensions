@@ -3,10 +3,12 @@
     ref="textEl"
     class="fixed inset-0 overflow-auto translator-presentation-root"
     :style="{
-      background: presentationSettings.background,
-      color: presentationSettings.color,
-      fontFamily: presentationSettings.font,
-      fontSize: presentationSettings.fontSize,
+      '--presentation-background': presentationSettings.background,
+      '--presentation-color': presentationSettings.color,
+      '--presentation-font': presentationSettings.font,
+      '--presentation-font-size': presentationSettings.fontSize,
+      '--presentation-margin': presentationSettings.margin,
+      '--presentation-live-color': presentationSettings.liveColor,
     }"
   >
     <!-- Initialization Phase -->
@@ -31,21 +33,15 @@
     </div>
 
     <!-- Translation Display -->
-    <div v-else>
+    <div v-else class="translation-content">
       <p
         v-for="(paragraph, index) in finalizedParagraphs"
         :key="'para-' + index"
-        :style="{ margin: presentationSettings.margin }"
+        class="finalized-paragraph"
       >
         {{ paragraph }}
       </p>
-      <p
-        v-if="currentLiveTranslation"
-        :style="{
-          margin: presentationSettings.margin,
-          color: presentationSettings.liveColor,
-        }"
-      >
+      <p v-if="currentLiveTranslation" class="live-translation">
         {{ currentLiveTranslation }}
       </p>
     </div>
@@ -252,14 +248,52 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Hide scrollbars without removing scrolling support. Applies cross-browser. */
+/* Force presentation styles to override parent page styles */
 .translator-presentation-root {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  /* Hide scrollbars without removing scrolling support. Applies cross-browser. */
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+
+  /* Force presentation styles */
+  background: var(--presentation-background) !important;
+  color: var(--presentation-color) !important;
+  font-family: var(--presentation-font) !important;
+  font-size: var(--presentation-font-size) !important;
+  line-height: 1.5 !important;
+  z-index: 9999 !important;
 }
+
 .translator-presentation-root::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-  width: 0;
-  height: 0;
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Override any parent styles on paragraphs */
+.translator-presentation-root .translation-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.translator-presentation-root .finalized-paragraph,
+.translator-presentation-root .live-translation {
+  margin: var(--presentation-margin) !important;
+  font-family: var(--presentation-font) !important;
+  font-size: var(--presentation-font-size) !important;
+  color: var(--presentation-color) !important;
+  line-height: 1.5 !important;
+  max-width: none !important;
+  width: auto !important;
+  box-sizing: border-box !important;
+}
+
+.translator-presentation-root .live-translation {
+  color: var(--presentation-live-color) !important;
+}
+
+/* Ensure buttons and init phase aren't affected by font size */
+.translator-presentation-root .flex.flex-col.items-center {
+  font-size: 16px !important;
 }
 </style>
