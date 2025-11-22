@@ -15,7 +15,7 @@
           class="w-full"
         />
         <p class="text-xs text-surface-600 dark:text-surface-400">
-          Your Azure Cognitive Services Speech API subscription key
+          Your Azure Speech Service API subscription key
         </p>
       </div>
 
@@ -73,8 +73,8 @@
             >Azure Portal</a
           >
         </li>
-        <li>Create or navigate to your Cognitive Services resource</li>
-        <li>Go to "Keys and Endpoint"</li>
+        <li>Create or navigate to your "Speech services" resource</li>
+        <li>Scroll to "Keys and Endpoint" under "Overview"</li>
         <li>Copy one of the keys and the region</li>
         <li>Paste them into the fields above</li>
       </ol>
