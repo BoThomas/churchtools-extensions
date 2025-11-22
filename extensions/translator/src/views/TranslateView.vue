@@ -1035,11 +1035,13 @@ async function startTest() {
         mode: 'test',
       });
       const sessionId = await store.startSession(session);
-      sessionLogger.setCurrentSessionId(sessionId);
-      currentSession.value = session;
+      if (sessionId) {
+        sessionLogger.setCurrentSessionId(sessionId);
+        currentSession.value = session;
 
-      // Start heartbeat updates
-      startHeartbeat();
+        // Start heartbeat updates
+        startHeartbeat();
+      }
     }
 
     toast.add({
@@ -1393,11 +1395,13 @@ async function startRecording() {
         mode: 'presentation',
       });
       const sessionId = await store.startSession(session);
-      sessionLogger.setCurrentSessionId(sessionId);
-      currentSession.value = session;
+      if (sessionId) {
+        sessionLogger.setCurrentSessionId(sessionId);
+        currentSession.value = session;
 
-      // Start heartbeat updates
-      startHeartbeat();
+        // Start heartbeat updates
+        startHeartbeat();
+      }
     }
 
     // Create and start captioning service
