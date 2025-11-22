@@ -498,21 +498,19 @@
         </template>
         <div class="flex flex-col gap-4">
           <!-- Main Flow: Test & Presentation -->
-          <div
-            class="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 items-stretch"
-          >
+          <div class="controls-grid grid grid-cols-1 gap-3 items-stretch">
             <!-- Test in here -->
             <div class="flex flex-col gap-1">
               <span class="text-xs font-medium uppercase text-surface-500">
                 Quick check
               </span>
-              <div class="flex flex-col md:flex-row gap-2">
+              <div class="test-button-wrapper flex flex-col gap-2">
                 <Button
                   label="Test in here"
                   icon="pi pi-compass"
                   @click="startTest"
                   :disabled="state.isPresentationRunning || state.isTestRunning"
-                  class="w-full md:w-auto"
+                  class="test-button w-full"
                 />
               </div>
             </div>
@@ -522,9 +520,7 @@
               <span class="text-xs font-medium uppercase text-surface-500">
                 Live presentation
               </span>
-              <div
-                class="flex flex-col md:flex-row gap-2 md:items-stretch md:[&>button]:flex-1"
-              >
+              <div class="presentation-buttons-wrapper flex flex-col gap-2">
                 <Button
                   label="Presentation"
                   icon="pi pi-external-link"
@@ -1303,3 +1299,34 @@ onBeforeUnmount(() => {
   stopHeartbeat();
 });
 </script>
+
+<style scoped>
+/* Use explicit media queries to avoid conflicts with host page Tailwind */
+
+/* Medium layout - horizontal buttons within each section */
+@media (min-width: 768px) {
+  .test-button-wrapper {
+    flex-direction: row;
+  }
+
+  .test-button {
+    width: auto;
+  }
+
+  .presentation-buttons-wrapper {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .presentation-buttons-wrapper > button {
+    flex: 1;
+  }
+}
+
+/* Wide layout - two-column grid with sections side-by-side */
+@media (min-width: 1024px) {
+  .controls-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+}
+</style>
