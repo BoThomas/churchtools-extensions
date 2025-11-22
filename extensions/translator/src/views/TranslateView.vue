@@ -765,7 +765,7 @@ const presentationFonts = ref([
 
 // Computed
 const hasApiCredentials = computed(() => {
-  return !!store.settings.azureApiKey && !!store.settings.azureRegion;
+  return !!store.apiSettings.azureApiKey && !!store.apiSettings.azureRegion;
 });
 
 const inputsDisabled = computed(() => {
@@ -919,8 +919,8 @@ async function startTest() {
         onTranslated,
         onError,
       },
-      store.settings.azureApiKey!,
-      store.settings.azureRegion!,
+      store.apiSettings.azureApiKey,
+      store.apiSettings.azureRegion,
     );
 
     captioningService.start();
@@ -1219,8 +1219,8 @@ async function startRecording() {
         onTranslated,
         onError,
       },
-      store.settings.azureApiKey!,
-      store.settings.azureRegion!,
+      store.apiSettings.azureApiKey,
+      store.apiSettings.azureRegion,
     );
 
     captioningService.start();

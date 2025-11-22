@@ -9,7 +9,7 @@
         >
         <InputText
           id="api-key"
-          v-model="localSettings.azureApiKey"
+          v-model="localApiSettings.azureApiKey"
           type="password"
           placeholder="Enter your Azure Speech API key"
           class="w-full"
@@ -23,7 +23,7 @@
         <label for="api-region" class="font-medium text-sm">Azure Region</label>
         <InputText
           id="api-region"
-          v-model="localSettings.azureRegion"
+          v-model="localApiSettings.azureRegion"
           placeholder="e.g., westeurope, eastus"
           class="w-full"
         />
@@ -37,7 +37,7 @@
           label="Save Settings"
           icon="pi pi-save"
           @click="saveSettings"
-          :loading="store.settingsSaving"
+          :loading="store.apiSettingsSaving"
           :disabled="!isValid"
         />
         <Button
@@ -46,7 +46,7 @@
           severity="secondary"
           outlined
           @click="reloadSettings"
-          :loading="store.settingsLoading"
+          :loading="store.apiSettingsLoading"
         />
       </div>
 
@@ -91,40 +91,42 @@ import Message from '@churchtools-extensions/prime-volt/Message.vue';
 
 const store = useTranslatorStore();
 
-const localSettings = ref({ ...store.settings });
+const localApiSettings = ref({ ...store.apiSettings });
 const saveSuccess = ref(false);
 
-// Watch store settings changes
+// Watch store API settings changes
 watch(
-  () => store.settings,
-  (newSettings) => {
-    localSettings.value = { ...newSettings };
+  () => store.apiSettings,
+  (newApiSettings) => {
+    localApiSettings.value = { ...newApiSettings };
   },
   { deep: true },
 );
 
 const isValid = computed(() => {
-  return !!localSettings.value.azureApiKey && !!localSettings.value.azureRegion;
+  return (
+    !!localApiSettings.value.azureApiKey && !!localApiSettings.value.azureRegion
+  );
 });
 
 async function saveSettings() {
   try {
-    await store.saveSettings(localSettings.value);
+    await store.saveApiSettings(localApiSettings.value);
     saveSuccess.value = true;
     setTimeout(() => {
       saveSuccess.value = false;
     }, 3000);
   } catch (e) {
-    console.error('Failed to save settings', e);
+    console.error('Failed to save API settings', e);
   }
 }
 
 async function reloadSettings() {
   try {
-    await store.loadSettings();
-    localSettings.value = { ...store.settings };
+    await store.loadApiSettings();
+    localApiSettings.value = { ...store.apiSettings };
   } catch (e) {
-    console.error('Failed to reload settings', e);
+    console.error('Failed to reload API settings', e);
   }
 }
 </script>

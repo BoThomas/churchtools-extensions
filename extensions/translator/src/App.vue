@@ -98,8 +98,8 @@ async function init() {
     }
     user.value = await churchtoolsClient.get<Person>(`/whoami`);
 
-    // Load settings
-    await store.loadSettings();
+    // Load API settings and translation settings
+    await Promise.all([store.loadApiSettings(), store.loadSettings()]);
   } catch (e) {
     console.error('Failed to init', e);
   }

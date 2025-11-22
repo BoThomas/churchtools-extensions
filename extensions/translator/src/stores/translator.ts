@@ -10,11 +10,12 @@ import {
   type TranslationSession,
 } from '../services/sessionLogger';
 
-export interface TranslatorSettings {
-  // Azure Configuration
-  azureApiKey?: string;
-  azureRegion?: string;
+export interface ApiSettings {
+  azureApiKey: string;
+  azureRegion: string;
+}
 
+export interface TranslatorSettings {
   // Translation Options
   inputLanguage: { name: string; code: string };
   outputLanguage: { name: string; code: string };
@@ -63,6 +64,11 @@ export const useTranslatorStore = defineStore('translator', () => {
   // Initial loading state
   const initializing = ref(true);
 
+  // API Settings
+  const apiSettings = ref<ApiSettings>({ azureApiKey: '', azureRegion: '' });
+  const apiSettingsLoading = ref(false);
+  const apiSettingsSaving = ref(false);
+
   // Settings
   const settings = ref<TranslatorSettings>({ ...DEFAULT_SETTINGS });
   const settingsLoading = ref(false);
@@ -81,26 +87,80 @@ export const useTranslatorStore = defineStore('translator', () => {
   const error = ref<string | null>(null);
 
   // Categories
+  let apiSettingsCategory: PersistanceCategory<ApiSettings> | null = null;
   let settingsCategory: PersistanceCategory<TranslatorSettings> | null = null;
   let sessionsCategory: PersistanceCategory<TranslationSession> | null = null;
+
+  // Track initialization to prevent duplicate category creation during parallel calls
+  let categoriesInitializing: Promise<void> | null = null;
 
   /**
    * Initialize categories
    */
   async function ensureCategories() {
-    if (!settingsCategory) {
-      settingsCategory = await PersistanceCategory.init({
-        extensionkey: KEY,
-        categoryShorty: 'settings',
-        categoryName: 'Translator Settings',
-      });
+    // If already initializing, wait for that to complete
+    if (categoriesInitializing) {
+      await categoriesInitializing;
+      return;
     }
-    if (!sessionsCategory) {
-      sessionsCategory = await PersistanceCategory.init({
-        extensionkey: KEY,
-        categoryShorty: 'sessions',
-        categoryName: 'Translation Sessions',
-      });
+
+    // If all categories are already initialized, return early
+    if (apiSettingsCategory && settingsCategory && sessionsCategory) {
+      return;
+    }
+
+    // Start initialization
+    categoriesInitializing = (async () => {
+      if (!apiSettingsCategory) {
+        apiSettingsCategory = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'api-settings',
+          categoryName: 'API Configuration',
+        });
+      }
+      if (!settingsCategory) {
+        settingsCategory = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'settings',
+          categoryName: 'Translator Settings',
+        });
+      }
+      if (!sessionsCategory) {
+        sessionsCategory = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'sessions',
+          categoryName: 'Translation Sessions',
+        });
+      }
+    })();
+
+    await categoriesInitializing;
+    categoriesInitializing = null;
+  }
+
+  /**
+   * Load API settings from persistence
+   */
+  async function loadApiSettings() {
+    apiSettingsLoading.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!apiSettingsCategory) return;
+
+      const list = await apiSettingsCategory.list<ApiSettings>();
+      if (list.length > 0) {
+        // Use first API settings record
+        apiSettings.value = { ...list[0].value };
+      } else {
+        // No API settings yet, use empty defaults
+        apiSettings.value = { azureApiKey: '', azureRegion: '' };
+      }
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to load API settings';
+      console.error('loadApiSettings failed', e);
+    } finally {
+      apiSettingsLoading.value = false;
     }
   }
 
@@ -128,6 +188,36 @@ export const useTranslatorStore = defineStore('translator', () => {
     } finally {
       settingsLoading.value = false;
       initializing.value = false;
+    }
+  }
+
+  /**
+   * Save API settings to persistence
+   */
+  async function saveApiSettings(newApiSettings: ApiSettings) {
+    apiSettingsSaving.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!apiSettingsCategory) return;
+
+      const list = await apiSettingsCategory.list<ApiSettings>();
+
+      if (list.length > 0) {
+        // Update existing API settings
+        await apiSettingsCategory.update(list[0].id, newApiSettings);
+      } else {
+        // Create new API settings record
+        await apiSettingsCategory.create(newApiSettings);
+      }
+
+      apiSettings.value = { ...newApiSettings };
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to save API settings';
+      console.error('saveApiSettings failed', e);
+      throw e;
+    } finally {
+      apiSettingsSaving.value = false;
     }
   }
 
@@ -165,13 +255,7 @@ export const useTranslatorStore = defineStore('translator', () => {
    * Reset settings to defaults
    */
   async function resetSettings() {
-    // Preserve Azure credentials when resetting
-    const preservedSettings = {
-      ...DEFAULT_SETTINGS,
-      azureApiKey: settings.value.azureApiKey,
-      azureRegion: settings.value.azureRegion,
-    };
-    await saveSettings(preservedSettings);
+    await saveSettings({ ...DEFAULT_SETTINGS });
   }
 
   /**
@@ -502,6 +586,9 @@ export const useTranslatorStore = defineStore('translator', () => {
   return {
     // State
     initializing,
+    apiSettings,
+    apiSettingsLoading,
+    apiSettingsSaving,
     settings,
     settingsLoading,
     settingsSaving,
@@ -511,6 +598,10 @@ export const useTranslatorStore = defineStore('translator', () => {
     currentSessionId,
     currentSession,
     error,
+
+    // API Settings methods
+    loadApiSettings,
+    saveApiSettings,
 
     // Settings methods
     loadSettings,
