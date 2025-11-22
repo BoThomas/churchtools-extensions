@@ -1,7 +1,10 @@
 <template>
   <div class="space-y-6">
     <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
+    <div
+      v-if="dinnerStore.loading || participantStore.loading"
+      class="flex justify-center py-12"
+    >
       <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
     </div>
 
@@ -97,7 +100,6 @@ import ParticipantForm from '../components/ParticipantForm.vue';
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
 const toast = useToast();
-const loading = ref(true);
 const currentUser = ref<Person | null>(null);
 const showRegistrationDialog = ref(false);
 const selectedDinner = ref<CategoryValue<any> | null>(null);
@@ -114,8 +116,6 @@ onMounted(async () => {
     await Promise.all([dinnerStore.fetchAll(), participantStore.fetchAll()]);
   } catch (e) {
     console.error('Failed to load data', e);
-  } finally {
-    loading.value = false;
   }
 });
 

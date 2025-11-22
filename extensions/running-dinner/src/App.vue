@@ -16,11 +16,19 @@
   <div v-else class="min-h-screen flex flex-col">
     <div class="flex-1 p-4">
       <Tabs v-model:value="activeTab">
-        <TabList>
-          <Tab value="settings">Settings</Tab>
-          <Tab value="organizer">Organize</Tab>
-          <Tab value="participant">Participate</Tab>
-        </TabList>
+        <div class="flex items-center gap-2">
+          <TabList class="flex-1">
+            <Tab value="settings">Settings</Tab>
+            <Tab value="organizer">Organize</Tab>
+            <Tab value="participant">Participate</Tab>
+          </TabList>
+          <SecondaryButton
+            @click="refresh"
+            :disabled="refreshing"
+            :icon="refreshing ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"
+            label="Refresh"
+          />
+        </div>
         <TabPanels>
           <TabPanel value="settings">
             <SettingsView />
@@ -52,11 +60,17 @@ import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
 import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
 import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
 import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
+import { useParticipantStore } from './stores/participant';
+import { useGroupStore } from './stores/group';
+import { useRunningDinnerStore } from './stores/runningDinner';
+import { useRouteStore } from './stores/route';
 
 const activeTab = ref('participant');
 const initializing = ref(true);
+const refreshing = ref(false);
 
 declare const window: Window &
   typeof globalThis & {
@@ -79,6 +93,27 @@ async function init() {
     console.error('Failed to init', e);
   } finally {
     initializing.value = false;
+  }
+}
+
+async function refresh() {
+  refreshing.value = true;
+  try {
+    const participantStore = useParticipantStore();
+    const groupStore = useGroupStore();
+    const dinnerStore = useRunningDinnerStore();
+    const routeStore = useRouteStore();
+
+    await Promise.all([
+      participantStore.fetchAll(),
+      groupStore.fetchAll(),
+      dinnerStore.fetchAll(),
+      routeStore.fetchAll(),
+    ]);
+  } catch (e) {
+    console.error('Failed to refresh', e);
+  } finally {
+    refreshing.value = false;
   }
 }
 
