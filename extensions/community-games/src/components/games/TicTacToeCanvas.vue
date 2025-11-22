@@ -75,7 +75,8 @@ function draw() {
   ctx.stroke();
 
   // Cells
-  props.state.board.forEach((cell: string | null, i: number) => {
+  const board = props.state?.board ?? Array(9).fill(null);
+  board.forEach((cell: string | null, i: number) => {
     const x = (i % 3) * cellW;
     const y = Math.floor(i / 3) * cellH;
     const cx = x + cellW / 2;
@@ -135,15 +136,22 @@ function handleClick(e: MouseEvent) {
   const scaleX = canvas.value.width / rect.width;
   const scaleY = canvas.value.height / rect.height;
 
-  const cellX = Math.floor((x * scaleX) / (canvas.value.width / 3));
-  const cellY = Math.floor((y * scaleY) / (canvas.value.height / 3));
+  let cellX = Math.floor((x * scaleX) / (canvas.value.width / 3));
+  let cellY = Math.floor((y * scaleY) / (canvas.value.height / 3));
+
+  // Clamp to 0..2 to avoid out-of-range indices if clicked on border
+  cellX = Math.min(2, Math.max(0, cellX));
+  cellY = Math.min(2, Math.max(0, cellY));
   const index = cellY * 3 + cellX;
 
-  if (props.state.board[index] === null) {
+  const board = props.state?.board ?? [];
+  if (board[index] === null) {
     emit('vote', index);
   }
 }
 
 onMounted(draw);
-watch(() => [props.state, props.votes], draw, { deep: true });
+// Watch board and votes explicitly so we redraw when either changes.
+// Use deep where appropriate for nested changes (board array updates).
+watch([() => props.state?.board, () => props.votes], draw, { deep: true });
 </script>
