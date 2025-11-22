@@ -159,14 +159,37 @@ async function handleRegistrationSubmit(data: Omit<Participant, 'id'>) {
         life: 3000,
       });
     } else {
+      // Check if dinner is at max capacity
+      const dinner = selectedDinner.value?.value;
+      if (dinner) {
+        const confirmedCount = participantStore.getConfirmedByDinnerId(
+          selectedDinner.value!.id!,
+        ).length;
+
+        // If at capacity, set status to waitlist
+        if (confirmedCount >= dinner.maxParticipants) {
+          data.registrationStatus = 'waitlist';
+          toast.add({
+            severity: 'warn',
+            summary: 'Added to Waitlist',
+            detail:
+              'This dinner is at capacity. You have been added to the waitlist.',
+            life: 5000,
+          });
+        }
+      }
+
       // Create new registration
       await participantStore.create(data);
-      toast.add({
-        severity: 'success',
-        summary: 'Registered',
-        detail: 'You have been registered for this dinner',
-        life: 3000,
-      });
+
+      if (data.registrationStatus === 'confirmed') {
+        toast.add({
+          severity: 'success',
+          summary: 'Registered',
+          detail: 'You have been registered for this dinner',
+          life: 3000,
+        });
+      }
     }
     closeRegistrationDialog();
     // Refresh participant list

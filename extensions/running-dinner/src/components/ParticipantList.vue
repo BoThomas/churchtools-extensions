@@ -195,7 +195,6 @@ const filters = ref({
 
 const statusOptions = [
   { label: 'Confirmed', value: 'confirmed' },
-  { label: 'Pending', value: 'pending' },
   { label: 'Waitlist', value: 'waitlist' },
   { label: 'Cancelled', value: 'cancelled' },
 ];
@@ -250,7 +249,6 @@ function getStatusSeverity(
     'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast'
   > = {
     confirmed: 'success',
-    pending: 'warn',
     waitlist: 'secondary',
     cancelled: 'danger',
   };

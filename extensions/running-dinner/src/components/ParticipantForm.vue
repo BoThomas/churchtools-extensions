@@ -279,7 +279,7 @@ const formData = ref<Omit<Participant, 'id'>>({
   preferredPartners: [],
   preferredMeal: undefined,
   dietaryRestrictions: '',
-  registrationStatus: 'pending',
+  registrationStatus: 'confirmed',
   registeredAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });

@@ -28,11 +28,9 @@ export function createGroups(
   const warnings: string[] = [];
   const waitlistedParticipantIds: number[] = [];
 
-  // Filter out cancelled/waitlist participants
+  // Filter out cancelled/waitlist participants (only include confirmed)
   const activeParticipants = participants.filter(
-    (p) =>
-      p.value.registrationStatus === 'pending' ||
-      p.value.registrationStatus === 'confirmed',
+    (p) => p.value.registrationStatus === 'confirmed',
   );
 
   // Validate minimum participants

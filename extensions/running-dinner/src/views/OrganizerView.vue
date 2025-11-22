@@ -51,8 +51,8 @@
                   @click="publishDinner(dinner.id!)"
                 />
                 <Button
-                  label="View Details"
-                  icon="pi pi-eye"
+                  label="Manage"
+                  icon="pi pi-cog"
                   size="small"
                   outlined
                   @click="viewDetails(dinner)"

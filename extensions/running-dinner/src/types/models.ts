@@ -73,8 +73,11 @@ export type AfterParty = z.infer<typeof AfterPartySchema>;
 
 // ==================== Participant ====================
 
+// Registration status:
+// - 'confirmed': Participant is registered and confirmed (default for new registrations)
+// - 'waitlist': Participant exceeded max capacity and is on waitlist
+// - 'cancelled': Participant cancelled their registration
 export const RegistrationStatus = z.enum([
-  'pending',
   'confirmed',
   'waitlist',
   'cancelled',
@@ -107,7 +110,7 @@ export const ParticipantSchema = z.object({
   dietaryRestrictions: z.string().default(''),
 
   // Status
-  registrationStatus: RegistrationStatus.default('pending'),
+  registrationStatus: RegistrationStatus.default('confirmed'),
   groupId: z.number().optional(), // Assigned group (set after grouping)
 
   // Metadata

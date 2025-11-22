@@ -218,9 +218,7 @@ const selectedGroupNumber = ref<number | null>(null);
 
 const confirmedParticipants = computed(() => {
   return props.participants.filter(
-    (p) =>
-      p.value.registrationStatus === 'pending' ||
-      p.value.registrationStatus === 'confirmed',
+    (p) => p.value.registrationStatus === 'confirmed',
   );
 });
 

@@ -122,7 +122,10 @@ interface Participant {
   dietaryRestrictions: string; // Text field
 
   // Status
-  registrationStatus: 'pending' | 'confirmed' | 'waitlist' | 'cancelled';
+  // - 'confirmed': Default status for new registrations (auto-confirmed)
+  // - 'waitlist': Participant exceeded max capacity
+  // - 'cancelled': Participant cancelled their registration
+  registrationStatus: 'confirmed' | 'waitlist' | 'cancelled';
   groupId?: number; // Assigned group (set after grouping)
 
   // Metadata
