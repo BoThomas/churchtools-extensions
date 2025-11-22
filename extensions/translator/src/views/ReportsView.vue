@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-semibold">Usage Reports</h2>
       <div class="flex gap-2">
-        <Button
+        <SecondaryButton
           icon="pi pi-database"
           label="Add 100 Dummy Sessions"
           @click="addDummySessions"
@@ -325,6 +325,7 @@ import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Chart from 'primevue/chart';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
