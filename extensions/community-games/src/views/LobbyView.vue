@@ -1,8 +1,14 @@
 <template>
-  <div class="p-4 space-y-6">
+  <div class="space-y-6 p-4">
     <!-- Active Games Section -->
-    <div>
-      <h2 class="text-xl font-semibold mb-4">Active Games</h2>
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-bolt"></i>
+          <span class="font-semibold">Active Games</span>
+        </div>
+      </template>
+
       <div
         v-if="store.activeGames.length === 0"
         class="text-center text-surface-500 py-8"
@@ -30,30 +36,38 @@
           </template>
           <template #content>
             <div class="flex justify-between gap-4 mb-4">
-              <div
-                class="flex-1 p-2 bg-red-100 dark:bg-red-900/20 rounded text-center"
-              >
-                <div class="font-bold text-red-600 dark:text-red-400">
+              <div class="flex-1 text-center">
+                <div
+                  class="font-semibold text-sm mb-2 text-red-600 dark:text-red-400"
+                >
                   Red Team
                 </div>
-                <div class="text-2xl">{{ game.teams.red.length }}</div>
+                <Chip
+                  :label="String(game.teams.red.length)"
+                  severity="danger"
+                  size="small"
+                />
                 <div
                   v-if="isUserInTeam(game, 'red')"
-                  class="mt-2 text-sm font-semibold text-red-600 dark:text-red-400"
+                  class="mt-2 text-xs font-semibold text-red-600 dark:text-red-400"
                 >
                   You're on this team!
                 </div>
               </div>
-              <div
-                class="flex-1 p-2 bg-blue-100 dark:bg-blue-900/20 rounded text-center"
-              >
-                <div class="font-bold text-blue-600 dark:text-blue-400">
+              <div class="flex-1 text-center">
+                <div
+                  class="font-semibold text-sm mb-2 text-blue-600 dark:text-blue-400"
+                >
                   Blue Team
                 </div>
-                <div class="text-2xl">{{ game.teams.blue.length }}</div>
+                <Chip
+                  :label="String(game.teams.blue.length)"
+                  severity="info"
+                  size="small"
+                />
                 <div
                   v-if="isUserInTeam(game, 'blue')"
-                  class="mt-2 text-sm font-semibold text-blue-600 dark:text-blue-400"
+                  class="mt-2 text-xs font-semibold text-blue-600 dark:text-blue-400"
                 >
                   You're on this team!
                 </div>
@@ -70,86 +84,81 @@
           </template>
         </Card>
       </div>
-    </div>
+    </Fieldset>
 
-    <!-- Past Games Section -->
-    <div>
-      <h2 class="text-xl font-semibold mb-4">Past Games</h2>
-      <div
-        v-if="store.finishedGames.length === 0"
-        class="text-center text-surface-500 py-8"
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-history"></i>
+          <span class="font-semibold">Past Games</span>
+        </div>
+      </template>
+
+      <DataTable
+        :value="store.finishedGames"
+        dataKey="id"
+        stripedRows
+        removableSort
+        responsiveLayout="scroll"
       >
-        No finished games yet.
-      </div>
+        <template #empty>
+          <Message severity="secondary" icon="pi pi-clock" class="w-full">
+            No finished games yet.
+          </Message>
+        </template>
 
-      <div v-else class="space-y-3 max-h-96 overflow-y-auto">
-        <Card
-          v-for="game in store.finishedGames"
-          :key="game.id"
-          class="relative overflow-hidden"
-        >
-          <template #title>
-            <div class="flex justify-between items-start">
-              <span>{{ game.name }}</span>
-              <Badge
-                v-if="game.winner"
-                :value="`${game.winner.toUpperCase()} WON`"
-                :severity="game.winner === 'red' ? 'danger' : 'info'"
-              />
-              <Badge v-else value="NO WINNER" severity="secondary" />
+        <Column field="name" header="Game" sortable>
+          <template #body="{ data }">
+            <div class="font-semibold">{{ data.name }}</div>
+            <div class="text-xs text-surface-500">{{ data.type }}</div>
+          </template>
+        </Column>
+
+        <Column field="winner" header="Winner" sortable style="width: 8rem">
+          <template #body="{ data }">
+            <Badge
+              v-if="data.winner"
+              :value="`${data.winner.toUpperCase()} WON`"
+              :severity="data.winner === 'red' ? 'danger' : 'info'"
+            />
+            <Badge v-else value="No Winner" severity="secondary" />
+          </template>
+        </Column>
+
+        <Column header="Your Team" style="width: 8rem">
+          <template #body="{ data }">
+            <Chip
+              v-if="getUserTeam(data)"
+              :label="getUserTeam(data) === 'red' ? 'Red' : 'Blue'"
+              :severity="getUserTeam(data) === 'red' ? 'danger' : 'info'"
+              size="small"
+            />
+            <span v-else class="text-xs text-surface-500 italic"
+              >Spectator</span
+            >
+          </template>
+        </Column>
+
+        <Column header="Result" style="width: 8rem">
+          <template #body="{ data }">
+            <Chip
+              :label="getResultLabel(data)"
+              :severity="getResultSeverity(data)"
+              size="small"
+            />
+          </template>
+        </Column>
+
+        <Column header="Teams" style="width: 10rem">
+          <template #body="{ data }">
+            <div class="flex flex-col text-xs">
+              <span>Red: {{ data.teams.red.length }}</span>
+              <span>Blue: {{ data.teams.blue.length }}</span>
             </div>
           </template>
-          <template #content>
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between items-center">
-                <span class="text-surface-500 dark:text-surface-400"
-                  >Your Team:</span
-                >
-                <Badge
-                  v-if="getUserTeam(game)"
-                  :value="getUserTeam(game)!.toUpperCase()"
-                  :severity="getUserTeam(game) === 'red' ? 'danger' : 'info'"
-                />
-                <span
-                  v-else
-                  class="text-surface-400 dark:text-surface-500 italic"
-                  >Spectator</span
-                >
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-surface-500 dark:text-surface-400"
-                  >Result:</span
-                >
-                <span
-                  v-if="game.winner && getUserTeam(game)"
-                  :class="
-                    game.winner === getUserTeam(game)
-                      ? 'text-green-600 dark:text-green-400 font-semibold'
-                      : 'text-red-600 dark:text-red-400'
-                  "
-                >
-                  {{ game.winner === getUserTeam(game) ? 'Victory' : 'Defeat' }}
-                </span>
-                <span
-                  v-else
-                  class="text-surface-400 dark:text-surface-500 italic"
-                  >{{ game.winner ? 'Not Playing' : 'Draw' }}</span
-                >
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-surface-500 dark:text-surface-400"
-                  >Teams:</span
-                >
-                <span class="text-xs">
-                  Red: {{ game.teams.red.length }} | Blue:
-                  {{ game.teams.blue.length }}
-                </span>
-              </div>
-            </div>
-          </template>
-        </Card>
-      </div>
-    </div>
+        </Column>
+      </DataTable>
+    </Fieldset>
   </div>
 </template>
 
@@ -158,6 +167,11 @@ import { useGamesStore, type Game } from '../stores/games';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
+import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
+import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
+import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import Column from 'primevue/column';
 
 const store = useGamesStore();
 
@@ -186,5 +200,20 @@ function getUserTeam(game: Game): 'red' | 'blue' | null {
   if (game.teams.red.includes(store.currentUser.id)) return 'red';
   if (game.teams.blue.includes(store.currentUser.id)) return 'blue';
   return null;
+}
+
+function getResultLabel(game: Game): string {
+  const userTeam = getUserTeam(game);
+
+  if (!game.winner) return 'Draw';
+  if (!userTeam) return 'Not Playing';
+  if (game.winner === userTeam) return 'Victory';
+  return 'Defeat';
+}
+
+function getResultSeverity(game: Game): 'success' | 'danger' | 'secondary' {
+  const userTeam = getUserTeam(game);
+  if (!game.winner || !userTeam) return 'secondary';
+  return game.winner === userTeam ? 'success' : 'danger';
 }
 </script>
