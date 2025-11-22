@@ -114,7 +114,7 @@ export const useGamesStore = defineStore('games', () => {
     const newGame: Omit<Game, 'id'> = {
       type,
       name,
-      status: 'lobby',
+      status: 'active', // Start game immediately after creation
       teams, // Use automatically divided teams
       state: manager.getDefaultState(),
       config: config ?? manager.getDefaultConfig(),

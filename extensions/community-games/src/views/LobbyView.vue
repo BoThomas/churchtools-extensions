@@ -51,10 +51,7 @@
           </div>
         </div>
 
-        <div v-if="game.status === 'lobby'" class="text-center">
-          <Button label="Start Game" @click="store.startGame(game.id)" />
-        </div>
-        <div v-else class="text-center">
+        <div class="text-center">
           <Button
             label="Go to Game"
             severity="secondary"
