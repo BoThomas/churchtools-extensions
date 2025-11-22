@@ -1,8 +1,8 @@
 {
   "name": "churchtools-translator",
   "private": true,
-  "version": "0.1.0",
-  "description": "Real-time translation extension for ChurchTools presentations",
+  "version": "1.0.0",
+  "description": "Real-time speech-to-text translation extension for ChurchTools",
   "type": "module",
   "repository": {
     "type": "git",
