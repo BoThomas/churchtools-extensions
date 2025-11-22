@@ -217,6 +217,12 @@ onMounted(() => {
   loadSettings();
   checkExistingData();
 
+  // Hide the outer navigation element
+  const navigation = document.getElementById('navigation');
+  if (navigation) {
+    navigation.style.display = 'none';
+  }
+
   // Listen for storage changes from the control window
   window.addEventListener('storage', handleStorageEvent);
 
@@ -236,6 +242,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('storage', handleStorageEvent);
+
+  // Restore the navigation element visibility
+  const navigation = document.getElementById('navigation');
+  if (navigation) {
+    navigation.style.display = '';
+  }
 });
 </script>
 
