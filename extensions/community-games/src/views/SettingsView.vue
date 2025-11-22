@@ -89,7 +89,7 @@
               No active games
             </p>
           </div>
-          <div v-else class="space-y-2">
+          <div v-else class="space-y-2 max-h-96 overflow-y-auto">
             <div
               v-for="game in store.activeGames"
               :key="game.id"
@@ -134,7 +134,7 @@
               No finished games
             </p>
           </div>
-          <div v-else class="space-y-2">
+          <div v-else class="space-y-2 max-h-96 overflow-y-auto">
             <div
               v-for="game in store.finishedGames"
               :key="game.id"
