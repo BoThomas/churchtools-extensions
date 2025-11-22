@@ -53,7 +53,7 @@ This document outlines the requirements for the running dinner extensions for ch
     - the algorithm should try to
       - respect preferred meals
   - after meals and routes are assigned, the organizer can publish the groups and routes
-    - participants get an email with their group members, meal locations and times, as well as other info about the running dinner and a list of food allergies of their guests
+    - participants get an email with their group members, meal locations and times, as well as other info about the running dinner and a list of food allergies of their guests, maybe use google maps route links or sth
 
 ## Notes
 
@@ -63,7 +63,3 @@ This document outlines the requirements for the running dinner extensions for ch
 - use the existing user data from churchtools
 - use the existing group data from churchtools
   - would be cool to create events based on existing groups
-
-## ideas
-
-- dont use static organizer and participant roles, but create dynamic roles for each running dinner, so every user could be an organizer for one running dinner and a participant for another
