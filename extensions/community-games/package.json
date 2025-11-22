@@ -1,7 +1,7 @@
 {
   "name": "churchtools-community-games",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Community games extension for ChurchTools",
   "type": "module",
   "repository": {
