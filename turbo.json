@@ -14,7 +14,8 @@
     },
     "deploy": {
       "dependsOn": ["build"],
-      "outputs": ["../../releases/**"]
+      "outputs": ["../../releases/**"],
+      "cache": false
     },
     "format": {
       "outputs": [],
