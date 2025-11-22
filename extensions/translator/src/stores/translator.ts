@@ -809,19 +809,19 @@ export const useTranslatorStore = defineStore('translator', () => {
           'completed',
           'completed',
           'running',
+          'paused',
           'error',
         ];
         const status = statuses[Math.floor(Math.random() * statuses.length)];
 
-        // Simulate some sessions with pauses (30% chance)
-        const hasPaused = Math.random() < 0.3;
+        // Simulate some sessions with pauses (30% chance for completed, always for paused)
+        const hasPaused = status === 'paused' || Math.random() < 0.3;
         const pausedDurationMinutes = hasPaused
           ? Math.floor(Math.random() * Math.min(durationMinutes * 0.4, 30))
           : 0;
 
-        // 10% chance session is currently paused (only for running sessions)
-        const isCurrentlyPaused =
-          status === 'running' && Math.random() < 0.1 && hasPaused;
+        // Currently paused sessions should have pausedAt timestamp
+        const isPaused = status === 'paused';
 
         const session: TranslationSession = {
           userId: user.id,
@@ -830,12 +830,12 @@ export const useTranslatorStore = defineStore('translator', () => {
           startTime: start.toISOString(),
           endTime: status === 'completed' ? end.toISOString() : undefined,
           lastHeartbeat:
-            status === 'running'
+            status === 'running' || status === 'paused'
               ? new Date(
                   start.getTime() + (durationMinutes - 1) * 60 * 1000,
                 ).toISOString()
               : undefined,
-          pausedAt: isCurrentlyPaused
+          pausedAt: isPaused
             ? new Date(
                 start.getTime() + (durationMinutes - 5) * 60 * 1000,
               ).toISOString()

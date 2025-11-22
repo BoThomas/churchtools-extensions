@@ -12,7 +12,7 @@ export interface TranslationSession {
   inputLanguage: string; // e.g., "de-DE"
   outputLanguage: string; // e.g., "en"
   mode: 'presentation' | 'test';
-  status: 'running' | 'completed' | 'error' | 'abandoned';
+  status: 'running' | 'paused' | 'completed' | 'error' | 'abandoned';
 }
 
 export interface SessionCreateData {
@@ -108,6 +108,7 @@ export class SessionLogger {
     return {
       ...session,
       pausedAt: new Date().toISOString(),
+      status: 'paused',
     };
   }
 
@@ -130,6 +131,7 @@ export class SessionLogger {
       pausedAt: undefined,
       pausedDurationMinutes: currentPausedDuration + pauseDurationMinutes,
       lastHeartbeat: now.toISOString(),
+      status: 'running',
     };
   }
 
