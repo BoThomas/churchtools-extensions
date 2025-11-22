@@ -29,7 +29,7 @@
               v-if="game.currentTurn === 'red' && game.status === 'active'"
               class="text-center text-red-600 font-bold animate-pulse"
             >
-              YOUR TURN
+              RED'S TURN
             </div>
           </template>
         </Card>
@@ -67,7 +67,7 @@
               v-if="game.currentTurn === 'blue' && game.status === 'active'"
               class="text-center text-blue-600 font-bold animate-pulse"
             >
-              YOUR TURN
+              BLUE'S TURN
             </div>
           </template>
         </Card>
