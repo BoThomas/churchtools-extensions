@@ -77,13 +77,45 @@ export const useGamesStore = defineStore('games', () => {
     }
   }
 
+  async function fetchAllUsers(): Promise<Person[]> {
+    try {
+      // ChurchTools API returns persons directly as an array
+      const persons = await churchtoolsClient.get<Person[]>('/persons');
+      return persons || [];
+    } catch (e) {
+      console.error('Failed to fetch users', e);
+      return [];
+    }
+  }
+
+  function divideIntoTeams(userIds: number[]): {
+    red: number[];
+    blue: number[];
+  } {
+    // Shuffle array randomly
+    const shuffled = [...userIds].sort(() => Math.random() - 0.5);
+
+    // Divide into two roughly equal teams
+    const midpoint = Math.ceil(shuffled.length / 2);
+    return {
+      red: shuffled.slice(0, midpoint),
+      blue: shuffled.slice(midpoint),
+    };
+  }
+
   async function createGame(name: string, type: GameType, config: GameConfig) {
     const manager = getManager(type);
+
+    // Fetch all users and divide into teams
+    const allUsers = await fetchAllUsers();
+    const userIds = allUsers.map((user) => user.id);
+    const teams = divideIntoTeams(userIds);
+
     const newGame: Omit<Game, 'id'> = {
       type,
       name,
       status: 'lobby',
-      teams: { red: [], blue: [] },
+      teams, // Use automatically divided teams
       state: manager.getDefaultState(),
       config: config ?? manager.getDefaultConfig(),
       votes: {},
@@ -98,30 +130,7 @@ export const useGamesStore = defineStore('games', () => {
     return savedGame;
   }
 
-  async function joinGame(gameId: string, team: 'red' | 'blue') {
-    const gameIndex = games.value.findIndex((g) => g.id === gameId);
-    if (gameIndex === -1 || !currentUser.value) return;
-
-    const game = games.value[gameIndex];
-
-    // Remove from other team if present
-    game.teams.red = game.teams.red.filter(
-      (id: number) => id !== currentUser.value!.id,
-    );
-    game.teams.blue = game.teams.blue.filter(
-      (id: number) => id !== currentUser.value!.id,
-    );
-
-    // Add to new team
-    game.teams[team].push(currentUser.value.id);
-
-    // Update persistence
-    const manager = getManager(game.type);
-    const updated = await manager.update(game.id, game);
-    if (updated) {
-      games.value[gameIndex] = updated;
-    }
-  }
+  // joinGame removed - teams are now automatically assigned at game creation
 
   async function startGame(gameId: string) {
     const gameIndex = games.value.findIndex((g: Game) => g.id === gameId);
@@ -218,7 +227,6 @@ export const useGamesStore = defineStore('games', () => {
     currentUser,
     init,
     createGame,
-    joinGame,
     startGame,
     deleteGame,
     castVote,

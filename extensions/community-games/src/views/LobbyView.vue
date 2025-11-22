@@ -28,14 +28,12 @@
           >
             <div class="font-bold text-red-600 dark:text-red-400">Red Team</div>
             <div class="text-2xl">{{ game.teams.red.length }}</div>
-            <Button
-              label="Join Red"
-              severity="danger"
-              size="small"
-              class="w-full mt-2"
-              @click="store.joinGame(game.id, 'red')"
-              :disabled="isUserInTeam(game, 'red')"
-            />
+            <div
+              v-if="isUserInTeam(game, 'red')"
+              class="mt-2 text-sm font-semibold text-red-600 dark:text-red-400"
+            >
+              You're on this team!
+            </div>
           </div>
           <div
             class="flex-1 p-2 bg-blue-100 dark:bg-blue-900/20 rounded text-center"
@@ -44,14 +42,12 @@
               Blue Team
             </div>
             <div class="text-2xl">{{ game.teams.blue.length }}</div>
-            <Button
-              label="Join Blue"
-              severity="info"
-              size="small"
-              class="w-full mt-2"
-              @click="store.joinGame(game.id, 'blue')"
-              :disabled="isUserInTeam(game, 'blue')"
-            />
+            <div
+              v-if="isUserInTeam(game, 'blue')"
+              class="mt-2 text-sm font-semibold text-blue-600 dark:text-blue-400"
+            >
+              You're on this team!
+            </div>
           </div>
         </div>
 
