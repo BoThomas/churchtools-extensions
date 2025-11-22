@@ -1,90 +1,164 @@
 <template>
-  <div class="p-4 flex flex-col items-center gap-6">
+  <div class="p-6 flex flex-col items-center gap-6">
     <div v-if="!game" class="text-center">
-      <p>Game not found</p>
-      <Button label="Back to Lobby" @click="$emit('back')" />
+      <Message severity="warn">Game not found</Message>
+      <Button label="Back to Lobby" class="mt-4" @click="$emit('back')" />
     </div>
 
     <template v-else>
-      <div class="w-full max-w-4xl flex justify-between items-center">
+      <!-- Header with Back Button -->
+      <div class="w-full max-w-2xl">
         <Button
           icon="pi pi-arrow-left"
-          label="Lobby"
+          label="Back to Lobby"
           text
           @click="$emit('back')"
         />
-        <h1 class="text-2xl font-bold">{{ game.name }}</h1>
-        <Badge :value="game.status" />
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
-        <!-- Red Team -->
-        <Card class="h-full border-t-4 border-red-500">
-          <template #title>Red Team</template>
-          <template #content>
-            <div class="text-4xl font-bold text-center mb-4">
-              {{ game.teams.red.length }}
-            </div>
-            <div
-              v-if="game.currentTurn === 'red' && game.status === 'active'"
-              class="text-center text-red-600 font-bold animate-pulse"
-            >
-              RED'S TURN
-            </div>
-          </template>
-        </Card>
+      <!-- Game Title and Status -->
+      <div class="text-center">
+        <h1 class="text-3xl font-bold mb-2">{{ game.name }}</h1>
+        <Badge
+          :value="game.status"
+          :severity="
+            game.status === 'active'
+              ? 'success'
+              : game.status === 'finished'
+                ? 'secondary'
+                : 'info'
+          "
+        />
+      </div>
 
-        <!-- Game Board -->
-        <div class="flex flex-col items-center justify-center">
-          <TicTacToeCanvas
-            v-if="game.type === 'tictactoe'"
-            :state="game.state"
-            :votes="game.votes"
-            :current-turn="game.currentTurn"
-            :my-team="myTeam"
-            @vote="handleVote"
-          />
-
-          <div v-if="game.winner" class="mt-4 text-2xl font-bold">
-            <span v-if="game.winner === 'draw'">It's a Draw!</span>
-            <span
-              v-else
-              :class="game.winner === 'red' ? 'text-red-500' : 'text-blue-500'"
-            >
-              {{ game.winner.toUpperCase() }} WINS!
-            </span>
+      <!-- Current Turn Indicator -->
+      <Card
+        v-if="game.status === 'active' && !game.winner"
+        class="w-full max-w-md"
+      >
+        <template #content>
+          <div class="text-center">
+            <div class="flex items-center justify-center gap-3 mb-2">
+              <div
+                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2"
+                :class="
+                  game.currentTurn === 'red'
+                    ? 'bg-red-500 dark:bg-red-600 text-white'
+                    : 'bg-blue-500 dark:bg-blue-600 text-white'
+                "
+              >
+                {{ game.currentTurn.toUpperCase() + ' TEAM' }}
+              </div>
+              <span class="text-lg font-semibold">is playing</span>
+            </div>
+            <div class="flex items-center justify-center gap-2 mt-3">
+              <ProgressBar
+                :value="(currentVoteCount / game.config.voteThreshold) * 100"
+                class="w-48"
+                :show-value="false"
+              />
+              <span class="text-sm text-surface-600 dark:text-surface-400">
+                {{ currentVoteCount }} / {{ game.config.voteThreshold }} votes
+              </span>
+            </div>
           </div>
-        </div>
+        </template>
+      </Card>
 
-        <!-- Blue Team -->
-        <Card class="h-full border-t-4 border-blue-500">
-          <template #title>Blue Team</template>
-          <template #content>
-            <div class="text-4xl font-bold text-center mb-4">
-              {{ game.teams.blue.length }}
+      <!-- Winner Message -->
+      <Card v-if="game.winner" class="w-full max-w-md">
+        <template #content>
+          <div class="text-center">
+            <div v-if="game.winner === 'draw'" class="text-2xl font-bold">
+              🤝 It's a Draw!
             </div>
-            <div
-              v-if="game.currentTurn === 'blue' && game.status === 'active'"
-              class="text-center text-blue-600 font-bold animate-pulse"
-            >
-              BLUE'S TURN
+            <div v-else class="text-2xl font-bold">
+              <div
+                class="inline-flex items-center rounded-2xl px-4 py-3 text-base gap-2"
+                :class="
+                  game.winner === 'red'
+                    ? 'bg-red-500 dark:bg-red-600 text-white'
+                    : 'bg-blue-500 dark:bg-blue-600 text-white'
+                "
+              >
+                {{ game.winner.toUpperCase() + ' TEAM WINS!' }}
+              </div>
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <!-- Game Board -->
+      <div class="flex flex-col items-center">
+        <TicTacToeCanvas
+          v-if="game.type === 'tictactoe'"
+          :state="game.state"
+          :votes="game.votes"
+          :current-turn="game.currentTurn"
+          :my-team="myTeam"
+          @vote="handleVote"
+        />
+      </div>
+
+      <!-- Team Info -->
+      <div class="flex gap-4 w-full max-w-md">
+        <Card class="flex-1">
+          <template #content>
+            <div class="text-center">
+              <div
+                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-red-500 dark:bg-red-600 text-white mb-2"
+              >
+                RED TEAM
+              </div>
+              <div class="text-3xl font-bold">
+                {{ game.teams.red.length }}
+              </div>
+              <div class="text-sm text-surface-500">players</div>
+            </div>
+          </template>
+        </Card>
+
+        <Card class="flex-1">
+          <template #content>
+            <div class="text-center">
+              <div
+                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2 bg-blue-500 dark:bg-blue-600 text-white mb-2"
+              >
+                BLUE TEAM
+              </div>
+              <div class="text-3xl font-bold">
+                {{ game.teams.blue.length }}
+              </div>
+              <div class="text-sm text-surface-500">players</div>
             </div>
           </template>
         </Card>
       </div>
 
-      <div class="text-center text-surface-500">
-        <p>Vote Threshold: {{ game.config.voteThreshold }} votes needed</p>
-        <p v-if="myTeam">
-          You are on team:
-          <span
-            class="font-bold"
-            :class="myTeam === 'red' ? 'text-red-500' : 'text-blue-500'"
-            >{{ myTeam.toUpperCase() }}</span
-          >
-        </p>
-        <p v-else>You are spectating</p>
-      </div>
+      <!-- Player Status -->
+      <Card class="w-full max-w-md">
+        <template #content>
+          <div class="text-center text-surface-600 dark:text-surface-400">
+            <p v-if="myTeam">
+              You are playing on
+              <span
+                class="inline-flex items-center rounded-2xl px-3 py-2 gap-2"
+                :class="
+                  myTeam === 'red'
+                    ? 'bg-red-500 dark:bg-red-600 text-white'
+                    : 'bg-blue-500 dark:bg-blue-600 text-white'
+                "
+              >
+                {{ myTeam.toUpperCase() + ' TEAM' }}
+              </span>
+            </p>
+            <p v-else class="flex items-center justify-center gap-2">
+              <i class="pi pi-eye"></i>
+              <span>You are spectating this game</span>
+            </p>
+          </div>
+        </template>
+      </Card>
     </template>
   </div>
 </template>
@@ -96,6 +170,8 @@ import TicTacToeCanvas from '../components/games/TicTacToeCanvas.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import ProgressBar from '@churchtools-extensions/prime-volt/ProgressBar.vue';
 
 const props = defineProps<{
   gameId: string;
@@ -114,6 +190,11 @@ const myTeam = computed(() => {
   if (game.value.teams.red.includes(store.currentUser.id)) return 'red';
   if (game.value.teams.blue.includes(store.currentUser.id)) return 'blue';
   return null;
+});
+
+const currentVoteCount = computed(() => {
+  if (!game.value) return 0;
+  return Object.keys(game.value.votes).length;
 });
 
 function handleVote(index: number) {

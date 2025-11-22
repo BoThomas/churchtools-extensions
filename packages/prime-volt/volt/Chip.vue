@@ -5,6 +5,7 @@
     :ptOptions="{
       mergeProps: ptViewMerge,
     }"
+    v-bind="$attrs"
   >
     <template #removeicon="{ removeCallback, keydownCallback }">
       <TimesCircleIcon
@@ -34,6 +35,10 @@ interface Props extends /* @vue-ignore */ ChipProps {
 }
 const props = withDefaults(defineProps<Props>(), {
   size: 'normal',
+});
+
+defineOptions({
+  inheritAttrs: false,
 });
 
 const theme = computed<ChipPassThroughOptions>(() => {

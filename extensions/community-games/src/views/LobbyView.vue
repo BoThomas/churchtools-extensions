@@ -73,11 +73,11 @@
                 class="flex items-center justify-around gap-4 py-3 bg-surface-50 dark:bg-surface-800/50 rounded-lg"
               >
                 <div class="flex items-center gap-2">
-                  <Chip
-                    :label="String(game.teams.red.length)"
-                    severity="danger"
-                    size="small"
-                  />
+                  <div
+                    class="inline-flex items-center rounded-2xl px-2 py-1 text-xs gap-1 bg-red-500 dark:bg-red-600 text-white"
+                  >
+                    {{ game.teams.red.length }}
+                  </div>
                   <span
                     class="text-xs font-medium text-red-600 dark:text-red-400"
                     >Red</span
@@ -89,11 +89,11 @@
                     class="text-xs font-medium text-blue-600 dark:text-blue-400"
                     >Blue</span
                   >
-                  <Chip
-                    :label="String(game.teams.blue.length)"
-                    severity="info"
-                    size="small"
-                  />
+                  <div
+                    class="inline-flex items-center rounded-2xl px-2 py-1 text-xs gap-1 bg-blue-500 dark:bg-blue-600 text-white"
+                  >
+                    {{ game.teams.blue.length }}
+                  </div>
                 </div>
               </div>
 
