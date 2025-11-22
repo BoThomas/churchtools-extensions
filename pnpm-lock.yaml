@@ -32,6 +32,9 @@ importers:
 
   extensions/running-dinner:
     dependencies:
+      '@churchtools-extensions/build-tools':
+        specifier: workspace:*
+        version: link:../../packages/build-tools
       '@churchtools-extensions/ct-utils':
         specifier: workspace:*
         version: link:../../packages/ct-utils
@@ -81,6 +84,9 @@ importers:
 
   extensions/translator:
     dependencies:
+      '@churchtools-extensions/build-tools':
+        specifier: workspace:*
+        version: link:../../packages/build-tools
       '@churchtools-extensions/ct-utils':
         specifier: workspace:*
         version: link:../../packages/ct-utils
@@ -133,6 +139,8 @@ importers:
       '@churchtools/churchtools-client':
         specifier: ^1.4.2
         version: 1.4.2
+
+  packages/build-tools: {}
 
   packages/ct-utils:
     dependencies:
