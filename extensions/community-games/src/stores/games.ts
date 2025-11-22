@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { PersistanceCategory } from '@churchtools-extensions/persistance';
 import { KEY } from '../config';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
+import { GameManager } from '../gameManagers/GameManager';
+import { TicTacToeManager } from '../gameManagers/TicTacToeManager';
 
 export type GameType = 'tictactoe';
 
@@ -12,10 +13,13 @@ export interface GameConfig {
 }
 
 export interface GameState {
-  board: (string | null)[]; // 9 cells for TicTacToe
+  board?: (string | null)[]; // 9 cells for TicTacToe (optional for extensibility)
 }
 
-export interface Game {
+export interface Game<
+  TState extends GameState = GameState,
+  TConfig extends GameConfig = GameConfig,
+> {
   id: string; // This will be the persistence ID
   type: GameType;
   name: string;
@@ -24,8 +28,8 @@ export interface Game {
     red: number[]; // User IDs
     blue: number[]; // User IDs
   };
-  state: GameState;
-  config: GameConfig;
+  state: TState;
+  config: TConfig;
   votes: Record<string, number>; // userId -> move index
   currentTurn: 'red' | 'blue';
   winner?: 'red' | 'blue' | 'draw';
@@ -37,15 +41,20 @@ export const useGamesStore = defineStore('games', () => {
   const initializing = ref(true);
   const currentUser = ref<Person | null>(null);
 
-  // Persistence categories
-  const tictactoeCategory = new PersistanceCategory<Game>(
-    KEY,
-    'games-tictactoe',
-  );
+  // Game managers registry
+  const managers = new Map<GameType, GameManager>();
 
   const activeGames = computed(() =>
     games.value.filter((g: Game) => g.status !== 'finished'),
   );
+
+  function getManager(type: GameType): GameManager {
+    const manager = managers.get(type);
+    if (!manager) {
+      throw new Error(`No manager found for game type: ${type}`);
+    }
+    return manager;
+  }
 
   async function init() {
     initializing.value = true;
@@ -53,8 +62,13 @@ export const useGamesStore = defineStore('games', () => {
       // Load user
       currentUser.value = await churchtoolsClient.get<Person>('/whoami');
 
-      // Load games
-      const tictactoeGames = await tictactoeCategory.getAll();
+      // Initialize managers
+      const tictactoeManager = new TicTacToeManager(KEY);
+      await tictactoeManager.init(KEY);
+      managers.set('tictactoe', tictactoeManager);
+
+      // Load games from all managers
+      const tictactoeGames = await tictactoeManager.getAll();
       games.value = [...tictactoeGames];
     } catch (e) {
       console.error('Failed to init games store', e);
@@ -64,26 +78,24 @@ export const useGamesStore = defineStore('games', () => {
   }
 
   async function createGame(name: string, type: GameType, config: GameConfig) {
+    const manager = getManager(type);
     const newGame: Omit<Game, 'id'> = {
       type,
       name,
       status: 'lobby',
       teams: { red: [], blue: [] },
-      state: { board: Array(9).fill(null) },
-      config,
+      state: manager.getDefaultState(),
+      config: config ?? manager.getDefaultConfig(),
       votes: {},
       currentTurn: 'red', // Red starts
       createdAt: new Date().toISOString(),
     };
 
-    if (type === 'tictactoe') {
-      const savedGame = await tictactoeCategory.create(newGame);
-      if (savedGame) {
-        games.value.push(savedGame);
-      }
-      return savedGame;
+    const savedGame = await manager.create(newGame);
+    if (savedGame) {
+      games.value.push(savedGame);
     }
-    return null;
+    return savedGame;
   }
 
   async function joinGame(gameId: string, team: 'red' | 'blue') {
@@ -104,11 +116,10 @@ export const useGamesStore = defineStore('games', () => {
     game.teams[team].push(currentUser.value.id);
 
     // Update persistence
-    if (game.type === 'tictactoe') {
-      const updated = await tictactoeCategory.update(game.id, game);
-      if (updated) {
-        games.value[gameIndex] = updated;
-      }
+    const manager = getManager(game.type);
+    const updated = await manager.update(game.id, game);
+    if (updated) {
+      games.value[gameIndex] = updated;
     }
   }
 
@@ -119,11 +130,10 @@ export const useGamesStore = defineStore('games', () => {
     const game = games.value[gameIndex];
     game.status = 'active';
 
-    if (game.type === 'tictactoe') {
-      const updated = await tictactoeCategory.update(game.id, game);
-      if (updated) {
-        games.value[gameIndex] = updated;
-      }
+    const manager = getManager(game.type);
+    const updated = await manager.update(game.id, game);
+    if (updated) {
+      games.value[gameIndex] = updated;
     }
   }
 
@@ -132,10 +142,9 @@ export const useGamesStore = defineStore('games', () => {
     if (gameIndex === -1) return;
 
     const game = games.value[gameIndex];
-    if (game.type === 'tictactoe') {
-      await tictactoeCategory.delete(game.id);
-      games.value.splice(gameIndex, 1);
-    }
+    const manager = getManager(game.type);
+    await manager.delete(game.id);
+    games.value.splice(gameIndex, 1);
   }
 
   async function castVote(gameId: string, moveIndex: number) {
@@ -157,7 +166,6 @@ export const useGamesStore = defineStore('games', () => {
     game.votes[currentUser.value.id.toString()] = moveIndex;
 
     // Check threshold
-    const teamSize = game.teams[userTeam].length;
     const votesForMove = Object.values(game.votes).filter(
       (v) => v === moveIndex,
     ).length;
@@ -167,29 +175,29 @@ export const useGamesStore = defineStore('games', () => {
       await makeMove(game, moveIndex, userTeam);
     } else {
       // Just save the vote
-      if (game.type === 'tictactoe') {
-        const updated = await tictactoeCategory.update(game.id, game);
-        if (updated) {
-          games.value[gameIndex] = updated;
-        }
+      const manager = getManager(game.type);
+      const updated = await manager.update(game.id, game);
+      if (updated) {
+        games.value[gameIndex] = updated;
       }
     }
   }
 
   async function makeMove(game: Game, moveIndex: number, team: 'red' | 'blue') {
-    // Apply move
-    game.state.board[moveIndex] = team;
+    const manager = getManager(game.type);
+
+    // Apply move (type-safe for tictactoe)
+    if (game.state.board) {
+      game.state.board[moveIndex] = team;
+    }
 
     // Clear votes
     game.votes = {};
 
     // Check win condition
-    const winner = checkWinner(game.state.board);
+    const winner = manager.checkWinner(game.state);
     if (winner) {
       game.winner = winner;
-      game.status = 'finished';
-    } else if (game.state.board.every((cell) => cell !== null)) {
-      game.winner = 'draw';
       game.status = 'finished';
     } else {
       // Switch turn
@@ -197,32 +205,10 @@ export const useGamesStore = defineStore('games', () => {
     }
 
     // Save
-    if (game.type === 'tictactoe') {
-      const updated = await tictactoeCategory.update(game.id, game);
-      // Update local state
-      const idx = games.value.findIndex((g: Game) => g.id === game.id);
-      if (idx !== -1) games.value[idx] = updated!;
-    }
-  }
-
-  function checkWinner(board: (string | null)[]): 'red' | 'blue' | null {
-    const lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8], // rows
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8], // cols
-      [0, 4, 8],
-      [2, 4, 6], // diagonals
-    ];
-
-    for (const [a, b, c] of lines) {
-      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-        return board[a] as 'red' | 'blue';
-      }
-    }
-    return null;
+    const updated = await manager.update(game.id, game);
+    // Update local state
+    const idx = games.value.findIndex((g: Game) => g.id === game.id);
+    if (idx !== -1 && updated) games.value[idx] = updated;
   }
 
   return {
