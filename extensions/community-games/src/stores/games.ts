@@ -48,6 +48,10 @@ export const useGamesStore = defineStore('games', () => {
     games.value.filter((g: Game) => g.status !== 'finished'),
   );
 
+  const finishedGames = computed(() =>
+    games.value.filter((g: Game) => g.status === 'finished'),
+  );
+
   function getManager(type: GameType): GameManager {
     const manager = managers.get(type);
     if (!manager) {
@@ -220,15 +224,44 @@ export const useGamesStore = defineStore('games', () => {
     if (idx !== -1 && updated) games.value[idx] = updated;
   }
 
+  async function deleteAllActiveGames() {
+    const activeGamesList = games.value.filter(
+      (g: Game) => g.status !== 'finished',
+    );
+
+    for (const game of activeGamesList) {
+      const manager = getManager(game.type);
+      await manager.delete(game.id);
+    }
+
+    games.value = games.value.filter((g: Game) => g.status === 'finished');
+  }
+
+  async function deleteAllFinishedGames() {
+    const finishedGamesList = games.value.filter(
+      (g: Game) => g.status === 'finished',
+    );
+
+    for (const game of finishedGamesList) {
+      const manager = getManager(game.type);
+      await manager.delete(game.id);
+    }
+
+    games.value = games.value.filter((g: Game) => g.status !== 'finished');
+  }
+
   return {
     games,
     activeGames,
+    finishedGames,
     initializing,
     currentUser,
     init,
     createGame,
     startGame,
     deleteGame,
+    deleteAllActiveGames,
+    deleteAllFinishedGames,
     castVote,
   };
 });
