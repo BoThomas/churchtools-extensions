@@ -108,6 +108,47 @@
         @cancel="closeFormDialog"
       />
     </Dialog>
+
+    <!-- Details Dialog with Group Management -->
+    <Dialog
+      v-model:visible="showDetailsDialog"
+      :header="selectedDinner?.value.name"
+      :modal="true"
+      :style="{ width: '95vw', maxWidth: '1400px', maxHeight: '95vh' }"
+    >
+      <div v-if="selectedDinner" class="space-y-4">
+        <!-- Tabs for different sections -->
+        <Tabs value="participants">
+          <TabList>
+            <Tab value="participants">
+              <i class="pi pi-users mr-2"></i>
+              Participants ({{ getParticipantCount(selectedDinner.id!) }})
+            </Tab>
+            <Tab value="groups">
+              <i class="pi pi-sitemap mr-2"></i>
+              Groups
+            </Tab>
+          </TabList>
+
+          <TabPanels>
+            <!-- Participants Panel -->
+            <TabPanel value="participants">
+              <ParticipantList
+                :participants="getDinnerParticipants(selectedDinner.id!)"
+              />
+            </TabPanel>
+
+            <!-- Groups Panel -->
+            <TabPanel value="groups">
+              <GroupBuilder
+                :dinner="selectedDinner.value"
+                :participants="getDinnerParticipants(selectedDinner.id!)"
+              />
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </div>
+    </Dialog>
   </div>
 </template>
 
@@ -124,8 +165,15 @@ import { useToast } from 'primevue/usetoast';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
+import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
+import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
+import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
+import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
+import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import DinnerCard from '../components/DinnerCard.vue';
 import DinnerForm from '../components/DinnerForm.vue';
+import ParticipantList from '../components/ParticipantList.vue';
+import GroupBuilder from '../components/GroupBuilder.vue';
 
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
@@ -133,7 +181,9 @@ const confirm = useConfirm();
 const toast = useToast();
 
 const showFormDialog = ref(false);
+const showDetailsDialog = ref(false);
 const editingDinner = ref<CategoryValue<RunningDinner> | null>(null);
+const selectedDinner = ref<CategoryValue<RunningDinner> | null>(null);
 const currentUserId = ref(0);
 
 onMounted(async () => {
@@ -154,6 +204,10 @@ onMounted(async () => {
 
 function getParticipantCount(dinnerId: number): number {
   return participantStore.getConfirmedByDinnerId(dinnerId).length;
+}
+
+function getDinnerParticipants(dinnerId: number) {
+  return participantStore.getByDinnerId(dinnerId);
 }
 
 function openCreateDialog() {
@@ -247,13 +301,7 @@ function confirmDelete(dinner: CategoryValue<RunningDinner>) {
 }
 
 function viewDetails(dinner: CategoryValue<RunningDinner>) {
-  // TODO: Navigate to detail view
-  console.log('View details for dinner', dinner.id);
-  toast.add({
-    severity: 'info',
-    summary: 'Coming Soon',
-    detail: 'Detail view will be implemented in the next phase',
-    life: 3000,
-  });
+  selectedDinner.value = dinner;
+  showDetailsDialog.value = true;
 }
 </script>

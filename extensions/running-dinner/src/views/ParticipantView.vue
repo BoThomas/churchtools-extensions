@@ -41,37 +41,67 @@
               @click="joinDinner(dinner)"
             />
             <div v-else class="flex gap-2">
-              <Button
+              <SecondaryButton
                 label="Edit Registration"
                 icon="pi pi-pencil"
                 size="small"
-                severity="secondary"
-                @click="editRegistration(getRegistration(dinner.id!))"
+                @click="editRegistration(dinner, getRegistration(dinner.id!))"
               />
             </div>
           </template>
         </DinnerCard>
       </div>
     </div>
+
+    <!-- Registration Dialog -->
+    <Dialog
+      v-model:visible="showRegistrationDialog"
+      :header="
+        editingRegistration
+          ? 'Edit Your Registration'
+          : 'Register for Running Dinner'
+      "
+      :modal="true"
+      :style="{ width: '90vw', maxWidth: '800px', maxHeight: '90vh' }"
+    >
+      <ParticipantForm
+        v-if="selectedDinner"
+        :dinner-id="selectedDinner.id!"
+        :current-user="currentUser"
+        :initial-data="editingRegistration?.value"
+        :allow-preferred-meal="selectedDinner.value.allowPreferredMeal"
+        :saving="participantStore.saving"
+        @submit="handleRegistrationSubmit"
+        @cancel="closeRegistrationDialog"
+      />
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
+import type { Participant } from '../types/models';
+import type { CategoryValue } from '@churchtools-extensions/persistance';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { useRunningDinnerStore } from '../stores/runningDinner';
 import { useParticipantStore } from '../stores/participant';
 import { useToast } from 'primevue/usetoast';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import DinnerCard from '../components/DinnerCard.vue';
+import ParticipantForm from '../components/ParticipantForm.vue';
 
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
 const toast = useToast();
 const loading = ref(true);
 const currentUser = ref<Person | null>(null);
+const showRegistrationDialog = ref(false);
+const selectedDinner = ref<CategoryValue<any> | null>(null);
+const editingRegistration = ref<CategoryValue<Participant> | null>(null);
 
 const myRegistrations = computed(() => {
   if (!currentUser.value?.id) return [];
@@ -101,25 +131,60 @@ function getRegistration(dinnerId: number) {
   return myRegistrations.value.find((reg) => reg.value.dinnerId === dinnerId);
 }
 
-function editRegistration(registration: any) {
-  // TODO: Implement edit registration
-  console.log('Edit registration', registration);
-  toast.add({
-    severity: 'info',
-    summary: 'Coming Soon',
-    detail: 'Edit registration will be implemented in the next phase',
-    life: 3000,
-  });
+function editRegistration(
+  dinner: CategoryValue<any>,
+  registration: CategoryValue<Participant> | undefined,
+) {
+  if (!registration) return;
+  selectedDinner.value = dinner;
+  editingRegistration.value = registration;
+  showRegistrationDialog.value = true;
 }
 
-function joinDinner(dinner: any) {
-  // TODO: Implement join dinner
-  console.log('Join dinner', dinner);
-  toast.add({
-    severity: 'info',
-    summary: 'Coming Soon',
-    detail: 'Registration form will be implemented in the next phase',
-    life: 3000,
-  });
+function joinDinner(dinner: CategoryValue<any>) {
+  selectedDinner.value = dinner;
+  editingRegistration.value = null;
+  showRegistrationDialog.value = true;
+}
+
+async function handleRegistrationSubmit(data: Omit<Participant, 'id'>) {
+  try {
+    if (editingRegistration.value?.id) {
+      // Update existing registration
+      await participantStore.update(editingRegistration.value.id, data);
+      toast.add({
+        severity: 'success',
+        summary: 'Updated',
+        detail: 'Your registration has been updated successfully',
+        life: 3000,
+      });
+    } else {
+      // Create new registration
+      await participantStore.create(data);
+      toast.add({
+        severity: 'success',
+        summary: 'Registered',
+        detail: 'You have been registered for this dinner',
+        life: 3000,
+      });
+    }
+    closeRegistrationDialog();
+    // Refresh participant list
+    await participantStore.fetchAll();
+  } catch (e) {
+    console.error('Failed to save registration', e);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to save registration. Please try again.',
+      life: 3000,
+    });
+  }
+}
+
+function closeRegistrationDialog() {
+  showRegistrationDialog.value = false;
+  selectedDinner.value = null;
+  editingRegistration.value = null;
 }
 </script>

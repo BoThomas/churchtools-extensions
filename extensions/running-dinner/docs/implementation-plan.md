@@ -596,42 +596,80 @@ return assignments // Success!
 **Decision: Full implementation with all features, executed in phases**
 
 - ✅ All features from requirements will be implemented
-- ⏸️ Automated grouping algorithm (with manual override capability) - Next phase
-- ⏸️ Automated routing algorithm - Phase 3
-- ✅ Waitlist for excess participants (data model & stores ready)
-- ⏸️ Manual group adjustments for edge cases - Phase 2
+- ✅ Automated grouping algorithm (with manual override capability)
+- ⏸️ Automated routing algorithm - Phase 3 (Next)
+- ✅ Waitlist for excess participants (fully implemented with algorithm)
+- ✅ Manual group adjustments for edge cases (drag/drop, add/remove members)
 - ⏸️ Email notifications (console.log only for now)
 - ⏸️ Deeplink invitations (use ChurchTools groups in future)
 - ⏸️ Testing & deployment phase (continuous testing approach)
 
 ## Current Status Summary
 
-### ✅ Completed (Phases 1 & 2)
+### ✅ Completed (Phases 1, 2 & 4)
+
+**Phase 1 - Foundation:**
 
 - Complete data models with Zod validation
 - All 4 Pinia stores (running-dinner, participant, group, route) with full CRUD
 - Main App.vue with tab structure (Participate and Organize tabs)
-- OrganizerView with dinner creation/editing/publishing
-- DinnerCard component (reusable, with Volt components)
-- DinnerForm component (comprehensive form with validation)
-- ParticipantList component (DataTable with filters)
-- ParticipantView (unified view with registration badges and actions)
 - Toast notifications and confirmation dialogs
 - ChurchTools user integration
 
+**Phase 2 - Organizer Experience:**
+
+- OrganizerView with dinner creation/editing/publishing
+- DinnerCard component (reusable, with Volt components)
+- DinnerForm component (comprehensive form with Zod validation & error display)
+- ParticipantList component (DataTable with filters)
+- Detail view dialog with tabs (Participants & Groups)
+- GroupBuilder component:
+  - Algorithm integration with "Create Groups" button
+  - Status dashboard (confirmed, groups, waitlisted counts)
+  - Warnings display
+  - Manual adjustments (add participant to group, set host, remove member, delete group)
+  - Save groups functionality
+  - Reset with confirmation
+- GroupCard component:
+  - Display group with members, host, assigned meal
+  - Host address display
+  - Dietary restrictions summary
+  - Editable mode with actions
+
+**Phase 4 - Participant Experience:**
+
+- ParticipantView (unified view with registration badges and actions)
+- ParticipantForm component:
+  - Auto-population from ChurchTools user
+  - Personal info, address, preferences
+  - Preferred partners with email validation
+  - Optional meal preferences
+  - Dietary restrictions
+  - Full Zod validation with error display
+- Registration and edit workflows with dialogs
+
+**Algorithms:**
+
+- ✅ algorithms/grouping.ts:
+  - Intelligent group creation respecting preferences
+  - Mutual and one-sided partner preference handling
+  - Meal assignment with balancing
+  - Automatic waitlist management
+  - Warning system for edge cases
+
 ### 🔜 Next Steps (Priority Order)
 
-1. **ParticipantForm.vue** - Enable user registration
-2. **algorithms/grouping.ts** - Implement group creation logic
-3. **GroupBuilder.vue** - Interface for creating and managing groups
-4. **GroupCard.vue** - Display group information
-5. **algorithms/routing.ts** - Implement route assignment
-6. **RouteAssignment.vue & RouteDisplay.vue** - Route management UI
+1. **algorithms/routing.ts** - Implement route assignment algorithm
+2. **RouteAssignment.vue** - Interface for creating routes in OrganizerView
+3. **RouteDisplay.vue** - Display routes for participants
+4. **Route visualization** - Timeline view with addresses and maps
+5. **Email notifications** - Email content generation (console.log)
+6. **Polish & testing** - Edge cases, loading states, error handling
 
 ### 📊 Progress
 
-- Phase 1: ✅ 100% Complete
-- Phase 2: ⚡ 66% Complete (Event & Participant Management done, Group Builder pending)
-- Phase 3: ⏸️ 0% Not Started
-- Phase 4: ⚡ 33% Complete (UI ready, registration form pending)
-- Phase 5: ⏸️ 0% Not Started
+- Phase 1: ✅ 100% Complete (Foundation)
+- Phase 2: ✅ 100% Complete (Organizer Experience - Event, Participant & Group Management)
+- Phase 3: ⏸️ 0% Not Started (Routing Algorithm & UI)
+- Phase 4: ✅ 95% Complete (Participant Experience - registration done, route display pending)
+- Phase 5: ⏸️ 0% Not Started (Notifications & Polish)
