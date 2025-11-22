@@ -28,8 +28,7 @@ extensions/running-dinner/
 │   │   └── participant.ts         # Participant management
 │   ├── views/
 │   │   ├── OrganizerView.vue     # Organizer dashboard (main view)
-│   │   ├── ParticipantView.vue   # Participant registration & info
-│   │   └── PublicView.vue        # Public event list & join
+│   │   └── ParticipantView.vue   # Unified view for browsing & registration
 │   ├── components/
 │   │   ├── DinnerCard.vue        # Display a dinner event
 │   │   ├── DinnerForm.vue        # Create/edit dinner form
@@ -225,43 +224,28 @@ interface Route {
 5. Assign meal routes → Publish routes
 6. Send email notifications to participants
 
-### 2. Participant View
+### 2. Participate View (Single Unified Tab)
 
-**Purpose**: Registration and personal dashboard
+**Purpose**: Browse all published dinners and manage your registrations
 
 **Components**:
 
-- "My Registrations" section
+- Card list of all published dinners
+- Each card shows:
+  - Dinner details
+  - Participant count
+  - Registration status indicator (if already registered)
+  - Action button: "Join" or "Already Registered" (with edit option)
 - Registration form
 - Route display (after routes are assigned)
-- Event details
 
 **User Flow**:
 
-1. Browse available published dinners
-2. Click "Join" on a dinner
-3. Fill registration form (pre-populate from ChurchTools profile)
-4. Submit registration
-5. Edit registration until deadline
-6. After routes published → View group members and route
-
-### 3. Public View (Optional Tab)
-
-**Purpose**: List of published events anyone can browse
-
-**Components**:
-
-- Card list of published dinners
-- Filter by date/city
-- "Join" buttons (opens registration)
-- Single signup visibility (if enabled)
-
-**User Flow**:
-
-1. Browse events
-2. See single signups (if publicSingleSignins = true)
-3. Join as preferred partner with single signup
-4. Click "Join" → Opens registration form
+1. Browse all published dinners in one view
+2. See which dinners you're already registered for (badge/indicator)
+3. Click "Join" on available dinners → Fill registration form
+4. Click "Edit" on dinners you've registered for → Modify registration
+5. After routes published → View group members and route details
 
 ## Core Algorithms
 
@@ -495,24 +479,18 @@ return assignments // Success!
     - [ ] Edit registration (until deadline)
     - [ ] Cancellation option
 
-12. **Participant Dashboard** ✅ COMPLETED (UI ready, needs registration form)
+12. **Participant Dashboard** ✅ COMPLETED
     - [x] ParticipantView.vue:
-      - "My Registrations" section
-      - Registration status
+      - Unified view showing all published dinners
+      - "Registered" badge for dinners already joined
+      - "Join" button for available dinners
+      - "Edit Registration" button for registered dinners
       - After routes assigned: Show group and route (placeholder)
     - [ ] Route display for participants (will be implemented with routing)
       - Group members with contact info
       - Full route timeline
       - Dietary restrictions of guests
       - Google Maps links
-
-13. **Public Discovery** ✅ COMPLETED (UI ready, needs registration form)
-    - [x] PublicView.vue:
-      - List published dinners
-      - Filter by date/city (ready)
-      - Show capacity (participant count displayed)
-      - Single signup visibility (data model ready)
-    - [ ] Join flow from public view (needs ParticipantForm)
 
 ### Phase 5: Notifications & Polish
 
@@ -632,13 +610,12 @@ return assignments // Success!
 
 - Complete data models with Zod validation
 - All 4 Pinia stores (running-dinner, participant, group, route) with full CRUD
-- Main App.vue with tab structure
+- Main App.vue with tab structure (Participate and Organize tabs)
 - OrganizerView with dinner creation/editing/publishing
 - DinnerCard component (reusable, with Volt components)
 - DinnerForm component (comprehensive form with validation)
 - ParticipantList component (DataTable with filters)
-- ParticipantView (registration status display)
-- PublicView (browse published dinners)
+- ParticipantView (unified view with registration badges and actions)
 - Toast notifications and confirmation dialogs
 - ChurchTools user integration
 

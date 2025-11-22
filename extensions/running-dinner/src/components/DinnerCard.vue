@@ -1,5 +1,6 @@
 <template>
-  <Card>
+  <Card class="relative">
+    <slot name="header"></slot>
     <template #title>
       <div class="flex justify-between items-start">
         <div>

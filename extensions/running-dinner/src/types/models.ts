@@ -39,14 +39,14 @@ export const RunningDinnerSchema = z.object({
   id: z.number().optional(), // Category value ID
   name: z.string().min(1, 'Name is required'),
   description: z.string().default(''),
-  date: z.string(), // ISO date
+  date: z.string().min(1, 'Event date is required'), // ISO date
   city: z.string().min(1, 'City is required'),
   maxParticipants: z.number().int().min(6, 'At least 6 participants needed'),
   allowPreferredPartners: z.boolean().default(true),
   publicSingleSignins: z.boolean().default(false),
   preferredGroupSize: z.number().int().min(2).default(2),
   allowPreferredMeal: z.boolean().default(true),
-  registrationDeadline: z.string(), // ISO date
+  registrationDeadline: z.string().min(1, 'Registration deadline is required'), // ISO date
 
   // Menu configuration
   menu: MenuConfigSchema,

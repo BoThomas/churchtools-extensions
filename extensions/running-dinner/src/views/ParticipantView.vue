@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-3xl font-bold">My Registrations</h1>
+    <h1 class="text-3xl font-bold">Participate in Running Dinners</h1>
 
     <!-- Loading State -->
     <div v-if="loading" class="flex justify-center py-12">
@@ -8,86 +8,51 @@
     </div>
 
     <!-- Content -->
-    <div v-else class="space-y-6">
-      <!-- My Registrations -->
-      <Card v-if="myRegistrations.length > 0">
-        <template #title>Your Registrations</template>
-        <template #content>
-          <div class="space-y-4">
-            <div
-              v-for="reg in myRegistrations"
-              :key="reg.id"
-              class="p-4 border rounded-lg bg-surface-50 dark:bg-surface-800"
-            >
-              <div class="flex justify-between items-start">
-                <div>
-                  <p class="font-semibold">
-                    {{ getDinnerName(reg.value.dinnerId) }}
-                  </p>
-                  <Badge
-                    :value="reg.value.registrationStatus"
-                    :severity="getStatusSeverity(reg.value.registrationStatus)"
-                    class="mt-2"
-                  />
-                </div>
-                <div class="flex gap-2">
-                  <Button
-                    icon="pi pi-pencil"
-                    text
-                    rounded
-                    size="small"
-                    @click="editRegistration(reg)"
-                    v-tooltip.top="'Edit Registration'"
-                  />
-                </div>
-              </div>
-              <p class="text-sm text-surface-600 dark:text-surface-400 mt-2">
-                Registered: {{ formatDate(reg.value.registeredAt) }}
-              </p>
-            </div>
-          </div>
-        </template>
-      </Card>
+    <div v-else>
+      <div
+        v-if="dinnerStore.publishedDinners.length === 0"
+        class="text-center py-12"
+      >
+        <i class="pi pi-calendar-times text-6xl text-surface-400 mb-4"></i>
+        <p class="text-lg text-surface-600 dark:text-surface-400">
+          No published dinners available at the moment.
+        </p>
+      </div>
 
-      <!-- Available Dinners -->
-      <div>
-        <h2 class="text-xl font-semibold mb-3">Available Dinners</h2>
-        <div
-          v-if="dinnerStore.publishedDinners.length === 0"
-          class="text-center py-12"
+      <div v-else class="grid gap-4 md:grid-cols-2">
+        <DinnerCard
+          v-for="dinner in dinnerStore.publishedDinners"
+          :key="dinner.id"
+          :dinner="dinner.value"
+          :participant-count="getParticipantCount(dinner.id!)"
         >
-          <i class="pi pi-calendar-times text-6xl text-surface-400 mb-4"></i>
-          <p class="text-lg text-surface-600 dark:text-surface-400">
-            No published dinners available at the moment.
-          </p>
-        </div>
-
-        <div v-else class="grid gap-4">
-          <DinnerCard
-            v-for="dinner in dinnerStore.publishedDinners"
-            :key="dinner.id"
-            :dinner="dinner.value"
-            :participant-count="getParticipantCount(dinner.id!)"
-          >
-            <template #actions>
+          <template #header>
+            <Badge
+              v-if="isRegistered(dinner.id!)"
+              value="Registered"
+              severity="success"
+              class="absolute top-4 right-4"
+            />
+          </template>
+          <template #actions>
+            <Button
+              v-if="!isRegistered(dinner.id!)"
+              label="Join"
+              icon="pi pi-plus"
+              size="small"
+              @click="joinDinner(dinner)"
+            />
+            <div v-else class="flex gap-2">
               <Button
-                v-if="!isRegistered(dinner.id!)"
-                label="Join"
-                icon="pi pi-plus"
+                label="Edit Registration"
+                icon="pi pi-pencil"
                 size="small"
-                @click="joinDinner(dinner)"
+                severity="secondary"
+                @click="editRegistration(getRegistration(dinner.id!))"
               />
-              <Button
-                v-else
-                label="Already Registered"
-                icon="pi pi-check"
-                size="small"
-                severity="success"
-                disabled
-              />
-            </template>
-          </DinnerCard>
-        </div>
+            </div>
+          </template>
+        </DinnerCard>
       </div>
     </div>
   </div>
@@ -101,7 +66,6 @@ import { useRunningDinnerStore } from '../stores/runningDinner';
 import { useParticipantStore } from '../stores/participant';
 import { useToast } from 'primevue/usetoast';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import DinnerCard from '../components/DinnerCard.vue';
 
@@ -127,36 +91,16 @@ onMounted(async () => {
   }
 });
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString();
-}
-
-function getDinnerName(dinnerId: number): string {
-  const dinner = dinnerStore.getDinnerById(dinnerId);
-  return dinner?.value.name || 'Unknown Dinner';
-}
-
-function getStatusSeverity(
-  status: string,
-): 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast' {
-  const severities: Record<
-    string,
-    'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast'
-  > = {
-    confirmed: 'success',
-    pending: 'warn',
-    waitlist: 'secondary',
-    cancelled: 'danger',
-  };
-  return severities[status] || 'secondary';
-}
-
 function getParticipantCount(dinnerId: number): number {
   return participantStore.getConfirmedByDinnerId(dinnerId).length;
 }
 
 function isRegistered(dinnerId: number): boolean {
   return myRegistrations.value.some((reg) => reg.value.dinnerId === dinnerId);
+}
+
+function getRegistration(dinnerId: number) {
+  return myRegistrations.value.find((reg) => reg.value.dinnerId === dinnerId);
 }
 
 function editRegistration(registration: any) {

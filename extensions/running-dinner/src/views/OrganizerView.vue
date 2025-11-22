@@ -76,13 +76,6 @@
                   size="small"
                   @click="publishDinner(dinner.id!)"
                 />
-                <Button
-                  label="Edit"
-                  icon="pi pi-pencil"
-                  size="small"
-                  outlined
-                  @click="openEditDialog(dinner)"
-                />
               </template>
             </DinnerCard>
           </div>
@@ -95,7 +88,7 @@
       v-model:visible="showFormDialog"
       :header="editingDinner ? 'Edit Running Dinner' : 'Create Running Dinner'"
       :modal="true"
-      :style="{ width: '90vw', maxWidth: '1200px' }"
+      :style="{ width: '90vw', maxWidth: '1200px', maxHeight: '90vh' }"
     >
       <DinnerForm
         :initial-data="editingDinner?.value"

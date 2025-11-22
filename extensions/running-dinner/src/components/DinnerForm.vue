@@ -262,6 +262,16 @@
       </template>
     </Card>
 
+    <div
+      v-if="validationMessage"
+      class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md"
+    >
+      <pre
+        class="text-red-600 dark:text-red-400 text-sm font-medium whitespace-pre-wrap"
+        >{{ validationMessage }}</pre
+      >
+    </div>
+
     <div class="flex gap-3 justify-end">
       <Button
         type="button"
@@ -282,6 +292,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue';
+import { z } from 'zod';
 import type { RunningDinner } from '../types/models';
 import { RunningDinnerSchema } from '../types/models';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
@@ -308,7 +319,10 @@ const emit = defineEmits<{
 }>();
 
 const formData = reactive<
-  Omit<RunningDinner, 'id' | 'createdAt' | 'updatedAt'>
+  Omit<RunningDinner, 'id' | 'createdAt' | 'updatedAt'> & {
+    date: string | Date;
+    registrationDeadline: string | Date;
+  }
 >({
   name: props.initialData?.name || '',
   description: props.initialData?.description || '',
@@ -335,10 +349,19 @@ const afterPartyTime = ref(props.initialData?.afterParty?.time || '');
 const afterPartyLocation = ref(props.initialData?.afterParty?.location || '');
 
 const errors = reactive<Record<string, string>>({});
+const validationMessage = ref('');
 
 const submitLabel = computed(() =>
   props.initialData ? 'Update Dinner' : 'Create Dinner',
 );
+
+// Helper to convert Date to ISO string
+function toISODate(value: unknown): string {
+  if (value instanceof Date) {
+    return value.toISOString().split('T')[0];
+  }
+  return String(value || '');
+}
 
 watch([afterPartyTime, afterPartyLocation], () => {
   if (afterPartyTime.value && afterPartyLocation.value) {
@@ -354,26 +377,74 @@ watch([afterPartyTime, afterPartyLocation], () => {
 function validateForm(): boolean {
   Object.keys(errors).forEach((key) => delete errors[key]);
 
-  try {
-    RunningDinnerSchema.omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true,
-    }).parse(formData);
+  // Convert Date objects to ISO strings for validation
+  const dataToValidate = {
+    ...formData,
+    date: toISODate(formData.date),
+    registrationDeadline: toISODate(formData.registrationDeadline),
+  };
+
+  const result = RunningDinnerSchema.omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  }).safeParse(dataToValidate);
+
+  if (result.success) {
     return true;
-  } catch (error: any) {
-    if (error.errors) {
-      error.errors.forEach((err: any) => {
-        errors[err.path[0]] = err.message;
-      });
-    }
-    return false;
   }
+
+  // Use Zod's flattenError to get a clean error structure
+  const flattened = z.flattenError(result.error);
+
+  console.error('Validation errors:', flattened);
+
+  // Populate errors object with field errors
+  Object.entries(flattened.fieldErrors).forEach(([field, messages]) => {
+    if (messages && messages.length > 0) {
+      errors[field] = messages[0]; // Take first error message for each field
+      console.error(`Field ${field}: ${messages[0]}`);
+    }
+  });
+
+  // Store the pretty error for the summary message
+  validationMessage.value = z.prettifyError(result.error);
+
+  return false;
 }
 
 function handleSubmit() {
-  if (validateForm()) {
-    emit('submit', formData);
+  console.log('DinnerForm handleSubmit called');
+  console.log('Form data:', formData);
+
+  // Clear previous validation message
+  validationMessage.value = '';
+
+  // Convert Date objects to ISO strings for submission
+  const submitData = {
+    ...formData,
+    date: toISODate(formData.date),
+    registrationDeadline: toISODate(formData.registrationDeadline),
+  } as Omit<RunningDinner, 'id' | 'createdAt' | 'updatedAt'>;
+
+  // Temporarily update formData for validation
+  const originalDate = formData.date;
+  const originalDeadline = formData.registrationDeadline;
+  Object.assign(formData, submitData);
+
+  const isValid = validateForm();
+  console.log('Form valid:', isValid);
+  console.log('Validation errors:', errors);
+
+  // Restore original values
+  formData.date = originalDate;
+  formData.registrationDeadline = originalDeadline;
+
+  if (!isValid) {
+    return;
   }
+
+  console.log('Emitting submit with data:', submitData);
+  emit('submit', submitData);
 }
 </script>

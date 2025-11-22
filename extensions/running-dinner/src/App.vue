@@ -19,7 +19,6 @@
         <TabList>
           <Tab value="organizer">Organize</Tab>
           <Tab value="participant">Participate</Tab>
-          <Tab value="public">Browse</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="organizer">
@@ -27,9 +26,6 @@
           </TabPanel>
           <TabPanel value="participant">
             <ParticipantView />
-          </TabPanel>
-          <TabPanel value="public">
-            <PublicView />
           </TabPanel>
         </TabPanels>
       </Tabs>
@@ -46,7 +42,6 @@ import { ref, onMounted } from 'vue';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import OrganizerView from './views/OrganizerView.vue';
 import ParticipantView from './views/ParticipantView.vue';
-import PublicView from './views/PublicView.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
 import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
 import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
@@ -55,7 +50,7 @@ import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
 
-const activeTab = ref('organizer');
+const activeTab = ref('participant');
 const initializing = ref(true);
 
 declare const window: Window &
