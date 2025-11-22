@@ -26,18 +26,48 @@
           <template #title>
             <div class="flex justify-between items-center">
               <span>{{ game.name }}</span>
-              <Badge
-                v-if="game.status === 'lobby'"
-                value="Lobby"
-                severity="info"
-              />
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-surface-500">{{ game.type }}</span>
+                <Badge
+                  v-if="game.status === 'lobby'"
+                  value="Lobby"
+                  severity="info"
+                />
+              </div>
             </div>
           </template>
           <template #subtitle>
-            <div class="text-xs text-surface-500">{{ game.type }}</div>
+            <!-- Empty or can be removed -->
           </template>
           <template #content>
             <div class="space-y-4">
+              <!-- Current Turn Indicator (for active games) -->
+              <div
+                v-if="game.status === 'active'"
+                class="text-center py-2 rounded-lg"
+                :class="
+                  game.currentTurn === 'red'
+                    ? 'bg-red-50 dark:bg-red-900/20'
+                    : 'bg-blue-50 dark:bg-blue-900/20'
+                "
+              >
+                <div class="flex items-center justify-center gap-2">
+                  <i class="pi pi-clock text-xs"></i>
+                  <span class="text-xs font-semibold">
+                    <span
+                      :class="
+                        game.currentTurn === 'red'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-blue-600 dark:text-blue-400'
+                      "
+                    >
+                      {{ game.currentTurn === 'red' ? 'Red' : 'Blue' }} Team
+                    </span>
+                    's Turn
+                  </span>
+                </div>
+              </div>
+
               <!-- Team Stats in Horizontal Layout -->
               <div
                 class="flex items-center justify-around gap-4 py-3 bg-surface-50 dark:bg-surface-800/50 rounded-lg"
