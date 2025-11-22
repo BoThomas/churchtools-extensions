@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 max-w-6xl">
+  <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-semibold">Translation Control</h2>
       <div v-if="stateText" class="flex items-center gap-2">

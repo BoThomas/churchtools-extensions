@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 max-w-7xl">
+  <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-semibold">Usage Reports</h2>
       <div class="flex gap-2">
