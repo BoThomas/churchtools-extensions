@@ -114,127 +114,118 @@
                     {{ idx + 1 }}
                   </div>
                 </div>
-                <div class="flex-1 space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span
-                      class="font-semibold flex items-center gap-1"
-                      :class="
-                        stop.hostGroupId === route.groupId
-                          ? 'text-green-700 dark:text-green-400'
-                          : ''
-                      "
-                    >
-                      <i
-                        v-if="stop.hostGroupId === route.groupId"
-                        class="pi pi-home"
-                      ></i>
-                      {{ getMealLabel(stop.meal) }}
-                    </span>
-                  </div>
-                  <div class="text-sm text-surface-600 dark:text-surface-400">
-                    {{ stop.startTime }} - {{ stop.endTime }}
-                  </div>
-                  <div class="text-sm">
-                    <div>{{ stop.hostAddress.street }}</div>
-                    <div>
-                      {{ stop.hostAddress.zip }} {{ stop.hostAddress.city }}
+                <Fieldset
+                  class="flex-1"
+                  :legend="`${getMealLabel(stop.meal)}${stop.hostGroupId === route.groupId ? ' (Hosted)' : ''}`"
+                  :toggleable="stop.hostGroupId !== route.groupId"
+                  :collapsed="stop.hostGroupId !== route.groupId"
+                >
+                  <div class="space-y-1">
+                    <div class="text-sm text-surface-600 dark:text-surface-400">
+                      {{ stop.startTime }} - {{ stop.endTime }}
                     </div>
-                  </div>
-
-                  <!-- Other Groups at this Location -->
-                  <div class="mt-2 space-y-1">
-                    <div
-                      class="text-xs font-semibold text-surface-600 dark:text-surface-400"
-                    >
-                      Other groups at this location:
-                    </div>
-                    <div class="flex flex-wrap gap-1">
-                      <Chip
-                        v-for="groupId in getOtherGroupsAtStop(
-                          route.groupId,
-                          stop.hostGroupId,
-                          stop.meal,
-                        )"
-                        :key="groupId"
-                        class="text-xs"
-                      >
-                        <template #default>
-                          <span class="flex items-center gap-1">
-                            <i
-                              v-if="groupId === stop.hostGroupId"
-                              class="pi pi-home"
-                            ></i>
-                            <span>Group {{ getGroupNumber(groupId) }}</span>
-                          </span>
-                        </template>
-                      </Chip>
-                    </div>
-                    <div class="text-xs text-surface-500 italic">
-                      {{
-                        getGroupsAtMealLocation(stop.hostGroupId, stop.meal)
-                          .length
-                      }}
-                      groups total ({{
-                        getGroupMemberCount(route.groupId) +
-                        getOtherGroupsAtStop(
-                          route.groupId,
-                          stop.hostGroupId,
-                          stop.meal,
-                        ).reduce(
-                          (sum, gId) => sum + getGroupMemberCount(gId),
-                          0,
-                        )
-                      }}
-                      people)
-                    </div>
-
-                    <!-- Dietary Restrictions for All Groups -->
-                    <div
-                      v-if="
-                        getAllDietaryRestrictionsAtStop(
-                          stop.hostGroupId,
-                          stop.meal,
-                        ).length > 0
-                      "
-                      class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs"
-                    >
-                      <div
-                        class="font-semibold text-blue-700 dark:text-blue-300 mb-1"
-                      >
-                        Dietary Needs:
+                    <div class="text-sm">
+                      <div>{{ stop.hostAddress.street }}</div>
+                      <div>
+                        {{ stop.hostAddress.zip }} {{ stop.hostAddress.city }}
                       </div>
+                    </div>
+
+                    <!-- Other Groups at this Location -->
+                    <div class="mt-2 space-y-1">
                       <div
-                        class="space-y-1 text-surface-700 dark:text-surface-300"
+                        class="text-xs font-semibold text-surface-600 dark:text-surface-400"
                       >
-                        <div
-                          v-for="(
-                            item, rIdx
-                          ) in getAllDietaryRestrictionsAtStop(
+                        Other groups at this location:
+                      </div>
+                      <div class="flex flex-wrap gap-1">
+                        <Chip
+                          v-for="groupId in getOtherGroupsAtStop(
+                            route.groupId,
                             stop.hostGroupId,
                             stop.meal,
                           )"
-                          :key="rIdx"
+                          :key="groupId"
+                          class="text-xs"
                         >
-                          Group {{ item.groupNumber }} ({{
-                            item.participantName
-                          }}):
-                          <span class="font-semibold">{{
-                            item.restrictions
-                          }}</span>
+                          <template #default>
+                            <span class="flex items-center gap-1">
+                              <i
+                                v-if="groupId === stop.hostGroupId"
+                                class="pi pi-home"
+                              ></i>
+                              <span>Group {{ getGroupNumber(groupId) }}</span>
+                            </span>
+                          </template>
+                        </Chip>
+                      </div>
+                      <div class="text-xs text-surface-500 italic">
+                        {{
+                          getGroupsAtMealLocation(stop.hostGroupId, stop.meal)
+                            .length
+                        }}
+                        groups total ({{
+                          getGroupMemberCount(route.groupId) +
+                          getOtherGroupsAtStop(
+                            route.groupId,
+                            stop.hostGroupId,
+                            stop.meal,
+                          ).reduce(
+                            (sum, gId) => sum + getGroupMemberCount(gId),
+                            0,
+                          )
+                        }}
+                        people)
+                      </div>
+
+                      <!-- Dietary Restrictions for All Groups -->
+                      <div
+                        v-if="
+                          getAllDietaryRestrictionsAtStop(
+                            stop.hostGroupId,
+                            stop.meal,
+                          ).length > 0
+                        "
+                        class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs"
+                      >
+                        <div
+                          class="font-semibold text-blue-700 dark:text-blue-300 mb-1"
+                        >
+                          Dietary Needs:
+                        </div>
+                        <div
+                          class="space-y-1 text-surface-700 dark:text-surface-300"
+                        >
+                          <div
+                            v-for="(
+                              item, rIdx
+                            ) in getAllDietaryRestrictionsAtStop(
+                              stop.hostGroupId,
+                              stop.meal,
+                            )"
+                            :key="rIdx"
+                          >
+                            Group {{ item.groupNumber }} ({{
+                              item.participantName
+                            }}):
+                            <span class="font-semibold">{{
+                              item.restrictions
+                            }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <a
-                    :href="getGoogleMapsLink(stop.hostAddress)"
-                    target="_blank"
-                    class="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-                  >
-                    <i class="pi pi-map-marker"></i>
-                    Open in Maps
-                  </a>
-                </div>
+                    <a
+                      :href="getGoogleMapsLink(stop.hostAddress)"
+                      target="_blank"
+                      class="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                    >
+                      <i class="pi pi-map-marker"></i>
+                      Open in Maps
+                    </a>
+                  </div>
+                </Fieldset>
               </div>
 
               <!-- Group Members -->
@@ -306,6 +297,7 @@ import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
+import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 
 const props = defineProps<{
   dinner: RunningDinner;
