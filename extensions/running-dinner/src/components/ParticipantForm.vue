@@ -359,17 +359,13 @@ function validateForm(): boolean {
     return true;
   }
 
-  // Use Zod's flattenError to get a clean error structure
-  const flattened = z.flattenError(result.error);
+  console.error('Validation errors:', result.error);
 
-  console.error('Validation errors:', flattened);
-
-  // Populate errors object with field errors
-  Object.entries(flattened.fieldErrors).forEach(([field, messages]) => {
-    if (messages && messages.length > 0) {
-      errors.value[field] = messages[0]; // Take first error message for each field
-      console.error(`Field ${field}: ${messages[0]}`);
-    }
+  // Process errors from Zod
+  result.error.issues.forEach((issue) => {
+    const path = issue.path.join('.');
+    errors.value[path] = issue.message;
+    console.error(`Field ${path}: ${issue.message}`);
   });
 
   // Store the pretty error for the summary message

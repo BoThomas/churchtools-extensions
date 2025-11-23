@@ -44,6 +44,16 @@
               @click="joinDinner(dinner)"
             />
             <div v-else class="flex gap-2">
+              <DangerButton
+                label="Cancel Registration"
+                icon="pi pi-times"
+                size="small"
+                severity="danger"
+                outlined
+                @click="
+                  confirmCancelRegistration(dinner, getRegistration(dinner.id!))
+                "
+              />
               <SecondaryButton
                 label="Edit Registration"
                 icon="pi pi-pencil"
@@ -90,8 +100,10 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { useRunningDinnerStore } from '../stores/runningDinner';
 import { useParticipantStore } from '../stores/participant';
 import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
+import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import DinnerCard from '../components/DinnerCard.vue';
@@ -100,6 +112,7 @@ import ParticipantForm from '../components/ParticipantForm.vue';
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
 const toast = useToast();
+const confirm = useConfirm();
 const currentUser = ref<Person | null>(null);
 const showRegistrationDialog = ref(false);
 const selectedDinner = ref<CategoryValue<any> | null>(null);
@@ -124,11 +137,27 @@ function getParticipantCount(dinnerId: number): number {
 }
 
 function isRegistered(dinnerId: number): boolean {
-  return myRegistrations.value.some((reg) => reg.value.dinnerId === dinnerId);
+  return myRegistrations.value.some(
+    (reg) =>
+      reg.value.dinnerId === dinnerId &&
+      reg.value.registrationStatus !== 'cancelled',
+  );
 }
 
 function getRegistration(dinnerId: number) {
-  return myRegistrations.value.find((reg) => reg.value.dinnerId === dinnerId);
+  return myRegistrations.value.find(
+    (reg) =>
+      reg.value.dinnerId === dinnerId &&
+      reg.value.registrationStatus !== 'cancelled',
+  );
+}
+
+function getCancelledRegistration(dinnerId: number) {
+  return myRegistrations.value.find(
+    (reg) =>
+      reg.value.dinnerId === dinnerId &&
+      reg.value.registrationStatus === 'cancelled',
+  );
 }
 
 function editRegistration(
@@ -159,36 +188,50 @@ async function handleRegistrationSubmit(data: Omit<Participant, 'id'>) {
         life: 3000,
       });
     } else {
-      // Check if dinner is at max capacity
-      const dinner = selectedDinner.value?.value;
-      if (dinner) {
-        const confirmedCount = participantStore.getConfirmedByDinnerId(
-          selectedDinner.value!.id!,
-        ).length;
+      // Check if there's a cancelled registration to reuse
+      const cancelledReg = getCancelledRegistration(selectedDinner.value!.id!);
 
-        // If at capacity, set status to waitlist
-        if (confirmedCount >= dinner.maxParticipants) {
-          data.registrationStatus = 'waitlist';
-          toast.add({
-            severity: 'warn',
-            summary: 'Added to Waitlist',
-            detail:
-              'This dinner is at capacity. You have been added to the waitlist.',
-            life: 5000,
-          });
-        }
-      }
-
-      // Create new registration
-      await participantStore.create(data);
-
-      if (data.registrationStatus === 'confirmed') {
+      if (cancelledReg) {
+        // Reuse cancelled registration by updating it
+        await participantStore.update(cancelledReg.id, data);
         toast.add({
           severity: 'success',
           summary: 'Registered',
           detail: 'You have been registered for this dinner',
           life: 3000,
         });
+      } else {
+        // Check if dinner is at max capacity
+        const dinner = selectedDinner.value?.value;
+        if (dinner) {
+          const confirmedCount = participantStore.getConfirmedByDinnerId(
+            selectedDinner.value!.id!,
+          ).length;
+
+          // If at capacity, set status to waitlist
+          if (confirmedCount >= dinner.maxParticipants) {
+            data.registrationStatus = 'waitlist';
+            toast.add({
+              severity: 'warn',
+              summary: 'Added to Waitlist',
+              detail:
+                'This dinner is at capacity. You have been added to the waitlist.',
+              life: 5000,
+            });
+          }
+        }
+
+        // Create new registration
+        await participantStore.create(data);
+
+        if (data.registrationStatus === 'confirmed') {
+          toast.add({
+            severity: 'success',
+            summary: 'Registered',
+            detail: 'You have been registered for this dinner',
+            life: 3000,
+          });
+        }
       }
     }
     closeRegistrationDialog();
@@ -209,5 +252,40 @@ function closeRegistrationDialog() {
   showRegistrationDialog.value = false;
   selectedDinner.value = null;
   editingRegistration.value = null;
+}
+
+function confirmCancelRegistration(
+  dinner: CategoryValue<any>,
+  registration: CategoryValue<Participant> | undefined,
+) {
+  if (!registration) return;
+
+  confirm.require({
+    message: `Are you sure you want to cancel your registration for "${dinner.value.name}"? This action cannot be undone.`,
+    header: 'Cancel Registration',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: 'No, Keep Registration',
+    acceptLabel: 'Yes, Cancel Registration',
+    accept: async () => {
+      try {
+        await participantStore.cancel(registration.id);
+        toast.add({
+          severity: 'success',
+          summary: 'Registration Cancelled',
+          detail: 'Your registration has been cancelled successfully',
+          life: 3000,
+        });
+        await participantStore.fetchAll();
+      } catch (e) {
+        console.error('Failed to cancel registration', e);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to cancel registration. Please try again.',
+          life: 3000,
+        });
+      }
+    },
+  });
 }
 </script>

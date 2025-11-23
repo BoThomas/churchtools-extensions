@@ -430,20 +430,24 @@ return assignments // Success!
    - [x] Show registration count vs. max
    - [x] Automatic waitlist when max exceeded (logic ready in stores)
 
-7. **Group Builder** 🔜 NEXT
-   - [ ] Implement `algorithms/grouping.ts`
-   - [ ] `GroupBuilder.vue`: Interface for group creation
+7. **Group Builder** ✅ COMPLETED
+   - [x] Implement `algorithms/grouping.ts`
+   - [x] `GroupBuilder.vue`: Interface for group creation
      - "Create Groups" button
      - Display algorithm results
      - Show warnings (waitlist participants)
      - Allow manual adjustments:
-       - Drag/drop participants between groups
+       - Add participants to groups (via dropdown selection)
        - Move waitlist participants into groups
        - "Leave nobody behind" - manual inclusion of excess participants
+       - Set group host
+       - Remove members from groups
+       - Delete empty groups
      - Save groups
-   - [ ] `GroupCard.vue`: Display group with members
+     - Reset groups with confirmation
+   - [x] `GroupCard.vue`: Display group with members
 
-### Phase 3: Routing Algorithm
+### Phase 3: Routing Algorithm 🔜 NEXT
 
 **Goal**: Implement route assignment
 
@@ -468,19 +472,19 @@ return assignments // Success!
     - [ ] Test edge cases (odd numbers, unbalanced preferences)
     - [ ] Ensure algorithm handles all scenarios
 
-### Phase 4: Participant Experience ⚡ PARTIALLY COMPLETED
+### Phase 4: Participant Experience ✅ COMPLETED
 
 **Goal**: Complete participant workflows
 
-11. **Registration Flow** 🔜 NEXT
-    - [ ] `ParticipantForm.vue`: Registration form
+11. **Registration Flow** ✅ COMPLETED
+    - [x] `ParticipantForm.vue`: Registration form
       - Pre-populate from ChurchTools user
       - Preferred partners (email input with validation)
       - Meal preferences
       - Dietary restrictions
-    - [ ] Form validation
-    - [ ] Edit registration (until deadline)
-    - [ ] Cancellation option
+    - [x] Form validation
+    - [x] Edit registration (until deadline)
+    - [x] Cancellation option (with reusable cancelled records for organizer history)
 
 12. **Participant Dashboard** ✅ COMPLETED
     - [x] ParticipantView.vue:
@@ -673,6 +677,6 @@ return assignments // Success!
 
 - Phase 1: ✅ 100% Complete (Foundation)
 - Phase 2: ✅ 100% Complete (Organizer Experience - Event, Participant & Group Management)
-- Phase 3: ⏸️ 0% Not Started (Routing Algorithm & UI)
-- Phase 4: ✅ 95% Complete (Participant Experience - registration done, route display pending)
+- Phase 3: 🔜 0% Not Started (Routing Algorithm & UI) - NEXT PRIORITY
+- Phase 4: ✅ 100% Complete (Participant Experience - registration, cancellation, re-registration)
 - Phase 5: ⏸️ 0% Not Started (Notifications & Polish)
