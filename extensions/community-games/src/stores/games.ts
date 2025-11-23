@@ -241,14 +241,27 @@ export const useGamesStore = defineStore('games', () => {
     // Record vote
     freshGame.votes[currentUser.value.id.toString()] = moveIndex;
 
-    // Check threshold
-    const votesForMove = Object.values(freshGame.votes).filter(
-      (v) => v === moveIndex,
-    ).length;
+    // Check if threshold is reached
+    const totalVotes = Object.keys(freshGame.votes).length;
 
-    // Simple logic: if votes reach threshold, make the move
-    if (votesForMove >= freshGame.config.voteThreshold) {
-      await makeMove(freshGame, moveIndex, userTeam);
+    if (totalVotes >= freshGame.config.voteThreshold) {
+      // Count votes for each move option
+      const voteCount: Record<number, number> = {};
+      for (const vote of Object.values(freshGame.votes)) {
+        voteCount[vote] = (voteCount[vote] || 0) + 1;
+      }
+
+      // Find the highest vote count and get all moves with that count
+      const maxVotes = Math.max(...Object.values(voteCount));
+      const topMoves = Object.keys(voteCount)
+        .filter((move) => voteCount[parseInt(move)] === maxVotes)
+        .map((move) => parseInt(move));
+
+      // Randomly select from top moves if there's a tie
+      const selectedMove =
+        topMoves[Math.floor(Math.random() * topMoves.length)];
+
+      await makeMove(freshGame, selectedMove, userTeam);
     } else {
       // Just save the vote
       const updated = await manager.update(freshGame.id, freshGame);
