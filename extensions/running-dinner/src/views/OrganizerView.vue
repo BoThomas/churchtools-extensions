@@ -568,13 +568,44 @@ async function addGroupMembersAsParticipants(
   dinnerId: number,
 ) {
   try {
-    // Fetch group members from ChurchTools using the proper endpoint
-    const response = (await churchtoolsClient.get(
+    // Fetch group members from ChurchTools - start with first page
+    const firstResponse = (await churchtoolsClient.get(
       `/groups/${groupId}/members`,
-    )) as { data: Array<{ person: Person }> };
+    )) as {
+      data: Array<{
+        person: { domainIdentifier: string; title: string };
+        personId: number;
+      }>;
+      meta: { count: number; pagination: { total: number; lastPage: number } };
+    };
 
-    console.log('Group members response:', response);
-    const members = response.data;
+    console.log('Group members response:', firstResponse);
+    let members = firstResponse.data || [];
+
+    // If there are more pages, fetch them
+    if (firstResponse.meta?.pagination?.lastPage > 1) {
+      const totalPages = firstResponse.meta.pagination.lastPage;
+      const additionalPages = [];
+
+      for (let page = 2; page <= totalPages; page++) {
+        additionalPages.push(
+          churchtoolsClient.get(`/groups/${groupId}/members?page=${page}`),
+        );
+      }
+
+      const additionalResponses = (await Promise.all(
+        additionalPages,
+      )) as Array<{
+        data: Array<{
+          person: { domainIdentifier: string; title: string };
+          personId: number;
+        }>;
+      }>;
+
+      for (const pageResponse of additionalResponses) {
+        members.push(...(pageResponse.data || []));
+      }
+    }
 
     if (!members || members.length === 0) {
       toast.add({
@@ -590,27 +621,39 @@ async function addGroupMembersAsParticipants(
 
     // Add each member as a participant
     for (const member of members) {
-      const person = member.person;
+      try {
+        // Fetch full person details
+        const personResponse = (await churchtoolsClient.get(
+          `/persons/${member.personId}`,
+        )) as { data: Person };
+        const person = personResponse.data;
 
-      // Create participant record with basic info from ChurchTools
-      const participantData = {
-        dinnerId,
-        personId: person.id,
-        name: `${person.firstName} ${person.lastName}`,
-        email: person.email || '',
-        phone: person.phonePrivate || person.mobile || '',
-        address: {
-          street: person.addressAddition || '',
-          zip: person.zip || '',
-          city: person.city || '',
-        },
-        preferredPartners: [],
-        dietaryRestrictions: '',
-        registrationStatus: 'confirmed' as const,
-      };
+        // Create participant record with basic info from ChurchTools
+        const participantData = {
+          dinnerId,
+          personId: person.id,
+          name: `${person.firstName} ${person.lastName}`,
+          email: person.email || '',
+          phone: person.phonePrivate || person.mobile || '',
+          address: {
+            street: person.addressAddition || '',
+            zip: person.zip || '',
+            city: person.city || '',
+          },
+          preferredPartners: [],
+          dietaryRestrictions: '',
+          registrationStatus: 'confirmed' as const,
+        };
 
-      await participantStore.create(participantData);
-      addedCount++;
+        await participantStore.create(participantData);
+        addedCount++;
+      } catch (personError) {
+        console.error(
+          `Failed to fetch/add person ${member.personId}:`,
+          personError,
+        );
+        // Continue with other members even if one fails
+      }
     }
 
     // Refresh participants list

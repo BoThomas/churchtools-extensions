@@ -61,36 +61,80 @@
       </div>
 
       <!-- Selected Group Details -->
-      <Card v-if="selectedGroup" class="bg-primary-50 dark:bg-primary-900/20">
-        <template #content>
-          <div class="space-y-2">
-            <div class="font-semibold text-lg">{{ selectedGroup.name }}</div>
-            <div
-              v-if="selectedGroup.information?.note"
-              class="text-sm text-surface-600 dark:text-surface-400"
-            >
-              {{ selectedGroup.information.note }}
+      <Fieldset
+        v-if="selectedGroup"
+        :legend="selectedGroup.name"
+        class="bg-primary-50 dark:bg-primary-900/20"
+      >
+        <div class="space-y-4">
+          <div
+            v-if="selectedGroup.information?.note"
+            class="text-sm text-surface-600 dark:text-surface-400"
+          >
+            {{ selectedGroup.information.note }}
+          </div>
+
+          <div class="flex items-center gap-4 text-sm flex-wrap">
+            <div v-if="selectedGroup.memberStatistics">
+              <i class="pi pi-users mr-1"></i>
+              <span class="font-medium">{{
+                getMemberCount(selectedGroup)
+              }}</span>
+              {{ getMemberCount(selectedGroup) === 1 ? 'member' : 'members' }}
             </div>
-            <div class="flex items-center gap-4 text-sm flex-wrap">
-              <div v-if="selectedGroup.memberStatistics">
-                <i class="pi pi-users mr-1"></i>
-                <span class="font-medium">{{
-                  getMemberCount(selectedGroup)
-                }}</span>
-                {{ getMemberCount(selectedGroup) === 1 ? 'member' : 'members' }}
-              </div>
-              <div v-if="selectedGroup.information?.meetingTime">
-                <i class="pi pi-clock mr-1"></i>
-                {{ selectedGroup.information.meetingTime }}
-              </div>
-              <div v-if="selectedGroup.information?.campusId">
-                <i class="pi pi-map-marker mr-1"></i>
-                Campus ID: {{ selectedGroup.information.campusId }}
-              </div>
+            <div v-if="selectedGroup.information?.meetingTime">
+              <i class="pi pi-clock mr-1"></i>
+              {{ selectedGroup.information.meetingTime }}
             </div>
           </div>
-        </template>
-      </Card>
+
+          <!-- Members List -->
+          <div v-if="loadingMembers" class="text-center py-4">
+            <i class="pi pi-spin pi-spinner text-2xl text-primary"></i>
+          </div>
+          <div v-else-if="groupMembers.length > 0" class="space-y-2">
+            <div class="font-medium text-sm">
+              Members to be added as participants:
+            </div>
+            <DataTable
+              :value="groupMembers"
+              :rows="5"
+              :paginator="groupMembers.length > 5"
+              size="small"
+              class="text-sm"
+            >
+              <template #empty>
+                <div class="text-center py-2 text-surface-500">
+                  No members found
+                </div>
+              </template>
+              <Column header="Name">
+                <template #body="slotProps">
+                  {{ slotProps.data.person.title }}
+                </template>
+              </Column>
+              <Column header="Status">
+                <template #body="slotProps">
+                  <Badge
+                    :value="slotProps.data.groupMemberStatus"
+                    :severity="
+                      slotProps.data.groupMemberStatus === 'active'
+                        ? 'success'
+                        : 'secondary'
+                    "
+                  />
+                </template>
+              </Column>
+            </DataTable>
+          </div>
+          <div
+            v-else
+            class="text-sm text-surface-600 dark:text-surface-400 py-2"
+          >
+            No members in this group
+          </div>
+        </div>
+      </Fieldset>
 
       <!-- Action Buttons -->
       <div class="flex justify-end gap-2 pt-4">
@@ -112,12 +156,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import type { Group } from '@churchtools-extensions/ct-utils/ct-types';
+import { ref, computed, onMounted, watch } from 'vue';
+import type {
+  Group,
+  GroupMember,
+} from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
+import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
+import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
+import Column from 'primevue/column';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 
@@ -127,9 +176,11 @@ const emit = defineEmits<{
 }>();
 
 const loading = ref(true);
+const loadingMembers = ref(false);
 const error = ref<string | null>(null);
 const groups = ref<Group[]>([]);
 const selectedGroup = ref<Group | null>(null);
+const groupMembers = ref<GroupMember[]>([]);
 
 const filteredGroups = computed(() => {
   // Filter out groups that are hidden or not active
@@ -170,6 +221,64 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+// Watch for selected group changes and fetch members
+watch(selectedGroup, async (newGroup) => {
+  if (!newGroup) {
+    groupMembers.value = [];
+    return;
+  }
+
+  try {
+    loadingMembers.value = true;
+    // Fetch members without limit parameter first
+    const response = (await churchtoolsClient.get(
+      `/groups/${newGroup.id}/members`,
+    )) as {
+      data: GroupMember[];
+      meta: { count: number; pagination: { total: number; lastPage: number } };
+    };
+
+    console.log('Group members response:', response);
+    groupMembers.value = response.data || [];
+
+    // If there are more pages, fetch them
+    if (response.meta?.pagination?.lastPage > 1) {
+      const totalPages = response.meta.pagination.lastPage;
+      const additionalPages = [];
+
+      for (let page = 2; page <= totalPages; page++) {
+        additionalPages.push(
+          churchtoolsClient.get(`/groups/${newGroup.id}/members?page=${page}`),
+        );
+      }
+
+      const additionalResponses = (await Promise.all(
+        additionalPages,
+      )) as Array<{
+        data: GroupMember[];
+      }>;
+
+      for (const pageResponse of additionalResponses) {
+        groupMembers.value.push(...(pageResponse.data || []));
+      }
+    }
+
+    console.log(
+      'Loaded group members:',
+      groupMembers.value.length,
+      'of',
+      response.meta?.pagination?.total || response.meta?.count || 0,
+    );
+  } catch (e: any) {
+    console.error('Failed to fetch group members', e);
+    console.error('Error response:', e.response?.data);
+    groupMembers.value = [];
+  } finally {
+    loadingMembers.value = false;
+  }
+});
+
 function getMemberCount(group: Group): number {
   if (!group.memberStatistics) return 0;
   return (
