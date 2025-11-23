@@ -160,6 +160,32 @@ export function assignRoutes(
     return 3 - groupsAtThisMeal; // Each meal location hosts exactly 3 groups
   }
 
+  function scoreAssignment(
+    groupId: number,
+    starterHostId: number,
+    mainCourseHostId: number,
+    dessertHostId: number,
+  ): number {
+    // Higher score is better
+    let score = 0;
+
+    // Strongly prefer different hosts for different meals (variety bonus)
+    const hosts = [starterHostId, mainCourseHostId, dessertHostId];
+    const uniqueHosts = new Set(hosts.filter((h) => h !== groupId));
+    score += uniqueHosts.size * 100; // Major bonus for variety
+
+    // Penalize meeting the same groups multiple times
+    const hostsToCheck = [starterHostId, mainCourseHostId, dessertHostId];
+    for (const hostId of hostsToCheck) {
+      if (hostId !== groupId) {
+        const meetCount = getMeetCount(groupId, hostId);
+        score -= meetCount * 50; // Penalty for repeat meetings
+      }
+    }
+
+    return score;
+  }
+
   function isValidAssignment(
     groupId: number,
     starterHostId: number,
@@ -260,13 +286,17 @@ export function assignRoutes(
 
     const currentGroup = groups[groupIndex];
     const currentGroupId = currentGroup.id;
-    let triedCombinations = 0;
+
+    // Collect all valid assignments with their scores
+    const candidates: Array<{
+      assignment: RouteAssignment;
+      score: number;
+    }> = [];
 
     // Try all combinations of hosts
     for (const starterGroup of starterGroups) {
       for (const mainCourseGroup of mainCourseGroups) {
         for (const dessertGroup of dessertGroups) {
-          triedCombinations++;
           const starterHostId = starterGroup.id;
           const mainCourseHostId = mainCourseGroup.id;
           const dessertHostId = dessertGroup.id;
@@ -279,7 +309,13 @@ export function assignRoutes(
           );
 
           if (validation.valid) {
-            // Make assignment
+            const score = scoreAssignment(
+              currentGroupId,
+              starterHostId,
+              mainCourseHostId,
+              dessertHostId,
+            );
+
             const assignment: RouteAssignment = {
               groupId: currentGroupId,
               stops: {
@@ -288,30 +324,8 @@ export function assignRoutes(
                 dessert: dessertHostId,
               },
             };
-            assignments.push(assignment);
 
-            // Mark pairs as met
-            const savedPairs = new Set(usedPairs);
-            const hostsToVisit = [
-              starterHostId,
-              mainCourseHostId,
-              dessertHostId,
-            ];
-            for (const hostId of hostsToVisit) {
-              if (hostId !== currentGroupId) {
-                addPair(currentGroupId, hostId);
-              }
-            }
-
-            // Recurse
-            if (backtrack(groupIndex + 1)) {
-              return true;
-            }
-
-            // Backtrack: undo assignment
-            assignments.pop();
-            usedPairs.clear();
-            savedPairs.forEach((pair) => usedPairs.add(pair));
+            candidates.push({ assignment, score });
           } else if (validation.reason) {
             logFailure(validation.reason);
           }
@@ -319,8 +333,45 @@ export function assignRoutes(
       }
     }
 
-    if (triedCombinations === 0) {
-      logFailure(`No combinations available for group ${currentGroupId}`);
+    if (candidates.length === 0) {
+      logFailure(`No valid assignments for group ${currentGroupId}`);
+      return false;
+    }
+
+    // Sort candidates by score (highest first) to try best options first
+    candidates.sort((a, b) => b.score - a.score);
+
+    // Try candidates in order of score
+    for (const candidate of candidates) {
+      const assignment = candidate.assignment;
+
+      assignments.push(assignment);
+
+      // Mark pairs as met
+      const savedPairs = new Set(usedPairs);
+      const savedCounts = new Map(pairMeetCount);
+      const hostsToVisit = [
+        assignment.stops.starter,
+        assignment.stops.mainCourse,
+        assignment.stops.dessert,
+      ];
+      for (const hostId of hostsToVisit) {
+        if (hostId !== currentGroupId) {
+          addPair(currentGroupId, hostId);
+        }
+      }
+
+      // Recurse
+      if (backtrack(groupIndex + 1)) {
+        return true;
+      }
+
+      // Backtrack: undo assignment
+      assignments.pop();
+      usedPairs.clear();
+      savedPairs.forEach((pair) => usedPairs.add(pair));
+      pairMeetCount.clear();
+      savedCounts.forEach((count, pair) => pairMeetCount.set(pair, count));
     }
 
     return false; // No valid assignment found for this group
