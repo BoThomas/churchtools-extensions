@@ -116,14 +116,20 @@
                 </div>
                 <div class="flex-1 space-y-1">
                   <div class="flex items-center justify-between">
-                    <span class="font-semibold">{{
-                      getMealLabel(stop.meal)
-                    }}</span>
-                    <Badge
-                      v-if="stop.hostGroupId === route.groupId"
-                      value="Hosting"
-                      severity="success"
-                    />
+                    <span
+                      class="font-semibold flex items-center gap-1"
+                      :class="
+                        stop.hostGroupId === route.groupId
+                          ? 'text-green-700 dark:text-green-400'
+                          : ''
+                      "
+                    >
+                      <i
+                        v-if="stop.hostGroupId === route.groupId"
+                        class="pi pi-home"
+                      ></i>
+                      {{ getMealLabel(stop.meal) }}
+                    </span>
                   </div>
                   <div class="text-sm text-surface-600 dark:text-surface-400">
                     {{ stop.startTime }} - {{ stop.endTime }}
@@ -133,12 +139,6 @@
                     <div>
                       {{ stop.hostAddress.zip }} {{ stop.hostAddress.city }}
                     </div>
-                  </div>
-                  <div
-                    v-if="stop.hostGroupId !== route.groupId"
-                    class="text-xs text-surface-500"
-                  >
-                    Hosted by Group {{ getGroupNumber(stop.hostGroupId) }}
                   </div>
 
                   <!-- Other Groups at this Location -->
@@ -156,9 +156,18 @@
                           stop.meal,
                         )"
                         :key="groupId"
-                        :label="`Group ${getGroupNumber(groupId)}`"
                         class="text-xs"
-                      />
+                      >
+                        <template #default>
+                          <span class="flex items-center gap-1">
+                            <i
+                              v-if="groupId === stop.hostGroupId"
+                              class="pi pi-home"
+                            ></i>
+                            <span>Group {{ getGroupNumber(groupId) }}</span>
+                          </span>
+                        </template>
+                      </Chip>
                     </div>
                     <div class="text-xs text-surface-500 italic">
                       {{
@@ -177,6 +186,43 @@
                         )
                       }}
                       people)
+                    </div>
+
+                    <!-- Dietary Restrictions for All Groups -->
+                    <div
+                      v-if="
+                        getAllDietaryRestrictionsAtStop(
+                          stop.hostGroupId,
+                          stop.meal,
+                        ).length > 0
+                      "
+                      class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs"
+                    >
+                      <div
+                        class="font-semibold text-blue-700 dark:text-blue-300 mb-1"
+                      >
+                        Dietary Needs:
+                      </div>
+                      <div
+                        class="space-y-1 text-surface-700 dark:text-surface-300"
+                      >
+                        <div
+                          v-for="(
+                            item, rIdx
+                          ) in getAllDietaryRestrictionsAtStop(
+                            stop.hostGroupId,
+                            stop.meal,
+                          )"
+                          :key="rIdx"
+                        >
+                          Group {{ item.groupNumber }} ({{
+                            item.participantName
+                          }}):
+                          <span class="font-semibold">{{
+                            item.restrictions
+                          }}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -260,7 +306,6 @@ import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
-import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 
 const props = defineProps<{
   dinner: RunningDinner;
@@ -345,6 +390,58 @@ function getGroupMemberCount(groupId: number): number {
 function getParticipantName(participantId: number): string {
   const participant = props.participants.find((p) => p.id === participantId);
   return participant?.value.name ?? 'Unknown';
+}
+
+function getGroupDietaryRestrictions(groupId: number): Array<{
+  participantName: string;
+  restrictions: string;
+}> {
+  const memberIds = getGroupMembers(groupId);
+  const restrictions: Array<{
+    participantName: string;
+    restrictions: string;
+  }> = [];
+
+  memberIds.forEach((participantId) => {
+    const participant = props.participants.find((p) => p.id === participantId);
+    if (participant?.value.dietaryRestrictions) {
+      restrictions.push({
+        participantName: participant.value.name,
+        restrictions: participant.value.dietaryRestrictions,
+      });
+    }
+  });
+
+  return restrictions;
+}
+
+function getAllDietaryRestrictionsAtStop(
+  hostGroupId: number,
+  meal: MealType,
+): Array<{
+  groupNumber: number;
+  participantName: string;
+  restrictions: string;
+}> {
+  const groupsAtLocation = getGroupsAtMealLocation(hostGroupId, meal);
+  const allRestrictions: Array<{
+    groupNumber: number;
+    participantName: string;
+    restrictions: string;
+  }> = [];
+
+  groupsAtLocation.forEach((groupId) => {
+    const groupRestrictions = getGroupDietaryRestrictions(groupId);
+    groupRestrictions.forEach((r) => {
+      allRestrictions.push({
+        groupNumber: getGroupNumber(groupId),
+        participantName: r.participantName,
+        restrictions: r.restrictions,
+      });
+    });
+  });
+
+  return allRestrictions.sort((a, b) => a.groupNumber - b.groupNumber);
 }
 
 function getMealLabel(meal: MealType): string {
