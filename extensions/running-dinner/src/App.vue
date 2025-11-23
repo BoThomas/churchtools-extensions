@@ -45,7 +45,7 @@
   </div>
 
   <!-- Global Dialogs -->
-  <ConfirmDialog />
+  <ConfirmDialog :style="{ maxWidth: '90vw', maxHeight: '90vh' }" />
   <Toast />
 </template>
 
