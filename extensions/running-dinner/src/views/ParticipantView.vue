@@ -41,9 +41,21 @@
               label="Join"
               icon="pi pi-plus"
               size="small"
+              :disabled="dinner.value.status !== 'published'"
               @click="joinDinner(dinner)"
             />
-            <div v-else class="flex flex-wrap gap-2">
+            <div
+              v-if="
+                !isRegistered(dinner.id!) && dinner.value.status !== 'published'
+              "
+              class="text-sm text-surface-500 dark:text-surface-400"
+            >
+              Registration is closed
+            </div>
+            <div
+              v-else-if="isRegistered(dinner.id!)"
+              class="flex flex-wrap gap-2"
+            >
               <Button
                 v-if="hasRoute(dinner.id!)"
                 label="View Route"

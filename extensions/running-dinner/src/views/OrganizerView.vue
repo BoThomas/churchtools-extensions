@@ -112,10 +112,21 @@
     <!-- Details Dialog with Group Management -->
     <Dialog
       v-model:visible="showDetailsDialog"
-      :header="selectedDinner?.value.name"
       :modal="true"
       :style="{ width: '95vw', maxWidth: '1400px', maxHeight: '95vh' }"
     >
+      <template #header>
+        <div class="flex items-center gap-3">
+          <span class="text-xl font-semibold">{{
+            selectedDinner?.value.name
+          }}</span>
+          <Badge
+            v-if="selectedDinner"
+            :value="getStatusLabel(selectedDinner.value.status)"
+            :severity="getStatusSeverity(selectedDinner.value.status)"
+          />
+        </div>
+      </template>
       <div v-if="selectedDinner" class="space-y-4">
         <!-- Tabs for different sections -->
         <Tabs value="participants">
@@ -137,6 +148,56 @@
           <TabPanels>
             <!-- Participants Panel -->
             <TabPanel value="participants">
+              <!-- Registration Control -->
+              <Card class="mb-4">
+                <template #content>
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="font-semibold mb-1">Registration Status</div>
+                      <div
+                        class="text-sm text-surface-600 dark:text-surface-400"
+                      >
+                        <span
+                          v-if="selectedDinner.value.status === 'published'"
+                        >
+                          Registration is currently open. Participants can join.
+                        </span>
+                        <span
+                          v-else-if="
+                            selectedDinner.value.status ===
+                            'registration-closed'
+                          "
+                        >
+                          Registration is closed. New participants cannot join.
+                        </span>
+                        <span v-else>
+                          Registration controls are only available when status
+                          is Published or Registration Closed.
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <Button
+                        v-if="selectedDinner.value.status === 'published'"
+                        label="Close Registration"
+                        icon="pi pi-lock"
+                        severity="warn"
+                        @click="handleCloseRegistration(selectedDinner.id!)"
+                      />
+                      <Button
+                        v-if="
+                          selectedDinner.value.status === 'registration-closed'
+                        "
+                        label="Open Registration"
+                        icon="pi pi-unlock"
+                        severity="success"
+                        @click="handleOpenRegistration(selectedDinner.id!)"
+                      />
+                    </div>
+                  </div>
+                </template>
+              </Card>
+
               <ParticipantList
                 :participants="getDinnerParticipants(selectedDinner.id!)"
               />
@@ -170,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import type { RunningDinner } from '../types/models';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
@@ -181,7 +242,9 @@ import { useGroupStore } from '../stores/group';
 import { useRouteStore } from '../stores/route';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
@@ -205,7 +268,11 @@ const toast = useToast();
 const showFormDialog = ref(false);
 const showDetailsDialog = ref(false);
 const editingDinner = ref<CategoryValue<RunningDinner> | null>(null);
-const selectedDinner = ref<CategoryValue<RunningDinner> | null>(null);
+const selectedDinnerId = ref<number | null>(null);
+const selectedDinner = computed(() => {
+  if (!selectedDinnerId.value) return null;
+  return dinnerStore.getDinnerById(selectedDinnerId.value);
+});
 const currentUserId = ref(0);
 
 onMounted(async () => {
@@ -296,6 +363,42 @@ async function handleRoutesReset() {
       life: 3000,
     });
   }
+}
+
+async function handleCloseRegistration(dinnerId: number) {
+  confirm.require({
+    message:
+      'Are you sure you want to close registration? No new participants will be able to join.',
+    header: 'Close Registration',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      await dinnerStore.closeRegistration(dinnerId);
+      toast.add({
+        severity: 'info',
+        summary: 'Registration Closed',
+        detail: 'Participants can no longer join this dinner',
+        life: 3000,
+      });
+    },
+  });
+}
+
+async function handleOpenRegistration(dinnerId: number) {
+  confirm.require({
+    message:
+      'Are you sure you want to reopen registration? Participants will be able to join again.',
+    header: 'Open Registration',
+    icon: 'pi pi-question-circle',
+    accept: async () => {
+      await dinnerStore.publish(dinnerId);
+      toast.add({
+        severity: 'success',
+        summary: 'Registration Opened',
+        detail: 'Participants can now join this dinner',
+        life: 3000,
+      });
+    },
+  });
 }
 
 function openCreateDialog() {
@@ -389,7 +492,36 @@ function confirmDelete(dinner: CategoryValue<RunningDinner>) {
 }
 
 function viewDetails(dinner: CategoryValue<RunningDinner>) {
-  selectedDinner.value = dinner;
+  selectedDinnerId.value = dinner.id!;
   showDetailsDialog.value = true;
+}
+
+function getStatusLabel(status: RunningDinner['status']): string {
+  const labels: Record<typeof status, string> = {
+    draft: 'Draft',
+    published: 'Open for Registration',
+    'registration-closed': 'Registration Closed',
+    'groups-created': 'Groups Created',
+    'routes-assigned': 'Routes Assigned',
+    completed: 'Completed',
+  };
+  return labels[status];
+}
+
+function getStatusSeverity(
+  status: RunningDinner['status'],
+): 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast' {
+  const severities: Record<
+    typeof status,
+    'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast'
+  > = {
+    draft: 'secondary',
+    published: 'success',
+    'registration-closed': 'warn',
+    'groups-created': 'info',
+    'routes-assigned': 'info',
+    completed: 'contrast',
+  };
+  return severities[status];
 }
 </script>
