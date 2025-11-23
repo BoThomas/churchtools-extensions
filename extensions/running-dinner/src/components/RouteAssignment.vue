@@ -481,7 +481,7 @@ async function handleSaveRoutes() {
   }
 }
 
-function handleReset() {
+async function handleReset() {
   confirm.require({
     message:
       'Are you sure you want to reset all routes? This cannot be undone.',
@@ -496,15 +496,32 @@ function handleReset() {
       label: 'Reset',
       severity: 'danger',
     },
-    accept: () => {
-      routes.value = [];
-      warnings.value = [];
-      toast.add({
-        severity: 'info',
-        summary: 'Routes Reset',
-        detail: 'All route assignments have been cleared.',
-        life: 3000,
-      });
+    accept: async () => {
+      try {
+        // Delete all routes for this dinner from the store
+        if (props.dinner.id) {
+          await routeStore.deleteByDinnerId(props.dinner.id);
+        }
+
+        // Clear local state
+        routes.value = [];
+        warnings.value = [];
+
+        toast.add({
+          severity: 'info',
+          summary: 'Routes Reset',
+          detail: 'All route assignments have been cleared.',
+          life: 3000,
+        });
+      } catch (error: any) {
+        toast.add({
+          severity: 'error',
+          summary: 'Reset Failed',
+          detail: error.message || 'Could not reset routes.',
+          life: 5000,
+        });
+        console.error('Reset routes error:', error);
+      }
     },
   });
 }
