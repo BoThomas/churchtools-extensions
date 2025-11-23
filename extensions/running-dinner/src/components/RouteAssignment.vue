@@ -140,10 +140,50 @@
                   >
                     Hosted by Group {{ getGroupNumber(stop.hostGroupId) }}
                   </div>
+
+                  <!-- Other Groups at this Location -->
+                  <div class="mt-2 space-y-1">
+                    <div
+                      class="text-xs font-semibold text-surface-600 dark:text-surface-400"
+                    >
+                      Other groups at this location:
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                      <Chip
+                        v-for="groupId in getOtherGroupsAtStop(
+                          route.groupId,
+                          stop.hostGroupId,
+                          stop.meal,
+                        )"
+                        :key="groupId"
+                        :label="`Group ${getGroupNumber(groupId)}`"
+                        class="text-xs"
+                      />
+                    </div>
+                    <div class="text-xs text-surface-500 italic">
+                      {{
+                        getGroupsAtMealLocation(stop.hostGroupId, stop.meal)
+                          .length
+                      }}
+                      groups total ({{
+                        getGroupMemberCount(route.groupId) +
+                        getOtherGroupsAtStop(
+                          route.groupId,
+                          stop.hostGroupId,
+                          stop.meal,
+                        ).reduce(
+                          (sum, gId) => sum + getGroupMemberCount(gId),
+                          0,
+                        )
+                      }}
+                      people)
+                    </div>
+                  </div>
+
                   <a
                     :href="getGoogleMapsLink(stop.hostAddress)"
                     target="_blank"
-                    class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    class="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
                   >
                     <i class="pi pi-map-marker"></i>
                     Open in Maps
@@ -332,6 +372,30 @@ function getGoogleMapsLink(address: Address): string {
     `${address.street}, ${address.zip} ${address.city}`,
   );
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+function getGroupsAtMealLocation(
+  hostGroupId: number,
+  meal: MealType,
+): number[] {
+  // Find all groups that visit this host for this meal
+  const groupsAtLocation = routes.value
+    .filter((route) => {
+      const stop = route.stops.find((s) => s.meal === meal);
+      return stop?.hostGroupId === hostGroupId;
+    })
+    .map((route) => route.groupId);
+
+  return groupsAtLocation.sort((a, b) => getGroupNumber(a) - getGroupNumber(b));
+}
+
+function getOtherGroupsAtStop(
+  currentGroupId: number,
+  hostGroupId: number,
+  meal: MealType,
+): number[] {
+  const allGroups = getGroupsAtMealLocation(hostGroupId, meal);
+  return allGroups.filter((id) => id !== currentGroupId);
 }
 
 // Actions
