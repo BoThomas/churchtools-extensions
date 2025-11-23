@@ -562,7 +562,7 @@ return assignments // Success!
 7. **No solution for routes**: Provide manual assignment interface as fallback
 8. **User without ChurchTools account**: Not supported - ChurchTools users only
 9. **Registration status control**: Organizer can manually close/reopen registration from Participants tab
-10. **Status lifecycle management**: 
+10. **Status lifecycle management**:
     - Deleting routes resets status to 'groups-created'
     - Deleting groups resets status to 'registration-closed' and cascades to delete routes
 
