@@ -113,12 +113,20 @@
                   {{ participant.value.email }}
                 </div>
               </div>
-              <Button
-                label="Add to Group"
-                icon="pi pi-plus"
-                size="small"
-                @click="showAddToGroupDialog(participant)"
-              />
+              <div class="flex gap-2">
+                <Button
+                  label="Add to Group"
+                  icon="pi pi-plus"
+                  size="small"
+                  @click="showAddToGroupDialog(participant)"
+                />
+                <SecondaryButton
+                  label="Create New Group"
+                  icon="pi pi-users"
+                  size="small"
+                  @click="createNewGroupWithParticipant(participant)"
+                />
+              </div>
             </div>
           </div>
         </template>
@@ -440,5 +448,30 @@ function addParticipantToGroup() {
       life: 3000,
     });
   }
+}
+
+function createNewGroupWithParticipant(
+  participant: CategoryValue<Participant>,
+) {
+  const now = new Date().toISOString();
+  const newGroupNumber = groups.value.length + 1;
+
+  const newGroup: Group = {
+    dinnerId: props.dinner.id!,
+    groupNumber: newGroupNumber,
+    participantIds: [participant.id!],
+    hostParticipantId: participant.id!, // Set as host by default
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  groups.value.push(newGroup);
+
+  toast.add({
+    severity: 'success',
+    summary: 'Group Created',
+    detail: `New group ${newGroupNumber} created with participant`,
+    life: 3000,
+  });
 }
 </script>
