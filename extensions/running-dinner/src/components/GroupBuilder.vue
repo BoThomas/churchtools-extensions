@@ -185,6 +185,7 @@ import type { CategoryValue } from '@churchtools-extensions/persistance';
 import { createGroups } from '../algorithms/grouping';
 import { useGroupStore } from '../stores/group';
 import { useParticipantStore } from '../stores/participant';
+import { useRouteStore } from '../stores/route';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
@@ -207,6 +208,11 @@ const groupStore = useGroupStore();
 const participantStore = useParticipantStore();
 const confirm = useConfirm();
 const toast = useToast();
+
+const emit = defineEmits<{
+  'groups-saved': [];
+  'groups-reset': [];
+}>();
 
 const groups = ref<Group[]>([]);
 const warnings = ref<string[]>([]);
@@ -307,15 +313,8 @@ async function handleSaveGroups() {
     // Use saveOrUpdateMultiple to update existing or create new groups
     await groupStore.saveOrUpdateMultiple(props.dinner.id!, groups.value);
 
-    // Update dinner status
-    // This would be done in the parent component
-
-    toast.add({
-      severity: 'success',
-      summary: 'Saved',
-      detail: 'Groups have been saved',
-      life: 3000,
-    });
+    // Emit event to parent to update dinner status
+    emit('groups-saved');
   } catch (e) {
     console.error('Failed to save groups', e);
     toast.add({
@@ -332,13 +331,15 @@ async function handleSaveGroups() {
 function handleReset() {
   confirm.require({
     message:
-      'Are you sure you want to reset? This will delete all saved groups for this dinner.',
+      'Are you sure you want to reset? This will delete all saved groups AND routes for this dinner, and reset the status to registration-closed.',
     header: 'Confirm Reset',
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        // Delete all saved groups for this dinner
+        // Delete all saved groups and routes for this dinner
         if (props.dinner.id) {
+          const routeStore = useRouteStore();
+          await routeStore.deleteByDinnerId(props.dinner.id);
           await groupStore.deleteByDinnerId(props.dinner.id);
         }
 
@@ -346,10 +347,13 @@ function handleReset() {
         groups.value = [];
         warnings.value = [];
 
+        // Emit event to parent to refresh and update dinner status
+        emit('groups-reset');
+
         toast.add({
           severity: 'info',
           summary: 'Reset',
-          detail: 'Groups have been reset and removed from storage',
+          detail: 'Groups and routes have been reset and removed from storage',
           life: 3000,
         });
       } catch (e) {

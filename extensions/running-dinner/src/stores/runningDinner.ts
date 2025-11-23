@@ -163,6 +163,14 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
     await update(id, { status: 'completed' });
   }
 
+  async function resetToRegistrationClosed(id: number) {
+    await update(id, { status: 'registration-closed' });
+  }
+
+  async function resetToGroupsCreated(id: number) {
+    await update(id, { status: 'groups-created' });
+  }
+
   // ==================== Computed & Queries ====================
 
   const publishedDinners = computed(() => {
@@ -209,6 +217,8 @@ export const useRunningDinnerStore = defineStore('runningDinner', () => {
     markGroupsCreated,
     markRoutesAssigned,
     markCompleted,
+    resetToRegistrationClosed,
+    resetToGroupsCreated,
 
     // Computed
     publishedDinners,

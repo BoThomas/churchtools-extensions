@@ -114,25 +114,48 @@
                     {{ idx + 1 }}
                   </div>
                 </div>
-                <Fieldset
-                  class="flex-1"
-                  :legend="`${getMealLabel(stop.meal)}${stop.hostGroupId === route.groupId ? ' (Hosted)' : ''}`"
-                  :toggleable="stop.hostGroupId !== route.groupId"
-                  :collapsed="stop.hostGroupId !== route.groupId"
-                >
+                <div class="flex-1">
+                  <div class="font-semibold text-sm mb-2">
+                    {{ getMealLabel(stop.meal) }}
+                    <span
+                      v-if="stop.hostGroupId === route.groupId"
+                      class="text-primary"
+                    >
+                      (Hosted)</span
+                    >
+                  </div>
+
+                  <!-- Always visible: Time and Address -->
                   <div class="space-y-1">
                     <div class="text-sm text-surface-600 dark:text-surface-400">
                       {{ stop.startTime }} - {{ stop.endTime }}
                     </div>
-                    <div class="text-sm">
-                      <div>{{ stop.hostAddress.street }}</div>
+                    <a
+                      :href="getGoogleMapsLink(stop.hostAddress)"
+                      target="_blank"
+                      class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
                       <div>
+                        <i class="pi pi-map-marker"></i>
+                        {{ stop.hostAddress.street }},
                         {{ stop.hostAddress.zip }} {{ stop.hostAddress.city }}
                       </div>
-                    </div>
+                    </a>
+                  </div>
 
+                  <!-- Collapsible details -->
+                  <Fieldset
+                    :toggleable="true"
+                    :collapsed="stop.hostGroupId !== route.groupId"
+                    :legend="
+                      stop.hostGroupId === route.groupId
+                        ? 'Hosting Details'
+                        : 'Details'
+                    "
+                    class="mt-3"
+                  >
                     <!-- Other Groups at this Location -->
-                    <div class="mt-2 space-y-1">
+                    <div class="space-y-1">
                       <div
                         class="text-xs font-semibold text-surface-600 dark:text-surface-400"
                       >
@@ -215,17 +238,8 @@
                         </div>
                       </div>
                     </div>
-
-                    <a
-                      :href="getGoogleMapsLink(stop.hostAddress)"
-                      target="_blank"
-                      class="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-                    >
-                      <i class="pi pi-map-marker"></i>
-                      Open in Maps
-                    </a>
-                  </div>
-                </Fieldset>
+                  </Fieldset>
+                </div>
               </div>
 
               <!-- Group Members -->
@@ -545,13 +559,6 @@ async function handleSaveRoutes() {
       await routeStore.create(route);
     }
 
-    toast.add({
-      severity: 'success',
-      summary: 'Routes Saved',
-      detail: `${routes.value.length} routes saved successfully.`,
-      life: 3000,
-    });
-
     // Reload routes from store to get the IDs
     await loadExistingRoutes();
 
@@ -573,7 +580,7 @@ async function handleSaveRoutes() {
 async function handleReset() {
   confirm.require({
     message:
-      'Are you sure you want to reset all routes? This cannot be undone.',
+      'Are you sure you want to reset all routes? This will reset the status to groups-created and cannot be undone.',
     header: 'Confirm Reset',
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
@@ -596,6 +603,9 @@ async function handleReset() {
         routes.value = [];
         warnings.value = [];
 
+        // Emit event to parent to refresh and update dinner status
+        emit('routes-reset');
+
         toast.add({
           severity: 'info',
           summary: 'Routes Reset',
@@ -617,5 +627,6 @@ async function handleReset() {
 
 const emit = defineEmits<{
   'routes-saved': [];
+  'routes-reset': [];
 }>();
 </script>

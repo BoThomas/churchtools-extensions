@@ -148,6 +148,7 @@
                 :dinner="selectedDinner.value"
                 :participants="getDinnerParticipants(selectedDinner.id!)"
                 @groups-saved="handleGroupsSaved"
+                @groups-reset="handleGroupsReset"
               />
             </TabPanel>
 
@@ -158,6 +159,7 @@
                 :groups="getDinnerGroups(selectedDinner.id!)"
                 :participants="getDinnerParticipants(selectedDinner.id!)"
                 @routes-saved="handleRoutesSaved"
+                @routes-reset="handleRoutesReset"
               />
             </TabPanel>
           </TabPanels>
@@ -176,6 +178,7 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { useRunningDinnerStore } from '../stores/runningDinner';
 import { useParticipantStore } from '../stores/participant';
 import { useGroupStore } from '../stores/group';
+import { useRouteStore } from '../stores/route';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -195,6 +198,7 @@ import RouteAssignment from '../components/RouteAssignment.vue';
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
 const groupStore = useGroupStore();
+const routeStore = useRouteStore();
 const confirm = useConfirm();
 const toast = useToast();
 
@@ -237,14 +241,32 @@ function getDinnerGroups(dinnerId: number) {
 }
 
 async function handleGroupsSaved() {
-  // Refresh groups after saving
-  await groupStore.fetchAll();
-  toast.add({
-    severity: 'success',
-    summary: 'Groups Saved',
-    detail: 'Groups have been saved successfully',
-    life: 3000,
-  });
+  // Update dinner status to groups-created
+  if (selectedDinner.value) {
+    await dinnerStore.markGroupsCreated(selectedDinner.value.id!);
+    await groupStore.fetchAll();
+    toast.add({
+      severity: 'success',
+      summary: 'Groups Saved',
+      detail: 'Groups have been saved and status updated',
+      life: 3000,
+    });
+  }
+}
+
+async function handleGroupsReset() {
+  // Reset dinner status to registration-closed when groups are removed
+  if (selectedDinner.value) {
+    await dinnerStore.resetToRegistrationClosed(selectedDinner.value.id!);
+    await groupStore.fetchAll();
+    await routeStore.fetchAll();
+    toast.add({
+      severity: 'info',
+      summary: 'Status Reset',
+      detail: 'Dinner status has been reset to registration-closed',
+      life: 3000,
+    });
+  }
 }
 
 async function handleRoutesSaved() {
@@ -257,6 +279,20 @@ async function handleRoutesSaved() {
       severity: 'success',
       summary: 'Routes Assigned',
       detail: 'Routes have been assigned and saved successfully',
+      life: 3000,
+    });
+  }
+}
+
+async function handleRoutesReset() {
+  // Reset dinner status to groups-created when routes are removed
+  if (selectedDinner.value) {
+    await dinnerStore.resetToGroupsCreated(selectedDinner.value.id!);
+    await routeStore.fetchAll();
+    toast.add({
+      severity: 'info',
+      summary: 'Status Reset',
+      detail: 'Dinner status has been reset to groups-created',
       life: 3000,
     });
   }
