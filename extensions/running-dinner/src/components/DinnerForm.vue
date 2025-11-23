@@ -336,6 +336,7 @@ interface Props {
   initialData?: RunningDinner;
   saving?: boolean;
   organizerId: number;
+  initialGroupName?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -353,7 +354,11 @@ const formData = reactive<
     registrationDeadline: string | Date;
   }
 >({
-  name: props.initialData?.name || '',
+  name:
+    props.initialData?.name ||
+    (props.initialGroupName
+      ? `Running Dinner - ${props.initialGroupName}`
+      : ''),
   description: props.initialData?.description || '',
   date: props.initialData?.date || '',
   city: props.initialData?.city || '',

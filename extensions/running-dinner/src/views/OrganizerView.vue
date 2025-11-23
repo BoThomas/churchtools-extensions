@@ -1,11 +1,18 @@
 <template>
   <div class="space-y-6">
-    <div class="mt-2 flex justify-center items-center">
+    <div class="mt-2 flex justify-center items-center gap-4">
       <Button
         label="Create New Dinner"
         icon="pi pi-plus"
         class="w-full max-w-md"
         @click="openCreateDialog"
+      />
+      <Button
+        label="Create from Group"
+        icon="pi pi-users"
+        class="w-full max-w-md"
+        outlined
+        @click="openGroupSelectorDialog"
       />
     </div>
 
@@ -103,6 +110,7 @@
       <DinnerForm
         :initial-data="editingDinner?.value"
         :organizer-id="currentUserId"
+        :initial-group-name="selectedGroup?.name"
         :saving="dinnerStore.saving"
         @submit="handleSubmit"
         @cancel="closeFormDialog"
@@ -248,12 +256,25 @@
         @cancel="closeEditParticipantDialog"
       />
     </Dialog>
+
+    <!-- Group Selector Dialog -->
+    <Dialog
+      v-model:visible="showGroupSelectorDialog"
+      header="Create Dinner from ChurchTools Group"
+      :modal="true"
+      :style="{ width: '90vw', maxWidth: '800px', maxHeight: '90vh' }"
+    >
+      <GroupSelector
+        @continue="handleGroupSelected"
+        @cancel="closeGroupSelectorDialog"
+      />
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
+import type { Person, Group } from '@churchtools-extensions/ct-utils/ct-types';
 import type { RunningDinner, Participant } from '../types/models';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
@@ -279,6 +300,7 @@ import ParticipantList from '../components/ParticipantList.vue';
 import ParticipantForm from '../components/ParticipantForm.vue';
 import GroupBuilder from '../components/GroupBuilder.vue';
 import RouteAssignment from '../components/RouteAssignment.vue';
+import GroupSelector from '../components/GroupSelector.vue';
 
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
@@ -290,9 +312,12 @@ const toast = useToast();
 const showFormDialog = ref(false);
 const showDetailsDialog = ref(false);
 const showEditParticipantDialog = ref(false);
+const showGroupSelectorDialog = ref(false);
 const editingDinner = ref<CategoryValue<RunningDinner> | null>(null);
 const editingParticipant = ref<CategoryValue<Participant> | null>(null);
 const selectedDinnerId = ref<number | null>(null);
+const selectedGroup = ref<Group | null>(null);
+const isCreatingFromGroup = ref(false);
 const selectedDinner = computed(() => {
   if (!selectedDinnerId.value) return null;
   return dinnerStore.getDinnerById(selectedDinnerId.value);
@@ -520,6 +545,95 @@ function closeEditParticipantDialog() {
   editingParticipant.value = null;
 }
 
+function openGroupSelectorDialog() {
+  showGroupSelectorDialog.value = true;
+}
+
+function closeGroupSelectorDialog() {
+  showGroupSelectorDialog.value = false;
+  selectedGroup.value = null;
+}
+
+async function handleGroupSelected(group: Group) {
+  selectedGroup.value = group;
+  isCreatingFromGroup.value = true;
+  closeGroupSelectorDialog();
+  // Open the dinner form with pre-filled name
+  editingDinner.value = null; // Ensure we're creating, not editing
+  showFormDialog.value = true;
+}
+
+async function addGroupMembersAsParticipants(
+  groupId: number,
+  dinnerId: number,
+) {
+  try {
+    // Fetch group members from ChurchTools using the proper endpoint
+    const response = (await churchtoolsClient.get(
+      `/groups/${groupId}/members`,
+    )) as { data: Array<{ person: Person }> };
+
+    console.log('Group members response:', response);
+    const members = response.data;
+
+    if (!members || members.length === 0) {
+      toast.add({
+        severity: 'info',
+        summary: 'No Members',
+        detail: 'This group has no members to add',
+        life: 3000,
+      });
+      return;
+    }
+
+    let addedCount = 0;
+
+    // Add each member as a participant
+    for (const member of members) {
+      const person = member.person;
+
+      // Create participant record with basic info from ChurchTools
+      const participantData = {
+        dinnerId,
+        personId: person.id,
+        name: `${person.firstName} ${person.lastName}`,
+        email: person.email || '',
+        phone: person.phonePrivate || person.mobile || '',
+        address: {
+          street: person.addressAddition || '',
+          zip: person.zip || '',
+          city: person.city || '',
+        },
+        preferredPartners: [],
+        dietaryRestrictions: '',
+        registrationStatus: 'confirmed' as const,
+      };
+
+      await participantStore.create(participantData);
+      addedCount++;
+    }
+
+    // Refresh participants list
+    await participantStore.fetchAll();
+
+    toast.add({
+      severity: 'success',
+      summary: 'Members Added',
+      detail: `${addedCount} group ${addedCount === 1 ? 'member' : 'members'} added as participants`,
+      life: 5000,
+    });
+  } catch (e) {
+    console.error('Failed to add group members', e);
+    toast.add({
+      severity: 'warn',
+      summary: 'Warning',
+      detail:
+        'Dinner was created but some group members could not be added automatically',
+      life: 5000,
+    });
+  }
+}
+
 function openCreateDialog() {
   editingDinner.value = null;
   showFormDialog.value = true;
@@ -548,15 +662,28 @@ async function handleSubmit(
         life: 3000,
       });
     } else {
-      await dinnerStore.create(data);
+      const newDinnerId = await dinnerStore.create(data);
+
+      // If creating from a group, add all group members as participants
+      if (isCreatingFromGroup.value && selectedGroup.value && newDinnerId) {
+        await addGroupMembersAsParticipants(
+          selectedGroup.value.id,
+          newDinnerId,
+        );
+      }
+
       toast.add({
         severity: 'success',
         summary: 'Success',
-        detail: 'Dinner created successfully',
+        detail: isCreatingFromGroup.value
+          ? 'Dinner created and group members added!'
+          : 'Dinner created successfully',
         life: 3000,
       });
     }
     closeFormDialog();
+    isCreatingFromGroup.value = false;
+    selectedGroup.value = null;
   } catch (e) {
     console.error('Failed to save dinner', e);
     toast.add({

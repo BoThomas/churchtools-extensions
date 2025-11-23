@@ -513,6 +513,24 @@ return assignments // Success!
 
 **Goal**: Email notifications and UI refinement
 
+13. **ChurchTools Group Integration** ✅ COMPLETED
+    - [x] `GroupSelector.vue`: Component to fetch and display ChurchTools groups
+      - Fetch groups from ChurchTools API
+      - Display groups in a selectable list/dropdown
+      - Search/filter functionality
+    - [x] "Create from Group" button in OrganizerView
+      - Opens group selector dialog
+      - Positioned next to "Create New Dinner" button
+    - [x] Auto-populate dinner form from selected group:
+      - Generate event name based on group name (e.g., "Running Dinner - [Group Name]")
+      - Show dinner creation form pre-filled with suggested name
+      - Allow organizer to customize before saving
+    - [x] Auto-add group members as participants:
+      - After dinner is created, fetch all members of selected group
+      - Create participant records for each member (status: confirmed)
+      - Pre-populate from ChurchTools person data (name, email, etc.)
+      - Show success message with count of added participants
+
 14. **Email Notifications**
     - [ ] Email template for route publication
       - Group members
@@ -749,7 +767,7 @@ return assignments // Success!
 - Phase 2: ✅ 100% Complete (Organizer Experience - Event, Participant, Group & Route Management with Status Controls)
 - Phase 3: ✅ 100% Complete (Routing Algorithm & UI with Status-Based Enablement)
 - Phase 4: ✅ 100% Complete (Participant Experience - registration with status restrictions, edit/cancel controls based on group status)
-- Phase 5: ⏸️ 0% Not Started (Notifications & Polish)
+- Phase 5: ⚡ 30% In Progress (ChurchTools Group Integration Complete - Notifications & Polish Remaining)
 
 ### Status Lifecycle
 
