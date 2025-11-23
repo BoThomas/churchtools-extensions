@@ -201,7 +201,6 @@ onMounted(async () => {
     const response = await churchtoolsClient.get(
       '/groups?include[]=memberStatistics',
     );
-    console.log('Groups API response:', response);
 
     // ChurchTools API might return data directly or wrapped in { data: [...] }
     if (Array.isArray(response)) {
@@ -212,8 +211,6 @@ onMounted(async () => {
       console.error('Unexpected response format:', response);
       groups.value = [];
     }
-
-    console.log('Loaded groups:', groups.value.length);
   } catch (e) {
     console.error('Failed to fetch groups', e);
     error.value = 'Failed to load ChurchTools groups. Please try again.';
@@ -231,45 +228,45 @@ watch(selectedGroup, async (newGroup) => {
 
   try {
     loadingMembers.value = true;
-    // Fetch members without limit parameter first
-    const response = (await churchtoolsClient.get(
-      `/groups/${newGroup.id}/members`,
-    )) as {
-      data: GroupMember[];
-      meta: { count: number; pagination: { total: number; lastPage: number } };
-    };
+    // Fetch all pages of members - ChurchTools returns array directly with max 10 per page
+    let allMembers: GroupMember[] = [];
+    let page = 1;
+    let hasMorePages = true;
 
-    console.log('Group members response:', response);
-    groupMembers.value = response.data || [];
+    while (hasMorePages) {
+      const response = await churchtoolsClient.get(
+        `/groups/${newGroup.id}/members?page=${page}`,
+      );
 
-    // If there are more pages, fetch them
-    if (response.meta?.pagination?.lastPage > 1) {
-      const totalPages = response.meta.pagination.lastPage;
-      const additionalPages = [];
-
-      for (let page = 2; page <= totalPages; page++) {
-        additionalPages.push(
-          churchtoolsClient.get(`/groups/${newGroup.id}/members?page=${page}`),
-        );
+      // ChurchTools returns the array directly, not wrapped in data
+      let pageMembers: GroupMember[] = [];
+      if (Array.isArray(response)) {
+        pageMembers = response as GroupMember[];
+      } else if (
+        response &&
+        typeof response === 'object' &&
+        'data' in response
+      ) {
+        pageMembers = (response as { data: GroupMember[] }).data || [];
+      } else {
+        console.error('Unexpected members response format:', response);
+        break;
       }
 
-      const additionalResponses = (await Promise.all(
-        additionalPages,
-      )) as Array<{
-        data: GroupMember[];
-      }>;
-
-      for (const pageResponse of additionalResponses) {
-        groupMembers.value.push(...(pageResponse.data || []));
+      if (pageMembers.length === 0) {
+        hasMorePages = false;
+      } else {
+        allMembers.push(...pageMembers);
+        // If we got less than 10 members, we've reached the last page
+        if (pageMembers.length < 10) {
+          hasMorePages = false;
+        } else {
+          page++;
+        }
       }
     }
 
-    console.log(
-      'Loaded group members:',
-      groupMembers.value.length,
-      'of',
-      response.meta?.pagination?.total || response.meta?.count || 0,
-    );
+    groupMembers.value = allMembers;
   } catch (e: any) {
     console.error('Failed to fetch group members', e);
     console.error('Error response:', e.response?.data);
@@ -281,11 +278,8 @@ watch(selectedGroup, async (newGroup) => {
 
 function getMemberCount(group: Group): number {
   if (!group.memberStatistics) return 0;
-  return (
-    (group.memberStatistics.active || 0) +
-    (group.memberStatistics.leaders || 0) +
-    (group.memberStatistics.participants || 0)
-  );
+  // The 'active' field represents all active members (including leaders and participants)
+  return group.memberStatistics.active || 0;
 }
 
 function handleContinue() {

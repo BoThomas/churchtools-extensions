@@ -568,45 +568,43 @@ async function addGroupMembersAsParticipants(
   dinnerId: number,
 ) {
   try {
-    // Fetch group members from ChurchTools - start with first page
-    const firstResponse = (await churchtoolsClient.get(
-      `/groups/${groupId}/members`,
-    )) as {
-      data: Array<{
-        person: { domainIdentifier: string; title: string };
-        personId: number;
-      }>;
-      meta: { count: number; pagination: { total: number; lastPage: number } };
-    };
+    // Fetch all pages of group members from ChurchTools - returns array directly with max 10 per page
+    let members: Array<{
+      person: { domainIdentifier: string; title: string };
+      personId: number;
+    }> = [];
+    let page = 1;
+    let hasMorePages = true;
 
-    console.log('Group members response:', firstResponse);
-    let members = firstResponse.data || [];
+    while (hasMorePages) {
+      const response = await churchtoolsClient.get(
+        `/groups/${groupId}/members?page=${page}`,
+      );
 
-    // If there are more pages, fetch them
-    if (firstResponse.meta?.pagination?.lastPage > 1) {
-      const totalPages = firstResponse.meta.pagination.lastPage;
-      const additionalPages = [];
-
-      for (let page = 2; page <= totalPages; page++) {
-        additionalPages.push(
-          churchtoolsClient.get(`/groups/${groupId}/members?page=${page}`),
-        );
+      // ChurchTools returns the array directly
+      let pageMembers: any[] = [];
+      if (Array.isArray(response)) {
+        pageMembers = response;
+      } else if (
+        response &&
+        typeof response === 'object' &&
+        'data' in response
+      ) {
+        pageMembers = (response as any).data || [];
       }
 
-      const additionalResponses = (await Promise.all(
-        additionalPages,
-      )) as Array<{
-        data: Array<{
-          person: { domainIdentifier: string; title: string };
-          personId: number;
-        }>;
-      }>;
-
-      for (const pageResponse of additionalResponses) {
-        members.push(...(pageResponse.data || []));
+      if (pageMembers.length === 0) {
+        hasMorePages = false;
+      } else {
+        members.push(...pageMembers);
+        // If we got less than 10 members, we've reached the last page
+        if (pageMembers.length < 10) {
+          hasMorePages = false;
+        } else {
+          page++;
+        }
       }
     }
-
     if (!members || members.length === 0) {
       toast.add({
         severity: 'info',
