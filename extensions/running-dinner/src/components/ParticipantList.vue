@@ -194,12 +194,14 @@ const filters = ref({
 });
 
 const statusOptions = [
+  { label: 'All Statuses', value: null },
   { label: 'Confirmed', value: 'confirmed' },
   { label: 'Waitlist', value: 'waitlist' },
   { label: 'Cancelled', value: 'cancelled' },
 ];
 
 const mealOptions = [
+  { label: 'All Meals', value: null },
   { label: 'Starter', value: 'starter' },
   { label: 'Main Course', value: 'mainCourse' },
   { label: 'Dessert', value: 'dessert' },
