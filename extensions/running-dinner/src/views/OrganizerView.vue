@@ -201,6 +201,8 @@
               <ParticipantList
                 :participants="getDinnerParticipants(selectedDinner.id!)"
                 @confirm="handleConfirmParticipant"
+                @edit="handleEditParticipant"
+                @delete="handleDeleteParticipant"
               />
             </TabPanel>
 
@@ -227,6 +229,24 @@
           </TabPanels>
         </Tabs>
       </div>
+    </Dialog>
+
+    <!-- Edit Participant Dialog -->
+    <Dialog
+      v-model:visible="showEditParticipantDialog"
+      :header="'Edit Participant'"
+      :modal="true"
+      :style="{ width: '90vw', maxWidth: '800px', maxHeight: '90vh' }"
+    >
+      <ParticipantForm
+        v-if="editingParticipant && selectedDinner"
+        :dinner-id="selectedDinner.id!"
+        :initial-data="editingParticipant.value"
+        :allow-preferred-meal="selectedDinner.value.allowPreferredMeal"
+        :saving="participantStore.saving"
+        @submit="handleParticipantSubmit"
+        @cancel="closeEditParticipantDialog"
+      />
     </Dialog>
   </div>
 </template>
@@ -256,6 +276,7 @@ import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import DinnerCard from '../components/DinnerCard.vue';
 import DinnerForm from '../components/DinnerForm.vue';
 import ParticipantList from '../components/ParticipantList.vue';
+import ParticipantForm from '../components/ParticipantForm.vue';
 import GroupBuilder from '../components/GroupBuilder.vue';
 import RouteAssignment from '../components/RouteAssignment.vue';
 
@@ -268,7 +289,9 @@ const toast = useToast();
 
 const showFormDialog = ref(false);
 const showDetailsDialog = ref(false);
+const showEditParticipantDialog = ref(false);
 const editingDinner = ref<CategoryValue<RunningDinner> | null>(null);
+const editingParticipant = ref<CategoryValue<Participant> | null>(null);
 const selectedDinnerId = ref<number | null>(null);
 const selectedDinner = computed(() => {
   if (!selectedDinnerId.value) return null;
@@ -430,6 +453,71 @@ async function handleConfirmParticipant(
       }
     },
   });
+}
+
+function handleEditParticipant(participant: CategoryValue<Participant>) {
+  editingParticipant.value = participant;
+  showEditParticipantDialog.value = true;
+}
+
+function handleDeleteParticipant(participant: CategoryValue<Participant>) {
+  confirm.require({
+    message: `Are you sure you want to delete "${participant.value.name}"? This action cannot be undone.`,
+    header: 'Delete Participant',
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    rejectLabel: 'Cancel',
+    acceptLabel: 'Delete',
+    accept: async () => {
+      try {
+        await participantStore.remove(participant.id!);
+        toast.add({
+          severity: 'success',
+          summary: 'Participant Deleted',
+          detail: `${participant.value.name} has been deleted`,
+          life: 3000,
+        });
+        await participantStore.fetchAll();
+      } catch (e) {
+        console.error('Failed to delete participant', e);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to delete participant',
+          life: 3000,
+        });
+      }
+    },
+  });
+}
+
+async function handleParticipantSubmit(data: Omit<Participant, 'id'>) {
+  try {
+    if (editingParticipant.value?.id) {
+      await participantStore.update(editingParticipant.value.id, data);
+      toast.add({
+        severity: 'success',
+        summary: 'Updated',
+        detail: 'Participant has been updated successfully',
+        life: 3000,
+      });
+    }
+    closeEditParticipantDialog();
+    await participantStore.fetchAll();
+  } catch (e) {
+    console.error('Failed to save participant', e);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to save participant. Please try again.',
+      life: 3000,
+    });
+  }
+}
+
+function closeEditParticipantDialog() {
+  showEditParticipantDialog.value = false;
+  editingParticipant.value = null;
 }
 
 function openCreateDialog() {
