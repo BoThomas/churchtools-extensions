@@ -122,11 +122,15 @@
           <TabList>
             <Tab value="participants">
               <i class="pi pi-users mr-2"></i>
-              Participants ({{ getParticipantCount(selectedDinner.id!) }})
+              Participants
             </Tab>
             <Tab value="groups">
               <i class="pi pi-sitemap mr-2"></i>
               Groups
+            </Tab>
+            <Tab value="routes">
+              <i class="pi pi-map mr-2"></i>
+              Routes
             </Tab>
           </TabList>
 
@@ -143,6 +147,17 @@
               <GroupBuilder
                 :dinner="selectedDinner.value"
                 :participants="getDinnerParticipants(selectedDinner.id!)"
+                @groups-saved="handleGroupsSaved"
+              />
+            </TabPanel>
+
+            <!-- Routes Panel -->
+            <TabPanel value="routes">
+              <RouteAssignment
+                :dinner="selectedDinner.value"
+                :groups="getDinnerGroups(selectedDinner.id!)"
+                :participants="getDinnerParticipants(selectedDinner.id!)"
+                @routes-saved="handleRoutesSaved"
               />
             </TabPanel>
           </TabPanels>
@@ -160,6 +175,7 @@ import type { CategoryValue } from '@churchtools-extensions/persistance';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { useRunningDinnerStore } from '../stores/runningDinner';
 import { useParticipantStore } from '../stores/participant';
+import { useGroupStore } from '../stores/group';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -174,9 +190,11 @@ import DinnerCard from '../components/DinnerCard.vue';
 import DinnerForm from '../components/DinnerForm.vue';
 import ParticipantList from '../components/ParticipantList.vue';
 import GroupBuilder from '../components/GroupBuilder.vue';
+import RouteAssignment from '../components/RouteAssignment.vue';
 
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
+const groupStore = useGroupStore();
 const confirm = useConfirm();
 const toast = useToast();
 
@@ -190,7 +208,11 @@ onMounted(async () => {
   try {
     const user = (await churchtoolsClient.get('/whoami')) as Person;
     currentUserId.value = user.id;
-    await Promise.all([dinnerStore.fetchAll(), participantStore.fetchAll()]);
+    await Promise.all([
+      dinnerStore.fetchAll(),
+      participantStore.fetchAll(),
+      groupStore.fetchAll(),
+    ]);
   } catch (e) {
     console.error('Failed to initialize', e);
     toast.add({
@@ -208,6 +230,36 @@ function getParticipantCount(dinnerId: number): number {
 
 function getDinnerParticipants(dinnerId: number) {
   return participantStore.getByDinnerId(dinnerId);
+}
+
+function getDinnerGroups(dinnerId: number) {
+  return groupStore.getByDinnerId(dinnerId);
+}
+
+async function handleGroupsSaved() {
+  // Refresh groups after saving
+  await groupStore.fetchAll();
+  toast.add({
+    severity: 'success',
+    summary: 'Groups Saved',
+    detail: 'Groups have been saved successfully',
+    life: 3000,
+  });
+}
+
+async function handleRoutesSaved() {
+  // Update dinner status to routes-assigned
+  if (selectedDinner.value) {
+    await dinnerStore.update(selectedDinner.value.id!, {
+      status: 'routes-assigned',
+    });
+    toast.add({
+      severity: 'success',
+      summary: 'Routes Assigned',
+      detail: 'Routes have been assigned and saved successfully',
+      life: 3000,
+    });
+  }
 }
 
 function openCreateDialog() {

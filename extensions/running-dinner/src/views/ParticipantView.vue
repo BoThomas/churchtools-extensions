@@ -43,7 +43,14 @@
               size="small"
               @click="joinDinner(dinner)"
             />
-            <div v-else class="flex gap-2">
+            <div v-else class="flex flex-wrap gap-2">
+              <Button
+                v-if="hasRoute(dinner.id!)"
+                label="View Route"
+                icon="pi pi-map"
+                size="small"
+                @click="viewRoute(dinner)"
+              />
               <DangerButton
                 label="Cancel Registration"
                 icon="pi pi-times"
@@ -88,6 +95,23 @@
         @cancel="closeRegistrationDialog"
       />
     </Dialog>
+
+    <!-- Route Display Dialog -->
+    <Dialog
+      v-model:visible="showRouteDialog"
+      :header="selectedDinner?.value.name"
+      :modal="true"
+      :style="{ width: '90vw', maxWidth: '1000px', maxHeight: '90vh' }"
+    >
+      <RouteDisplay
+        v-if="selectedDinner && selectedRoute"
+        :dinner="selectedDinner.value"
+        :route="selectedRoute"
+        :group="selectedGroup"
+        :participants="participantStore.participants"
+        :all-groups="groupStore.getByDinnerId(selectedDinner.id!)"
+      />
+    </Dialog>
   </div>
 </template>
 
@@ -99,6 +123,8 @@ import type { CategoryValue } from '@churchtools-extensions/persistance';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { useRunningDinnerStore } from '../stores/runningDinner';
 import { useParticipantStore } from '../stores/participant';
+import { useGroupStore } from '../stores/group';
+import { useRouteStore } from '../stores/route';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -108,15 +134,21 @@ import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import DinnerCard from '../components/DinnerCard.vue';
 import ParticipantForm from '../components/ParticipantForm.vue';
+import RouteDisplay from '../components/RouteDisplay.vue';
 
 const dinnerStore = useRunningDinnerStore();
 const participantStore = useParticipantStore();
+const groupStore = useGroupStore();
+const routeStore = useRouteStore();
 const toast = useToast();
 const confirm = useConfirm();
 const currentUser = ref<Person | null>(null);
 const showRegistrationDialog = ref(false);
+const showRouteDialog = ref(false);
 const selectedDinner = ref<CategoryValue<any> | null>(null);
 const editingRegistration = ref<CategoryValue<Participant> | null>(null);
+const selectedRoute = ref<CategoryValue<any> | null>(null);
+const selectedGroup = ref<CategoryValue<any> | null>(null);
 
 const myRegistrations = computed(() => {
   if (!currentUser.value?.id) return [];
@@ -126,7 +158,12 @@ const myRegistrations = computed(() => {
 onMounted(async () => {
   try {
     currentUser.value = (await churchtoolsClient.get('/whoami')) as Person;
-    await Promise.all([dinnerStore.fetchAll(), participantStore.fetchAll()]);
+    await Promise.all([
+      dinnerStore.fetchAll(),
+      participantStore.fetchAll(),
+      groupStore.fetchAll(),
+      routeStore.fetchAll(),
+    ]);
   } catch (e) {
     console.error('Failed to load data', e);
   }
@@ -158,6 +195,35 @@ function getCancelledRegistration(dinnerId: number) {
       reg.value.dinnerId === dinnerId &&
       reg.value.registrationStatus === 'cancelled',
   );
+}
+
+function hasRoute(dinnerId: number): boolean {
+  const registration = getRegistration(dinnerId);
+  if (!registration?.value.groupId) return false;
+
+  const route = routeStore.routes.find(
+    (r) => r.value.groupId === registration.value.groupId,
+  );
+  return !!route;
+}
+
+function viewRoute(dinner: CategoryValue<any>) {
+  const registration = getRegistration(dinner.id!);
+  if (!registration?.value.groupId) return;
+
+  const group = groupStore.groups.find(
+    (g) => g.id === registration.value.groupId,
+  );
+  const route = routeStore.routes.find(
+    (r) => r.value.groupId === registration.value.groupId,
+  );
+
+  if (group && route) {
+    selectedDinner.value = dinner;
+    selectedGroup.value = group;
+    selectedRoute.value = route;
+    showRouteDialog.value = true;
+  }
 }
 
 function editRegistration(
