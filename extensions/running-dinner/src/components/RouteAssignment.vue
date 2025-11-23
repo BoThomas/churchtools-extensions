@@ -201,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import type {
   RunningDinner,
@@ -236,6 +236,47 @@ const routes = ref<Omit<Route, 'id'>[]>([]);
 const warnings = ref<string[]>([]);
 const assigning = ref(false);
 const saving = ref(false);
+const loading = ref(false);
+
+// Load existing routes for this dinner
+async function loadExistingRoutes() {
+  if (!props.dinner.id) return;
+
+  loading.value = true;
+  try {
+    await routeStore.fetchAll();
+
+    // Filter routes for this specific dinner
+    const dinnerRoutes = routeStore.routes.filter(
+      (r) => r.value.dinnerId === props.dinner.id,
+    );
+
+    // Convert CategoryValue<Route> to Omit<Route, 'id'> for display
+    routes.value = dinnerRoutes.map((r) => ({
+      dinnerId: r.value.dinnerId,
+      groupId: r.value.groupId,
+      stops: r.value.stops,
+      createdAt: r.value.createdAt,
+      updatedAt: r.value.updatedAt,
+    }));
+  } catch (error: any) {
+    console.error('Failed to load existing routes:', error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Load routes on mount and when dinner changes
+onMounted(() => {
+  loadExistingRoutes();
+});
+
+watch(
+  () => props.dinner.id,
+  () => {
+    loadExistingRoutes();
+  },
+);
 
 // Computed
 const sortedRoutes = computed(() => {
@@ -357,6 +398,9 @@ async function handleSaveRoutes() {
       detail: `${routes.value.length} routes saved successfully.`,
       life: 3000,
     });
+
+    // Reload routes from store to get the IDs
+    await loadExistingRoutes();
 
     // Emit event to parent to refresh and update dinner status
     emit('routes-saved');
