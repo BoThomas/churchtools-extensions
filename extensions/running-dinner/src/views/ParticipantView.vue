@@ -56,31 +56,45 @@
             </div>
             <div
               v-else-if="isRegistered(dinner.id!)"
-              class="flex flex-wrap gap-2"
+              class="flex flex-col gap-2"
             >
-              <Button
-                v-if="hasRoute(dinner.id!)"
-                label="View Route"
-                icon="pi pi-map"
-                size="small"
-                @click="viewRoute(dinner)"
-              />
-              <DangerButton
-                label="Cancel Registration"
-                icon="pi pi-times"
-                size="small"
-                severity="danger"
-                outlined
-                @click="
-                  confirmCancelRegistration(dinner, getRegistration(dinner.id!))
-                "
-              />
-              <SecondaryButton
-                label="Edit Registration"
-                icon="pi pi-pencil"
-                size="small"
-                @click="editRegistration(dinner, getRegistration(dinner.id!))"
-              />
+              <div class="flex flex-wrap gap-2">
+                <Button
+                  v-if="hasRoute(dinner.id!)"
+                  label="View Route"
+                  icon="pi pi-map"
+                  size="small"
+                  @click="viewRoute(dinner)"
+                />
+                <DangerButton
+                  label="Cancel Registration"
+                  icon="pi pi-times"
+                  size="small"
+                  severity="danger"
+                  outlined
+                  @click="
+                    confirmCancelRegistration(
+                      dinner,
+                      getRegistration(dinner.id!),
+                    )
+                  "
+                />
+                <SecondaryButton
+                  label="Edit Registration"
+                  icon="pi pi-pencil"
+                  size="small"
+                  :disabled="isGroupsCreatedOrLater(dinner.value.status)"
+                  @click="editRegistration(dinner, getRegistration(dinner.id!))"
+                />
+              </div>
+              <div
+                v-if="isGroupsCreatedOrLater(dinner.value.status)"
+                class="text-xs text-surface-500 dark:text-surface-400 italic"
+              >
+                <i class="pi pi-info-circle mr-1"></i>
+                Editing is no longer available. Please contact the organizer for
+                changes.
+              </div>
             </div>
           </template>
         </DinnerCard>
@@ -340,8 +354,13 @@ function confirmCancelRegistration(
 ) {
   if (!registration) return;
 
+  const isGroupsCreated = isGroupsCreatedOrLater(dinner.value.status);
+  const message = isGroupsCreated
+    ? `Are you sure you want to cancel your registration for "${dinner.value.name}"? Groups have already been created, so the organizer will need to manually adjust the groups. This action cannot be undone.`
+    : `Are you sure you want to cancel your registration for "${dinner.value.name}"? This action cannot be undone.`;
+
   confirm.require({
-    message: `Are you sure you want to cancel your registration for "${dinner.value.name}"? This action cannot be undone.`,
+    message,
     header: 'Cancel Registration',
     icon: 'pi pi-exclamation-triangle',
     rejectLabel: 'No, Keep Registration',
@@ -349,12 +368,16 @@ function confirmCancelRegistration(
     accept: async () => {
       try {
         await participantStore.cancel(registration.id);
+        const notificationDetail = isGroupsCreated
+          ? 'Your registration has been cancelled. Please inform the organizer about any necessary group adjustments.'
+          : 'Your registration has been cancelled successfully';
         toast.add({
           severity: 'success',
           summary: 'Registration Cancelled',
-          detail: 'Your registration has been cancelled successfully',
-          life: 3000,
+          detail: notificationDetail,
+          life: 5000,
         });
+        // TODO: Send notification to organizer when groups are already created
         await participantStore.fetchAll();
       } catch (e) {
         console.error('Failed to cancel registration', e);
@@ -367,5 +390,9 @@ function confirmCancelRegistration(
       }
     },
   });
+}
+
+function isGroupsCreatedOrLater(status: string): boolean {
+  return ['groups-created', 'routes-assigned', 'completed'].includes(status);
 }
 </script>

@@ -223,9 +223,10 @@ interface Route {
 1. Create new dinner → Fill form → Save as draft
 2. Edit dinner → Publish (makes visible to participants)
 3. Monitor registrations
-4. After deadline → Create groups
-5. Assign meal routes → Publish routes
-6. Send email notifications to participants
+4. Close registration (manual action required)
+5. Create groups (only available after registration is closed)
+6. Assign meal routes (only available after groups are created)
+7. Send email notifications to participants
 
 ### 2. Participate View (Single Unified Tab)
 
@@ -246,9 +247,13 @@ interface Route {
 
 1. Browse all published dinners in one view
 2. See which dinners you're already registered for (badge/indicator)
-3. Click "Join" on available dinners → Fill registration form
-4. Click "Edit" on dinners you've registered for → Modify registration
-5. After routes published → View group members and route details
+3. Click "Join" on available dinners (only when status is 'published') → Fill registration form
+4. View your registration details
+5. Edit registration (only before groups are created)
+6. Cancel registration:
+   - Before groups created: simple cancellation
+   - After groups created: warning about organizer notification and manual group adjustments
+7. After routes published → View group members and route details
 
 ## Core Algorithms
 
@@ -550,11 +555,16 @@ return assignments // Success!
 
 1. **Registration deadline passed**: Disable registration form
 2. **Max participants reached**: Auto-waitlist new registrations
-3. **User cancels after grouping**: Re-run algorithm with warning (if routes not sent); otherwise manual reassignment needed
-4. **Preferred partner doesn't register**: Show warning to organizer, allow manual override
-5. **Non-multiple-of-3 participants**: Excess goes to waitlist, organizer handles manually
-6. **No solution for routes**: Provide manual assignment interface as fallback
-7. **User without ChurchTools account**: Not supported - ChurchTools users only
+3. **User cancels after grouping**: Show warning about organizer notification; organizer must manually adjust groups
+4. **User edits after grouping**: Editing disabled; user must contact organizer
+5. **Preferred partner doesn't register**: Show warning to organizer, allow manual override
+6. **Non-multiple-of-3 participants**: Excess goes to waitlist, organizer handles manually
+7. **No solution for routes**: Provide manual assignment interface as fallback
+8. **User without ChurchTools account**: Not supported - ChurchTools users only
+9. **Registration status control**: Organizer can manually close/reopen registration from Participants tab
+10. **Status lifecycle management**: 
+    - Deleting routes resets status to 'groups-created'
+    - Deleting groups resets status to 'registration-closed' and cascades to delete routes
 
 ## Open Questions
 
@@ -631,13 +641,20 @@ return assignments // Success!
 - DinnerForm component (comprehensive form with Zod validation & error display)
 - ParticipantList component (DataTable with filters)
 - Detail view dialog with tabs (Participants, Groups & Routes)
+- Status badge in manage modal header (reactive to status changes)
+- Registration control panel:
+  - "Close Registration" button (when status is 'published')
+  - "Open Registration" button (when status is 'registration-closed')
+  - Status indicator with clear messaging
+  - Confirmation dialogs for status changes
 - GroupBuilder component:
-  - Algorithm integration with "Create Groups" button
+  - Algorithm integration with "Create Groups" button (only enabled when registration is closed)
   - Status dashboard (confirmed, groups, waitlisted counts)
   - Warnings display
+  - Info message when registration is still open
   - Manual adjustments (add participant to group, set host, remove member, delete group)
-  - Save groups functionality
-  - Reset with confirmation
+  - Save groups functionality (updates status to 'groups-created')
+  - Reset with confirmation (cascades to delete routes, resets status to 'registration-closed')
 - GroupCard component:
   - Display group with members, host, assigned meal
   - Host address display
