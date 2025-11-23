@@ -224,9 +224,10 @@ interface Route {
 2. Edit dinner → Publish (makes visible to participants)
 3. Monitor registrations
 4. Close registration (manual action required)
-5. Create groups (only available after registration is closed)
-6. Assign meal routes (only available after groups are created)
-7. Send email notifications to participants
+5. Confirm waitlisted participants (if any joined after registration closed or at capacity)
+6. Create groups (only available after registration is closed)
+7. Assign meal routes (only available after groups are created)
+8. Send email notifications to participants
 
 ### 2. Participate View (Single Unified Tab)
 
@@ -247,7 +248,10 @@ interface Route {
 
 1. Browse all published dinners in one view
 2. See which dinners you're already registered for (badge/indicator)
-3. Click "Join" on available dinners (only when status is 'published') → Fill registration form
+3. Click "Join" on available dinners:
+   - If status is 'published': Register as confirmed
+   - If status is not 'published' (registration closed): Register as waitlist with info message
+   - If dinner is at max capacity: Register as waitlist
 4. View your registration details
 5. Edit registration (only before groups are created)
 6. Cancel registration:
@@ -553,41 +557,41 @@ return assignments // Success!
 
 ### Edge Cases to Handle
 
-1. **Registration deadline passed**: Disable registration form
+1. **Registration deadline passed**: Participants can still join but are automatically placed on waitlist
 2. **Max participants reached**: Auto-waitlist new registrations
-3. **User cancels after grouping**: Show warning about organizer notification; organizer must manually adjust groups
-4. **User edits after grouping**: Editing disabled; user must contact organizer
-5. **Preferred partner doesn't register**: Show warning to organizer, allow manual override
-6. **Non-multiple-of-3 participants**: Excess goes to waitlist, organizer handles manually
-7. **No solution for routes**: Provide manual assignment interface as fallback
-8. **User without ChurchTools account**: Not supported - ChurchTools users only
-9. **Registration status control**: Organizer can manually close/reopen registration from Participants tab
-10. **Status lifecycle management**:
+3. **Late registrations**: Users joining after registration is closed are automatically waitlisted and organizer must manually confirm them
+4. **User cancels after grouping**: Show warning about organizer notification; organizer must manually adjust groups
+5. **User edits after grouping**: Editing disabled; user must contact organizer
+6. **Preferred partner doesn't register**: Show warning to organizer, allow manual override
+7. **Non-multiple-of-3 participants**: Excess goes to waitlist, organizer handles manually
+8. **No solution for routes**: Provide manual assignment interface as fallback
+9. **User without ChurchTools account**: Not supported - ChurchTools users only
+10. **Registration status control**: Organizer can manually close/reopen registration from Participants tab
+11. **Status lifecycle management**:
     - Deleting routes resets status to 'groups-created'
     - Deleting groups resets status to 'registration-closed' and cascades to delete routes
+12. **Waitlist confirmation**: Organizer can confirm individual waitlisted participants from ParticipantList## Open Questions
 
-## Open Questions
+13. **External participants**: Should we allow non-ChurchTools users to register?
+    - If yes: Need external authentication mechanism
+    - If no: Organizer must pre-create ChurchTools accounts
+      -> answer: For now, only ChurchTools users
 
-1. **External participants**: Should we allow non-ChurchTools users to register?
-   - If yes: Need external authentication mechanism
-   - If no: Organizer must pre-create ChurchTools accounts
-     -> answer: For now, only ChurchTools users
+14. **Organizer permissions**: How to identify who can create dinners?
+    - Admin only?
+    - Specific ChurchTools group?
+    - Any user (with approval)?
+      -> answer: For now, ignore this and assume all users can organize
 
-2. **Organizer permissions**: How to identify who can create dinners?
-   - Admin only?
-   - Specific ChurchTools group?
-   - Any user (with approval)?
-     -> answer: For now, ignore this and assume all users can organize
+15. **Email sending**: Direct email API or manual?
+    - Investigate ChurchTools email capabilities
+    - May need SMTP configuration
+      -> answer: For now, dont send emails but just console log
 
-3. **Email sending**: Direct email API or manual?
-   - Investigate ChurchTools email capabilities
-   - May need SMTP configuration
-     -> answer: For now, dont send emails but just console log
-
-4. **Group size flexibility**: Should algorithm strictly enforce preferredGroupSize?
-   - Allow ±1 deviation?
-   - Manual override?
-     -> answer: Strict enforcement. Excess participants go to waitlist for manual handling.
+16. **Group size flexibility**: Should algorithm strictly enforce preferredGroupSize?
+    - Allow ±1 deviation?
+    - Manual override?
+      -> answer: Strict enforcement. Excess participants go to waitlist for manual handling.
 
 4.5 **Meal preferences handling**:
 
@@ -640,6 +644,8 @@ return assignments // Success!
 - DinnerCard component (reusable, with Volt components)
 - DinnerForm component (comprehensive form with Zod validation & error display)
 - ParticipantList component (DataTable with filters)
+  - Confirm action button for waitlisted participants
+  - Status filtering to view confirmed/waitlist/cancelled participants
 - Detail view dialog with tabs (Participants, Groups & Routes)
 - Status badge in manage modal header (reactive to status changes)
 - Registration control panel:
@@ -647,6 +653,10 @@ return assignments // Success!
   - "Open Registration" button (when status is 'registration-closed')
   - Status indicator with clear messaging
   - Confirmation dialogs for status changes
+- Waitlist management:
+  - Confirm individual participants from waitlist
+  - Confirmation dialog for manual approval
+  - Toast notifications for successful confirmations
 - GroupBuilder component:
   - Algorithm integration with "Create Groups" button (only enabled when registration is closed)
   - Status dashboard (confirmed, groups, waitlisted counts)
@@ -688,9 +698,13 @@ return assignments // Success!
 **Phase 4 - Participant Experience:**
 
 - ParticipantView (unified view with registration badges and actions)
-- Registration restrictions:
-  - Join button disabled when status is not 'published'
-  - "Registration is closed" message when not in published state
+- Late registration support:
+  - Join button always enabled (no status restriction)
+  - Info message when registration is closed: "You will be added to the waitlist"
+  - Automatic waitlist placement for:
+    - Registrations after status changes from 'published'
+    - Registrations when max capacity is reached
+  - Enhanced toast notifications explaining waitlist status and organizer confirmation needed
 - "View Route" button when routes are available
 - ParticipantForm component:
   - Auto-population from ChurchTools user
@@ -742,11 +756,21 @@ return assignments // Success!
 The application follows a clear status progression with proper controls:
 
 1. **draft** → Organizer creates and configures dinner
-2. **published** → Participants can join; organizer can close registration
-3. **registration-closed** → No new participants; organizer can create groups or reopen registration
+2. **published** → Participants can join (confirmed status); organizer can close registration
+3. **registration-closed** → Late participants can still join but are waitlisted; organizer can:
+   - Manually confirm waitlisted participants
+   - Create groups (after confirming desired participants)
+   - Reopen registration
 4. **groups-created** → Groups assigned; organizer can assign routes; participants cannot edit registration
 5. **routes-assigned** → Routes published; participants can view routes
 6. **completed** → Event finished
+
+**Waitlist Behavior:**
+
+- Participants joining when status ≠ 'published' → automatic waitlist
+- Participants joining when at max capacity → automatic waitlist
+- Organizer must manually confirm waitlisted participants before creating groups
+- Confirmation action available in ParticipantList with green checkmark button
 
 **Status Reset Behavior:**
 

@@ -135,6 +135,16 @@
           <template #body="{ data }">
             <div class="flex gap-1">
               <Button
+                v-if="data.value.registrationStatus === 'waitlist'"
+                icon="pi pi-check"
+                text
+                rounded
+                size="small"
+                severity="success"
+                @click="$emit('confirm', data)"
+                v-tooltip.top="'Confirm Registration'"
+              />
+              <Button
                 icon="pi pi-pencil"
                 text
                 rounded
@@ -184,6 +194,7 @@ const props = withDefaults(defineProps<Props>(), {
 defineEmits<{
   edit: [participant: CategoryValue<Participant>];
   delete: [participant: CategoryValue<Participant>];
+  confirm: [participant: CategoryValue<Participant>];
 }>();
 
 const showFilters = ref(false);

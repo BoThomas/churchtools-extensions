@@ -36,23 +36,21 @@
             />
           </template>
           <template #actions>
-            <div
-              v-if="!isRegistered(dinner.id!)"
-              class="flex items-center gap-3"
-            >
-              <span
-                v-if="dinner.value.status !== 'published'"
-                class="text-sm text-surface-500 dark:text-surface-400"
-              >
-                Registration is closed
-              </span>
+            <div v-if="!isRegistered(dinner.id!)" class="flex flex-col gap-2">
               <Button
                 label="Join"
                 icon="pi pi-plus"
                 size="small"
-                :disabled="dinner.value.status !== 'published'"
                 @click="joinDinner(dinner)"
               />
+              <div
+                v-if="dinner.value.status !== 'published'"
+                class="text-xs text-surface-500 dark:text-surface-400 italic"
+              >
+                <i class="pi pi-info-circle mr-1"></i>
+                Registration is closed. You will be added to the waitlist and
+                the organizer will confirm you manually.
+              </div>
             </div>
             <div
               v-else-if="isRegistered(dinner.id!)"
@@ -286,30 +284,66 @@ async function handleRegistrationSubmit(data: Omit<Participant, 'id'>) {
       const cancelledReg = getCancelledRegistration(selectedDinner.value!.id!);
 
       if (cancelledReg) {
-        // Reuse cancelled registration by updating it
-        await participantStore.update(cancelledReg.id, data);
-        toast.add({
-          severity: 'success',
-          summary: 'Registered',
-          detail: 'You have been registered for this dinner',
-          life: 3000,
-        });
-      } else {
-        // Check if dinner is at max capacity
+        // Check if dinner is at max capacity or registration is closed
         const dinner = selectedDinner.value?.value;
         if (dinner) {
           const confirmedCount = participantStore.getConfirmedByDinnerId(
             selectedDinner.value!.id!,
           ).length;
 
-          // If at capacity, set status to waitlist
-          if (confirmedCount >= dinner.maxParticipants) {
+          // If at capacity OR registration is closed, set status to waitlist
+          if (
+            confirmedCount >= dinner.maxParticipants ||
+            dinner.status !== 'published'
+          ) {
             data.registrationStatus = 'waitlist';
+            const reason =
+              confirmedCount >= dinner.maxParticipants
+                ? 'This dinner is at capacity.'
+                : 'Registration is closed.';
+
+            // Reuse cancelled registration by updating it with waitlist status
+            await participantStore.update(cancelledReg.id, data);
+
             toast.add({
               severity: 'warn',
               summary: 'Added to Waitlist',
-              detail:
-                'This dinner is at capacity. You have been added to the waitlist.',
+              detail: `${reason} You have been added to the waitlist. The organizer will confirm your registration manually.`,
+              life: 5000,
+            });
+          } else {
+            // Reuse cancelled registration with confirmed status
+            await participantStore.update(cancelledReg.id, data);
+            toast.add({
+              severity: 'success',
+              summary: 'Registered',
+              detail: 'You have been registered for this dinner',
+              life: 3000,
+            });
+          }
+        }
+      } else {
+        // Check if dinner is at max capacity or registration is closed
+        const dinner = selectedDinner.value?.value;
+        if (dinner) {
+          const confirmedCount = participantStore.getConfirmedByDinnerId(
+            selectedDinner.value!.id!,
+          ).length;
+
+          // If at capacity OR registration is closed, set status to waitlist
+          if (
+            confirmedCount >= dinner.maxParticipants ||
+            dinner.status !== 'published'
+          ) {
+            data.registrationStatus = 'waitlist';
+            const reason =
+              confirmedCount >= dinner.maxParticipants
+                ? 'This dinner is at capacity.'
+                : 'Registration is closed.';
+            toast.add({
+              severity: 'warn',
+              summary: 'Added to Waitlist',
+              detail: `${reason} You have been added to the waitlist. The organizer will confirm your registration manually.`,
               life: 5000,
             });
           }

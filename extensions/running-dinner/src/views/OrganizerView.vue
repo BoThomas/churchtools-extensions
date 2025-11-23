@@ -200,6 +200,7 @@
 
               <ParticipantList
                 :participants="getDinnerParticipants(selectedDinner.id!)"
+                @confirm="handleConfirmParticipant"
               />
             </TabPanel>
 
@@ -233,7 +234,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
-import type { RunningDinner } from '../types/models';
+import type { RunningDinner, Participant } from '../types/models';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { useRunningDinnerStore } from '../stores/runningDinner';
@@ -397,6 +398,36 @@ async function handleOpenRegistration(dinnerId: number) {
         detail: 'Participants can now join this dinner',
         life: 3000,
       });
+    },
+  });
+}
+
+async function handleConfirmParticipant(
+  participant: CategoryValue<Participant>,
+) {
+  confirm.require({
+    message: `Confirm registration for "${participant.value.name}"? They will be moved from the waitlist to confirmed status.`,
+    header: 'Confirm Registration',
+    icon: 'pi pi-question-circle',
+    accept: async () => {
+      try {
+        await participantStore.confirm(participant.id!);
+        toast.add({
+          severity: 'success',
+          summary: 'Registration Confirmed',
+          detail: `${participant.value.name} has been confirmed`,
+          life: 3000,
+        });
+        await participantStore.fetchAll();
+      } catch (e) {
+        console.error('Failed to confirm participant', e);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to confirm participant',
+          life: 3000,
+        });
+      }
     },
   });
 }
