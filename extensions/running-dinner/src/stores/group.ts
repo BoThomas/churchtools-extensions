@@ -189,6 +189,65 @@ export const useGroupStore = defineStore('group', () => {
     }
   }
 
+  async function saveOrUpdateMultiple(
+    dinnerId: number,
+    records: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>[],
+  ) {
+    saving.value = true;
+    error.value = null;
+    try {
+      await ensureCategory();
+      if (!category) return;
+
+      const now = getCurrentTimestamp();
+      const existingGroups = getByDinnerId(dinnerId);
+
+      // Create a map of existing groups by groupNumber for quick lookup
+      const existingByGroupNumber = new Map(
+        existingGroups.map((g) => [g.value.groupNumber, g]),
+      );
+
+      const promises: Promise<any>[] = [];
+
+      // Process each record
+      for (const record of records) {
+        const existing = existingByGroupNumber.get(record.groupNumber);
+
+        if (existing) {
+          // Update existing group
+          const merged = GroupSchema.parse({
+            ...existing.value,
+            ...record,
+            updatedAt: now,
+          });
+          promises.push(category.update(existing.id!, merged));
+          existingByGroupNumber.delete(record.groupNumber);
+        } else {
+          // Create new group
+          const validated = GroupSchema.parse({
+            ...record,
+            createdAt: now,
+            updatedAt: now,
+          });
+          promises.push(category.create(validated));
+        }
+      }
+
+      // Delete groups that are no longer in the new set
+      for (const [, existing] of existingByGroupNumber) {
+        promises.push(category.delete(existing.id!));
+      }
+
+      await Promise.all(promises);
+      await fetchAll();
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to save or update groups';
+      console.error('saveOrUpdateMultiple groups failed', e);
+    } finally {
+      saving.value = false;
+    }
+  }
+
   // ==================== Queries ====================
 
   function getByDinnerId(dinnerId: number) {
@@ -222,6 +281,7 @@ export const useGroupStore = defineStore('group', () => {
     // Batch operations
     createMultiple,
     deleteByDinnerId,
+    saveOrUpdateMultiple,
 
     // Queries
     getByDinnerId,

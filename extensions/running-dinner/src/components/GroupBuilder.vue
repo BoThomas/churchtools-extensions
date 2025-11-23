@@ -179,7 +179,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import type { Group, Participant, RunningDinner } from '../types/models';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import { createGroups } from '../algorithms/grouping';
@@ -215,6 +215,16 @@ const saving = ref(false);
 const showAddDialog = ref(false);
 const selectedParticipant = ref<CategoryValue<Participant> | null>(null);
 const selectedGroupNumber = ref<number | null>(null);
+
+// Load existing groups on mount
+onMounted(async () => {
+  if (props.dinner.id) {
+    const existingGroups = groupStore.getByDinnerId(props.dinner.id);
+    if (existingGroups.length > 0) {
+      groups.value = existingGroups.map((g) => g.value);
+    }
+  }
+});
 
 const confirmedParticipants = computed(() => {
   return props.participants.filter(
@@ -294,10 +304,8 @@ async function handleCreateGroups() {
 async function handleSaveGroups() {
   saving.value = true;
   try {
-    // Save all groups to store
-    for (const group of groups.value) {
-      await groupStore.create(group);
-    }
+    // Use saveOrUpdateMultiple to update existing or create new groups
+    await groupStore.saveOrUpdateMultiple(props.dinner.id!, groups.value);
 
     // Update dinner status
     // This would be done in the parent component
@@ -323,18 +331,36 @@ async function handleSaveGroups() {
 
 function handleReset() {
   confirm.require({
-    message: 'Are you sure you want to reset? All unsaved groups will be lost.',
+    message:
+      'Are you sure you want to reset? This will delete all saved groups for this dinner.',
     header: 'Confirm Reset',
     icon: 'pi pi-exclamation-triangle',
-    accept: () => {
-      groups.value = [];
-      warnings.value = [];
-      toast.add({
-        severity: 'info',
-        summary: 'Reset',
-        detail: 'Groups have been reset',
-        life: 3000,
-      });
+    accept: async () => {
+      try {
+        // Delete all saved groups for this dinner
+        if (props.dinner.id) {
+          await groupStore.deleteByDinnerId(props.dinner.id);
+        }
+
+        // Clear local state
+        groups.value = [];
+        warnings.value = [];
+
+        toast.add({
+          severity: 'info',
+          summary: 'Reset',
+          detail: 'Groups have been reset and removed from storage',
+          life: 3000,
+        });
+      } catch (e) {
+        console.error('Failed to reset groups', e);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to reset groups',
+          life: 3000,
+        });
+      }
     },
   });
 }
