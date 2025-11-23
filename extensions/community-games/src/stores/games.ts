@@ -195,36 +195,64 @@ export const useGamesStore = defineStore('games', () => {
   }
 
   async function castVote(gameId: string, moveIndex: number) {
-    const gameIndex = games.value.findIndex((g: Game) => g.id === gameId);
-    if (gameIndex === -1 || !currentUser.value) return;
+    if (!currentUser.value) return;
 
-    const game = games.value[gameIndex];
+    // Always refresh game state from server before processing vote
+    const manager = getManager(
+      games.value.find((g) => g.id === gameId)?.type || 'tictactoe',
+    );
+    const freshGame = await manager.getById(gameId);
+
+    if (!freshGame) {
+      console.error('Game not found');
+      return;
+    }
+
+    // Update local state with fresh data
+    const gameIndex = games.value.findIndex((g: Game) => g.id === gameId);
+    if (gameIndex !== -1) {
+      games.value[gameIndex] = freshGame;
+    }
+
+    // Check if game is still active
+    if (freshGame.status !== 'active' || freshGame.winner) {
+      console.log('Game is no longer active');
+      return;
+    }
 
     // Check if it's user's turn
-    const userTeam = game.teams.red.includes(currentUser.value.id)
+    const userTeam = freshGame.teams.red.includes(currentUser.value.id)
       ? 'red'
-      : game.teams.blue.includes(currentUser.value.id)
+      : freshGame.teams.blue.includes(currentUser.value.id)
         ? 'blue'
         : null;
 
-    if (!userTeam || userTeam !== game.currentTurn) return;
+    if (!userTeam || userTeam !== freshGame.currentTurn) {
+      console.log('Not your turn or turn changed');
+      return;
+    }
+
+    // Validate move is still legal
+    if (!manager.isMoveLegal(freshGame.state, moveIndex, userTeam)) {
+      console.log('Move is no longer legal');
+      return;
+    }
 
     // Record vote
-    game.votes[currentUser.value.id.toString()] = moveIndex;
+    freshGame.votes[currentUser.value.id.toString()] = moveIndex;
 
     // Check threshold
-    const votesForMove = Object.values(game.votes).filter(
+    const votesForMove = Object.values(freshGame.votes).filter(
       (v) => v === moveIndex,
     ).length;
 
     // Simple logic: if votes reach threshold, make the move
-    if (votesForMove >= game.config.voteThreshold) {
-      await makeMove(game, moveIndex, userTeam);
+    if (votesForMove >= freshGame.config.voteThreshold) {
+      await makeMove(freshGame, moveIndex, userTeam);
     } else {
       // Just save the vote
-      const manager = getManager(game.type);
-      const updated = await manager.update(game.id, game);
-      if (updated) {
+      const updated = await manager.update(freshGame.id, freshGame);
+      if (updated && gameIndex !== -1) {
         games.value[gameIndex] = updated;
       }
     }

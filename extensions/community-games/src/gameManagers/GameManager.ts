@@ -56,4 +56,22 @@ export abstract class GameManager<
   abstract getDefaultState(): TState;
   abstract getDefaultConfig(): TConfig;
   abstract checkWinner(state: TState): 'red' | 'blue' | 'draw' | null;
+  abstract isMoveLegal(
+    state: TState,
+    moveIndex: number,
+    team: 'red' | 'blue',
+  ): boolean;
+
+  async getById(gameId: string): Promise<Game<TState, TConfig> | null> {
+    try {
+      const result = await this.category.getById<Game<TState, TConfig>>(
+        parseInt(gameId),
+      );
+      if (!result) return null;
+      return { ...result.value, id: result.id.toString() };
+    } catch (e) {
+      console.error('Failed to get game', e);
+      return null;
+    }
+  }
 }

@@ -54,4 +54,17 @@ export class TicTacToeManager extends GameManager<
 
     return null;
   }
+
+  isMoveLegal(
+    state: TicTacToeState,
+    moveIndex: number,
+    _team: 'red' | 'blue',
+  ): boolean {
+    // Check if index is valid
+    if (moveIndex < 0 || moveIndex >= 9) {
+      return false;
+    }
+    // Check if cell is empty
+    return state.board[moveIndex] === null;
+  }
 }

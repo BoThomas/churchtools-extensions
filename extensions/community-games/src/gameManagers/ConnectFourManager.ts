@@ -106,4 +106,19 @@ export class ConnectFourManager extends GameManager<
 
     return null;
   }
+
+  isMoveLegal(
+    state: ConnectFourState,
+    moveIndex: number,
+    _team: 'red' | 'blue',
+  ): boolean {
+    // moveIndex represents the column (0-6)
+    if (moveIndex < 0 || moveIndex >= this.COLS) {
+      return false;
+    }
+
+    // Check if there's space in the column (top row must be empty)
+    const topRowIndex = moveIndex;
+    return state.board[topRowIndex] === null;
+  }
 }
