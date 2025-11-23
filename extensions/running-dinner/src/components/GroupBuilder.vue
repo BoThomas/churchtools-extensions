@@ -39,7 +39,11 @@
               icon="pi pi-users"
               @click="handleCreateGroups"
               :loading="creating"
-              :disabled="creating || groups.length > 0"
+              :disabled="
+                creating ||
+                groups.length > 0 ||
+                dinner.status !== 'registration-closed'
+              "
             />
             <Button
               v-if="groups.length > 0"
@@ -130,8 +134,14 @@
             No groups created yet
           </p>
           <p class="text-sm text-surface-500 dark:text-surface-500">
-            Click "Create Groups" to automatically generate groups based on
-            participant preferences.
+            <span v-if="dinner.status !== 'registration-closed'">
+              Close registration first, then click "Create Groups" to
+              automatically generate groups based on participant preferences.
+            </span>
+            <span v-else>
+              Click "Create Groups" to automatically generate groups based on
+              participant preferences.
+            </span>
           </p>
         </div>
       </template>
