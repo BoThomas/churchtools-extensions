@@ -36,21 +36,23 @@
             />
           </template>
           <template #actions>
-            <Button
-              v-if="!isRegistered(dinner.id!)"
-              label="Join"
-              icon="pi pi-plus"
-              size="small"
-              :disabled="dinner.value.status !== 'published'"
-              @click="joinDinner(dinner)"
-            />
             <div
-              v-if="
-                !isRegistered(dinner.id!) && dinner.value.status !== 'published'
-              "
-              class="text-sm text-surface-500 dark:text-surface-400"
+              v-if="!isRegistered(dinner.id!)"
+              class="flex items-center gap-3"
             >
-              Registration is closed
+              <span
+                v-if="dinner.value.status !== 'published'"
+                class="text-sm text-surface-500 dark:text-surface-400"
+              >
+                Registration is closed
+              </span>
+              <Button
+                label="Join"
+                icon="pi pi-plus"
+                size="small"
+                :disabled="dinner.value.status !== 'published'"
+                @click="joinDinner(dinner)"
+              />
             </div>
             <div
               v-else-if="isRegistered(dinner.id!)"
