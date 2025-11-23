@@ -669,12 +669,12 @@ return assignments // Success!
   - Validates meal assignments and group balance
   - Handles constraint satisfaction problem
 - ✅ RouteAssignment.vue:
-  - "Assign Routes" button with algorithm execution
+  - "Assign Routes" button with algorithm execution (only enabled when groups are created)
   - Display all assigned routes with timeline view
   - Status tracking (groups, routes assigned)
   - Warning and success messages
-  - Save routes functionality
-  - Reset with confirmation
+  - Save routes functionality (updates status to 'routes-assigned')
+  - Reset with confirmation (resets status to 'groups-created')
   - Google Maps links for addresses
 - ✅ RouteDisplay.vue:
   - Beautiful timeline view for participants
@@ -688,6 +688,9 @@ return assignments // Success!
 **Phase 4 - Participant Experience:**
 
 - ParticipantView (unified view with registration badges and actions)
+- Registration restrictions:
+  - Join button disabled when status is not 'published'
+  - "Registration is closed" message when not in published state
 - "View Route" button when routes are available
 - ParticipantForm component:
   - Auto-population from ChurchTools user
@@ -696,7 +699,14 @@ return assignments // Success!
   - Optional meal preferences
   - Dietary restrictions
   - Full Zod validation with error display
-- Registration and edit workflows with dialogs
+- Registration and edit workflows with dialogs:
+  - Edit disabled after groups are created
+  - Info message: "Editing is no longer available. Please contact the organizer for changes."
+- Cancellation workflow:
+  - Before groups created: simple cancellation
+  - After groups created: enhanced warning about organizer notification and manual adjustments required
+  - Success message includes organizer notification note when groups exist
+  - TODO comment for future organizer notification implementation
 - Route viewing dialog for participants
 
 **Algorithms:**
@@ -722,7 +732,24 @@ return assignments // Success!
 ### 📊 Progress
 
 - Phase 1: ✅ 100% Complete (Foundation)
-- Phase 2: ✅ 100% Complete (Organizer Experience - Event, Participant, Group & Route Management)
-- Phase 3: ✅ 100% Complete (Routing Algorithm & UI)
-- Phase 4: ✅ 100% Complete (Participant Experience - registration, route viewing)
+- Phase 2: ✅ 100% Complete (Organizer Experience - Event, Participant, Group & Route Management with Status Controls)
+- Phase 3: ✅ 100% Complete (Routing Algorithm & UI with Status-Based Enablement)
+- Phase 4: ✅ 100% Complete (Participant Experience - registration with status restrictions, edit/cancel controls based on group status)
 - Phase 5: ⏸️ 0% Not Started (Notifications & Polish)
+
+### Status Lifecycle
+
+The application follows a clear status progression with proper controls:
+
+1. **draft** → Organizer creates and configures dinner
+2. **published** → Participants can join; organizer can close registration
+3. **registration-closed** → No new participants; organizer can create groups or reopen registration
+4. **groups-created** → Groups assigned; organizer can assign routes; participants cannot edit registration
+5. **routes-assigned** → Routes published; participants can view routes
+6. **completed** → Event finished
+
+**Status Reset Behavior:**
+
+- Resetting routes → status reverts to 'groups-created'
+- Resetting groups → status reverts to 'registration-closed' AND routes are deleted (cascade)
+- Status badge in manage modal is reactive and updates in real-time
