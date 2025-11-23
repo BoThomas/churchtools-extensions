@@ -66,8 +66,8 @@
         >
           <div class="font-medium text-sm mb-2">Host Address:</div>
           <div class="text-sm">
-            <div>{{ hostParticipant.value.address.street }}</div>
             <div>
+              {{ hostParticipant.value.address.street }},
               {{ hostParticipant.value.address.zip }}
               {{ hostParticipant.value.address.city }}
             </div>
@@ -88,6 +88,24 @@
             >
               <span class="font-medium">{{ restriction.name }}:</span>
               {{ restriction.restriction }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Meal Preferences -->
+        <div
+          v-if="mealPreferences.length > 0"
+          class="pt-2 border-t border-surface-200 dark:border-surface-700"
+        >
+          <div class="font-medium text-sm mb-2">Meal Preferences:</div>
+          <div class="space-y-1">
+            <div
+              v-for="(preference, idx) in mealPreferences"
+              :key="idx"
+              class="flex items-center gap-2 text-sm"
+            >
+              <span class="font-medium">{{ preference.name }}:</span>
+              <Chip :label="getMealLabel(preference.meal)" size="small" />
             </div>
           </div>
         </div>
@@ -122,6 +140,7 @@ import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
+import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 
 interface Props {
   group: Group;
@@ -158,6 +177,15 @@ const dietaryRestrictions = computed(() => {
     .map((p) => ({
       name: p.value.name,
       restriction: p.value.dietaryRestrictions,
+    }));
+});
+
+const mealPreferences = computed(() => {
+  return members.value
+    .filter((p) => p.value.preferredMeal)
+    .map((p) => ({
+      name: p.value.name,
+      meal: p.value.preferredMeal as MealType,
     }));
 });
 
