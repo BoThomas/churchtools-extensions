@@ -1192,15 +1192,15 @@ export const useRouteStore = defineStore('route', () => {
    - [x] Expose hasPermission computed property
 
 8. **OrganizerView Basic**
-   - [ ] Update `src/views/OrganizerView.vue`
-   - [ ] Integrate ParentGroupSetup component
-   - [ ] Conditional rendering based on parent group status:
+   - [x] Update `src/views/OrganizerView.vue`
+   - [x] Integrate ParentGroupSetup component
+   - [x] Conditional rendering based on parent group status:
      - If missing: Show ParentGroupSetup
      - If exists & user is leader: Show main UI
      - If exists & user is not leader: Show permission error
-   - [ ] "Create New Event" button → Opens EventCreator (disabled until parent exists)
-   - [ ] Fetch and display child groups
-   - [ ] EventCard component (basic)
+   - [x] "Create New Event" button → Opens EventCreator (placeholder dialog)
+   - [x] Fetch and display child groups
+   - [x] EventCard component (inline, basic display)
 
 ### Phase 3: Event Management UI
 
@@ -1506,7 +1506,7 @@ Users can:
 - Phase 6: 🔜 Not Started (Email Notifications)
 - Phase 7: 🔜 Not Started (Polish & Testing)
 
-### Overall Progress: ~25% (Phase 1 & 2 Complete, Phase 3 Started)
+### Overall Progress: ~30% (Phase 1 & 2 Complete, Phase 3 Ongoing)
 
 ### What's Been Completed
 
@@ -1540,16 +1540,22 @@ Users can:
 **Phase 3: Event Management UI (In Progress) 🔄**
 
 - ✅ `ParentGroupSetup.vue` complete
-- ⏳ `EventCreator.vue` - not started
-- ⏳ `OrganizerView.vue` - needs update
+- ✅ `OrganizerView.vue` updated:
+  - Integrated ParentGroupSetup component
+  - Permission-based rendering (only leaders can see main UI)
+  - Event list with child group names
+  - Status badges with color coding
+  - Event cards with basic info display
+  - Placeholder dialog for EventCreator
+- ⏳ `EventCreator.vue` - next task
 
 ### Next Steps
 
 **Immediate (Phase 3 completion):**
 
-1. Create `EventCreator.vue` component with event creation form
-2. Update `OrganizerView.vue` to integrate ParentGroupSetup and show event list
-3. Create basic `EventCard.vue` component for displaying events
+1. ✅ ~~Update `OrganizerView.vue` to integrate ParentGroupSetup and show event list~~
+2. Create `EventCreator.vue` component with event creation form
+3. Create basic `EventCard.vue` component for displaying events (optional - inline implementation may suffice)
 
 **Then (Phase 3 remaining):** 4. Create event detail modal with tabs 5. Create `MemberList.vue` component 6. Implement open/close registration actions
 
@@ -1589,7 +1595,7 @@ src/
 ├── types/
 │   └── models.ts ✅ (updated with Person, enhanced GroupMember)
 └── views/
-    └── OrganizerView.vue ⏳ (needs update)
+    └── OrganizerView.vue ✅ (updated)
 ```
 
 ### Key Differences from Old Extension

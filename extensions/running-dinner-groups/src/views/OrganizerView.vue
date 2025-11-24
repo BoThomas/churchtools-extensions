@@ -1,112 +1,136 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-50">
-          Running Dinner Groups
-        </h1>
-        <p class="text-surface-600 dark:text-surface-400 mt-1">
-          Organize running dinner events with ChurchTools groups
-        </p>
-      </div>
-      <Button
-        label="Create New Event"
-        icon="pi pi-plus"
-        @click="showCreateDialog = true"
-        :disabled="!parentGroupReady"
-      />
-    </div>
+    <!-- Parent Group Setup Component -->
+    <ParentGroupSetup
+      ref="parentGroupSetupRef"
+      @created="handleParentGroupCreated"
+    />
 
-    <!-- Parent Group Warning (if not found) -->
-    <Message
-      v-if="!parentGroupReady && !loadingParent"
-      severity="warn"
-      :closable="false"
-    >
-      <div class="flex items-center justify-between w-full">
-        <span>
-          Parent group "Running Dinner" not found. Please create it to start
-          organizing events.
-        </span>
+    <!-- Main Content (only show if user has permission) -->
+    <template v-if="parentGroupSetupRef?.hasPermission">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-50">
+            Running Dinner Events
+          </h1>
+          <p class="text-surface-600 dark:text-surface-400 mt-1">
+            Manage your running dinner events
+          </p>
+        </div>
         <Button
-          label="Create Parent Group"
-          icon="pi pi-plus-circle"
-          severity="secondary"
-          size="small"
-          @click="showParentGroupDialog = true"
+          label="Create New Event"
+          icon="pi pi-plus"
+          @click="showCreateDialog = true"
         />
       </div>
-    </Message>
 
-    <!-- Loading State -->
-    <div v-if="loadingParent" class="text-center py-12">
-      <i class="pi pi-spin pi-spinner text-3xl text-primary"></i>
-      <p class="text-surface-600 dark:text-surface-400 mt-4">
-        Checking parent group...
-      </p>
-    </div>
-
-    <!-- Events List (placeholder) -->
-    <div v-else-if="parentGroupReady" class="space-y-4">
-      <div
-        v-if="eventMetadataStore.events.length === 0"
-        class="text-center py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
-      >
-        <i class="pi pi-calendar text-4xl text-surface-400 mb-4"></i>
-        <p class="text-surface-600 dark:text-surface-400">
-          No events yet. Create your first running dinner event!
-        </p>
+      <!-- Loading State -->
+      <div v-if="eventMetadataStore.loading" class="flex justify-center py-12">
+        <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card v-for="event in eventMetadataStore.events" :key="event.id">
-          <template #title> Event ID: {{ event.value.groupId }} </template>
-          <template #content>
-            <div class="space-y-2">
-              <Badge :value="event.value.status" />
-              <p class="text-sm text-surface-600">
-                Organizer: {{ event.value.organizerId }}
-              </p>
-            </div>
-          </template>
-        </Card>
+      <!-- Events List -->
+      <div v-else class="space-y-4">
+        <div
+          v-if="eventMetadataStore.events.length === 0"
+          class="text-center py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
+        >
+          <i class="pi pi-calendar text-4xl text-surface-400 mb-4"></i>
+          <p class="text-surface-600 dark:text-surface-400">
+            No events yet. Create your first running dinner event!
+          </p>
+        </div>
+
+        <div
+          v-else
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+          <Card v-for="event in eventMetadataStore.events" :key="event.id">
+            <template #title>
+              {{ getGroupName(event.value.groupId) || 'Loading...' }}
+            </template>
+            <template #content>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <Badge
+                    :value="formatStatus(event.value.status)"
+                    :severity="getStatusSeverity(event.value.status)"
+                  />
+                </div>
+                <div class="text-sm text-surface-600 space-y-1">
+                  <p>
+                    <i class="pi pi-calendar-times text-xs mr-2"></i>
+                    {{ formatMenuTime(event.value.menu.starter.startTime) }}
+                  </p>
+                  <p>
+                    <i class="pi pi-users text-xs mr-2"></i>
+                    Group size: {{ event.value.preferredGroupSize }}
+                  </p>
+                </div>
+              </div>
+            </template>
+            <template #footer>
+              <div class="flex gap-2">
+                <Button
+                  label="View"
+                  icon="pi pi-eye"
+                  size="small"
+                  outlined
+                  @click="viewEvent(event)"
+                />
+              </div>
+            </template>
+          </Card>
+        </div>
       </div>
-    </div>
+    </template>
 
-    <!-- Dialogs (placeholders) -->
-    <Dialog
-      v-model:visible="showParentGroupDialog"
-      header="Create Parent Group"
-      :style="{ width: '500px' }"
-      modal
-    >
-      <p class="mb-4">
-        This will create the "Running Dinner" parent group in ChurchTools.
-      </p>
-      <p class="text-sm text-surface-600">
-        (Parent group creation wizard to be implemented in Phase 2)
-      </p>
-    </Dialog>
-
+    <!-- Event Creator Dialog (Placeholder) -->
     <Dialog
       v-model:visible="showCreateDialog"
       header="Create New Event"
-      :style="{ width: '600px' }"
-      modal
+      :style="{ width: '90vw', maxWidth: '800px' }"
+      :modal="true"
     >
-      <p class="mb-4">Create a new running dinner event.</p>
-      <p class="text-sm text-surface-600">
-        (Event creator form to be implemented in Phase 2)
-      </p>
+      <div class="space-y-4">
+        <Message severity="info" :closable="false">
+          <strong>Event Creator coming soon!</strong>
+          <p class="mt-1 text-sm">
+            This form will allow you to create new running dinner events. For
+            now, this is a placeholder.
+          </p>
+        </Message>
+        <p class="text-sm text-surface-600">
+          The EventCreator component will include fields for:
+        </p>
+        <ul class="list-disc list-inside text-sm text-surface-600 space-y-1">
+          <li>Event name and description</li>
+          <li>Event date</li>
+          <li>Maximum participants</li>
+          <li>Preferred group size</li>
+          <li>Menu timing (starter, main course, dessert)</li>
+          <li>Optional after party details</li>
+        </ul>
+      </div>
+      <template #footer>
+        <Button
+          label="Close"
+          severity="secondary"
+          @click="showCreateDialog = false"
+        />
+      </template>
     </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import type { CategoryValue } from '@churchtools-extensions/persistance';
+import type { EventMetadata, Group } from '@/types/models';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
 import { useChurchtoolsStore } from '@/stores/churchtools';
+import ParentGroupSetup from '@/components/ParentGroupSetup.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
@@ -116,20 +140,83 @@ import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 const eventMetadataStore = useEventMetadataStore();
 const churchtoolsStore = useChurchtoolsStore();
 
-const parentGroupReady = ref(false);
-const loadingParent = ref(true);
-const showParentGroupDialog = ref(false);
+const parentGroupSetupRef = ref<InstanceType<typeof ParentGroupSetup>>();
 const showCreateDialog = ref(false);
+const groupCache = ref<Map<number, Group>>(new Map());
 
 onMounted(async () => {
-  // Check if parent group exists
+  // Load child groups for event names
+  await loadChildGroups();
+});
+
+async function handleParentGroupCreated() {
+  // Refresh child groups after parent is created
+  await loadChildGroups();
+}
+
+async function loadChildGroups() {
   try {
     const parentGroup = await churchtoolsStore.getParentGroup();
-    parentGroupReady.value = parentGroup !== null;
+    if (parentGroup) {
+      const childGroups = await churchtoolsStore.getChildGroups(parentGroup.id);
+      groupCache.value.clear();
+      childGroups.forEach((group) => {
+        groupCache.value.set(group.id, group);
+      });
+    }
   } catch (error) {
-    console.error('Failed to check parent group:', error);
-  } finally {
-    loadingParent.value = false;
+    console.error('Failed to load child groups:', error);
   }
-});
+}
+
+function getGroupName(groupId: number): string | null {
+  return groupCache.value.get(groupId)?.name || null;
+}
+
+function formatStatus(status: string): string {
+  const statusMap: Record<string, string> = {
+    active: 'Active',
+    'groups-created': 'Groups Created',
+    'routes-assigned': 'Routes Assigned',
+    'notifications-sent': 'Notifications Sent',
+    completed: 'Completed',
+  };
+  return statusMap[status] || status;
+}
+
+function getStatusSeverity(
+  status: string,
+): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+  const severityMap: Record<
+    string,
+    'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast'
+  > = {
+    active: 'info',
+    'groups-created': 'warn',
+    'routes-assigned': 'warn',
+    'notifications-sent': 'success',
+    completed: 'secondary',
+  };
+  return severityMap[status] || 'info';
+}
+
+function formatMenuTime(isoTime: string): string {
+  try {
+    const date = new Date(isoTime);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return isoTime;
+  }
+}
+
+function viewEvent(event: CategoryValue<EventMetadata>) {
+  // TODO: Implement event detail modal
+  console.log('View event:', event);
+}
 </script>
