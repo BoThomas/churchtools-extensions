@@ -72,7 +72,11 @@
 #### Vue Components (Remaining)
 
 - [ ] `EventCard.vue` - Event display card
-- [ ] `EventCreator.vue` - Event creation modal
+- [x] `EventCreator.vue` - Event creation modal
+  - Complete form with validation
+  - Menu timing configuration
+  - After party support
+  - Integration with GroupConfigService
 - [ ] `MemberList.vue` - Group member list with filters
 - [ ] `DinnerGroupBuilder.vue` - Dinner group creation UI
 - [ ] `DinnerGroupCard.vue` - Individual dinner group display
@@ -1547,18 +1551,26 @@ Users can:
   - Event list with child group names
   - Status badges with color coding
   - Event cards with basic info display
-  - Placeholder dialog for EventCreator
-- ⏳ `EventCreator.vue` - next task
+  - Integrated EventCreator component
+- ✅ `EventCreator.vue` complete:
+  - Full form with Zod validation
+  - Basic information (name, description, date)
+  - Configuration (max participants, group size)
+  - Menu timing (starter, main course, dessert)
+  - Optional after party section
+  - Integration with GroupConfigService
+  - Toast notifications for success/error
+- ⏳ `EventCard.vue` or detail modal - next task
 
 ### Next Steps
 
 **Immediate (Phase 3 completion):**
 
 1. ✅ ~~Update `OrganizerView.vue` to integrate ParentGroupSetup and show event list~~
-2. Create `EventCreator.vue` component with event creation form
-3. Create basic `EventCard.vue` component for displaying events (optional - inline implementation may suffice)
+2. ✅ ~~Create `EventCreator.vue` component with event creation form~~
+3. Create event detail modal with tabs (can be in OrganizerView or separate EventCard component)
 
-**Then (Phase 3 remaining):** 4. Create event detail modal with tabs 5. Create `MemberList.vue` component 6. Implement open/close registration actions
+**Then (Phase 3 remaining):** 4. Create `MemberList.vue` component 5. Implement open/close registration actions
 
 ### Technical Implementation Details
 

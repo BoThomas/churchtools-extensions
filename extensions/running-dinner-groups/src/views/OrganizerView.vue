@@ -93,37 +93,13 @@
       </div>
     </template>
 
-    <!-- Event Creator Dialog (Placeholder) -->
-    <Dialog
+    <!-- Event Creator Dialog -->
+    <EventCreator
+      v-if="parentGroupSetupRef?.parentGroupId"
       v-model:visible="showCreateDialog"
-      header="Create New Event"
-      :style="{ width: '90vw', maxWidth: '800px' }"
-      :modal="true"
-    >
-      <div class="space-y-4">
-        <Message severity="info" :closable="false">
-          <strong>Event Creator coming soon!</strong>
-          <p class="mt-1 text-sm">
-            This form will allow you to create new running dinner events. For
-            now, this is a placeholder.
-          </p>
-        </Message>
-        <p class="text-sm text-surface-600">
-          The EventCreator component will include fields for:
-        </p>
-        <ul class="list-disc list-inside text-sm text-surface-600 space-y-1">
-          <li>Event name and description</li>
-          <li>Event date</li>
-          <li>Maximum participants</li>
-          <li>Preferred group size</li>
-          <li>Menu timing (starter, main course, dessert)</li>
-          <li>Optional after party details</li>
-        </ul>
-      </div>
-      <template #footer>
-        <SecondaryButton label="Close" @click="showCreateDialog = false" />
-      </template>
-    </Dialog>
+      :parent-group-id="parentGroupSetupRef.parentGroupId"
+      @created="handleEventCreated"
+    />
   </div>
 </template>
 
@@ -134,12 +110,10 @@ import type { EventMetadata, Group } from '@/types/models';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
 import { useChurchtoolsStore } from '@/stores/churchtools';
 import ParentGroupSetup from '@/components/ParentGroupSetup.vue';
+import EventCreator from '@/components/EventCreator.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Message from '@churchtools-extensions/prime-volt/Message.vue';
-import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
-import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 
 const eventMetadataStore = useEventMetadataStore();
 const churchtoolsStore = useChurchtoolsStore();
@@ -156,6 +130,12 @@ onMounted(async () => {
 async function handleParentGroupCreated() {
   // Refresh child groups after parent is created
   await loadChildGroups();
+}
+
+async function handleEventCreated(groupId: number) {
+  // Refresh child groups and event metadata
+  await loadChildGroups();
+  console.log('Event created with group ID:', groupId);
 }
 
 async function loadChildGroups() {
