@@ -1022,12 +1022,12 @@ export const useRouteStore = defineStore('route', () => {
 
 3. **ChurchTools Store**
    - [x] Create `src/stores/churchtools.ts`
-   - [x] Implement group CRUD operations (placeholder implementations)
-   - [x] Implement group type/status queries (for Dienst type) - placeholder
-   - [x] Implement group role management (assign Leiter, Co-Leiter) - placeholder
-   - [x] Implement member fetching (with pagination) - placeholder
-   - [x] Implement field management - placeholder
-   - [ ] Test API calls with logging (will be done in Phase 2)
+   - [x] Implement group CRUD operations with real ChurchTools API
+   - [x] Implement group type/status queries (for Dienst type)
+   - [x] Implement group role management (assign Leiter, Co-Leiter)
+   - [x] Implement member fetching (with automatic pagination handling)
+   - [x] Implement field management
+   - [x] Add response normalization helper for API consistency
 
 4. **KV Store Setup**
    - [x] Create `src/stores/eventMetadata.ts` with PersistanceCategory
@@ -1035,38 +1035,39 @@ export const useRouteStore = defineStore('route', () => {
    - [x] Create `src/stores/route.ts` with PersistanceCategory
    - [x] Test data persistence (lazy initialization pattern)
 
-### Phase 2: Group Configuration Service
+### Phase 2: Group Configuration Service ✅ Complete
 
 **Goal**: Automate ChurchTools group setup
 
 5. **GroupConfigService**
-   - [ ] Create `src/services/GroupConfigService.ts`
-   - [ ] Implement `checkParentGroup()`:
+   - [x] Create `src/services/GroupConfigService.ts`
+   - [x] Implement `checkParentGroup()`:
      - Search for "Running Dinner" group
      - Check if current user is Leiter or Co-Leiter
      - Return status and leadership info
-   - [ ] Implement `createParentGroup()`:
+   - [x] Implement `createParentGroup()`:
      - Create group with name "Running Dinner"
      - Set group type to "Dienst"
      - Configure settings (no joining, not public)
      - Assign Leiter and Co-Leiter roles
      - Deactivate all other group roles
      - Store parent group ID in extension metadata
-   - [ ] Implement `createChildGroup()`:
+   - [x] Implement `createChildGroup()`:
      - Create group via API
      - Set parent relationship (targetGroupId)
      - Configure settings (waitlist, max members)
      - Create EventMetadata in KV
-   - [ ] Implement `ensureCustomFields()`:
+   - [x] Implement `ensureCustomFields()`:
      - Check if fields exist
      - Create missing fields:
        - mealPreference (select with options)
        - dietaryRestrictions (textarea)
        - allergyInfo (textarea)
        - partnerPreference (text)
-   - [ ] Implement `updateGroupSettings()` (lock/unlock registration)
-   - [ ] Implement `updateParentGroupLeaders()` (optional)
-   - [ ] Add error handling and logging
+   - [x] Implement `updateGroupSettings()` (lock/unlock registration)
+   - [x] Implement `updateParentGroupLeaders()`
+   - [x] Add `getAllPersons()` helper method
+   - [x] Add error handling and logging
 
 6. **EventCreator Component**
    - [ ] Create `src/components/EventCreator.vue`
@@ -1079,7 +1080,7 @@ export const useRouteStore = defineStore('route', () => {
    - [ ] Show success/error toasts
 
 7. **Parent Group Management UI**
-   - [ ] Create `src/components/ParentGroupSetup.vue`:
+   - [x] Create `src/components/ParentGroupSetup.vue`:
      - Warning banner when parent group missing
      - "Create Parent Group" button
      - Creation dialog with:
@@ -1087,11 +1088,13 @@ export const useRouteStore = defineStore('route', () => {
        - Co-leader selection (multi-select)
        - Settings preview
      - Validation and submit
-   - [ ] Implement parent group status check on extension load
-   - [ ] Store parent group ID in extension state
+   - [x] Implement parent group status check on extension load
+   - [x] Auto-select current user as default leader
+   - [x] Toast notifications for success/error
+   - [x] Expose hasPermission computed property
 
 8. **OrganizerView Basic**
-   - [ ] Create `src/views/OrganizerView.vue`
+   - [ ] Update `src/views/OrganizerView.vue`
    - [ ] Integrate ParentGroupSetup component
    - [ ] Conditional rendering based on parent group status:
      - If missing: Show ParentGroupSetup
@@ -1398,23 +1401,98 @@ Users can:
 ### Phase Status
 
 - Phase 1: ✅ Complete (Foundation & Setup)
-- Phase 2: 🔜 Not Started (Group Configuration Service)
-- Phase 3: 🔜 Not Started (Event Management UI)
+- Phase 2: ✅ Complete (Group Configuration Service)
+- Phase 3: 🔄 In Progress (Event Management UI)
 - Phase 4: 🔜 Not Started (Grouping Algorithm & UI)
 - Phase 5: 🔜 Not Started (Routing Algorithm & UI)
 - Phase 6: 🔜 Not Started (Email Notifications)
 - Phase 7: 🔜 Not Started (Polish & Testing)
 
-### Overall Progress: ~8% (Phase 1 Complete)
+### Overall Progress: ~25% (Phase 1 & 2 Complete, Phase 3 Started)
+
+### What's Been Completed
+
+**Phase 1: Foundation ✅**
+
+- Project structure and configuration
+- Data models with Zod schemas (EventMetadata, DinnerGroup, Route)
+- KV store setup for all 3 categories
+- ChurchTools store with real API implementations
+
+**Phase 2: Group Configuration Service ✅**
+
+- `GroupConfigService.ts` with all methods implemented:
+  - Parent group checking and creation
+  - Child group creation with auto-configuration
+  - Custom field management (mealPreference, dietaryRestrictions, allergyInfo, partnerPreference)
+  - Group settings updates
+  - Leader management
+- Enhanced ChurchTools store with:
+  - Real API calls for all operations
+  - Automatic pagination for members
+  - Response normalization helper
+  - Group types and roles queries
+- `ParentGroupSetup.vue` component:
+  - Warning banner for missing parent group
+  - Permission checking (user must be leader)
+  - Parent group creation wizard
+  - Leader/co-leader selection
+  - Settings preview
+
+**Phase 3: Event Management UI (In Progress) 🔄**
+
+- ✅ `ParentGroupSetup.vue` complete
+- ⏳ `EventCreator.vue` - not started
+- ⏳ `OrganizerView.vue` - needs update
 
 ### Next Steps
 
-1. Create project directory structure
-2. Setup package.json and dependencies
-3. Create data models with Zod schemas
-4. Implement ChurchTools store (API wrapper with group role management)
-5. Implement parent group check and creation UI
-6. Create EventMetadata, DinnerGroup, and Route stores
+**Immediate (Phase 3 completion):**
+
+1. Create `EventCreator.vue` component with event creation form
+2. Update `OrganizerView.vue` to integrate ParentGroupSetup and show event list
+3. Create basic `EventCard.vue` component for displaying events
+
+**Then (Phase 3 remaining):** 4. Create event detail modal with tabs 5. Create `MemberList.vue` component 6. Implement open/close registration actions
+
+### Technical Implementation Details
+
+**Data Flow:**
+
+- ChurchTools Groups API → Group members, settings, fields
+- KV Store (PersistanceCategory) → EventMetadata, DinnerGroups, Routes
+- GroupConfigService → Orchestrates ChurchTools API calls
+- Pinia stores → State management for UI components
+
+**API Integration:**
+
+- Using `@churchtools/churchtools-client` for all ChurchTools API calls
+- Response normalization handles both array and `{ data: [] }` formats
+- Automatic pagination for member lists (10 per page)
+- DELETE operations use `churchtoolsClient.deleteApi()`
+- All ChurchTools store methods have loading/error states
+
+**Components Structure:**
+
+```
+src/
+├── services/
+│   └── GroupConfigService.ts ✅
+├── components/
+│   ├── ParentGroupSetup.vue ✅
+│   ├── EventCreator.vue ⏳
+│   ├── EventCard.vue ⏳
+│   └── MemberList.vue ⏳
+├── stores/
+│   ├── churchtools.ts ✅ (enhanced)
+│   ├── eventMetadata.ts ✅
+│   ├── dinnerGroup.ts ✅
+│   └── route.ts ✅
+├── types/
+│   └── models.ts ✅ (updated with Person, enhanced GroupMember)
+└── views/
+    └── OrganizerView.vue ⏳ (needs update)
+```
 
 ### Key Differences from Old Extension
 
