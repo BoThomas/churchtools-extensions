@@ -75,6 +75,7 @@
 - [x] `EventCreator.vue` - Event creation modal
   - Complete form with validation
   - Menu timing configuration
+  - **Partner preferences toggle** (configurable by organizer)
   - After party support
   - Integration with GroupConfigService
 - [ ] `MemberList.vue` - Group member list with filters
@@ -225,11 +226,11 @@ When creating a child group for a running dinner event, the extension will autom
 3. **Required Group Member Fields**:
    - Standard ChurchTools person fields (name, email, phone, address) - marked as required
 4. **Custom Group-Member Fields** (to be created):
-   - `mealPreference` (select: starter | mainCourse | dessert | none)
-   - `dietaryRestrictions` (textarea)
-   - `allergyInfo` (textarea)
-   - `partnerPreference` (text - comma-separated emails or names)
-   - All marked as `requiredInRegistrationForm: true`
+   - `mealPreference` (select: starter | mainCourse | dessert | none) - **always created**
+   - `dietaryRestrictions` (textarea) - **always created**
+   - `allergyInfo` (textarea) - **always created**
+   - `partnerPreference` (text - comma-separated emails or names) - **conditionally created** (only if organizer enables "Allow Partner Preferences" during event creation)
+   - All marked as `requiredInRegistrationForm: true` for required fields
 
 ### Group Member Data Structure
 
@@ -277,6 +278,7 @@ interface EventMetadata {
 
   // Configuration
   preferredGroupSize: number; // Default: 2 (couples)
+  allowPartnerPreferences: boolean; // Default: false - Whether participants can specify partner preferences
 
   // Status tracking (extension workflow only)
   status:
@@ -1173,14 +1175,15 @@ export const useRouteStore = defineStore('route', () => {
    - [x] Add error handling and logging
 
 6. **EventCreator Component**
-   - [ ] Create `src/components/EventCreator.vue`
-   - [ ] Form with validation (Zod):
+   - [x] Create `src/components/EventCreator.vue`
+   - [x] Form with validation (Zod):
      - Event name, description, date
      - Max members, group size
+     - **Allow partner preferences toggle** (configurable by organizer)
      - Menu timing
      - After party (optional)
-   - [ ] Call GroupConfigService on submit
-   - [ ] Show success/error toasts
+   - [x] Call GroupConfigService on submit
+   - [x] Show success/error toasts
 
 7. **Parent Group Management UI**
    - [x] Create `src/components/ParentGroupSetup.vue`:
@@ -1556,10 +1559,12 @@ Users can:
   - Full form with Zod validation
   - Basic information (name, description, date)
   - Configuration (max participants, group size)
+  - **Partner preferences toggle** (organizer can enable/disable)
   - Menu timing (starter, main course, dessert)
   - Optional after party section
   - Integration with GroupConfigService
   - Toast notifications for success/error
+  - Conditional custom field creation based on settings
 - ⏳ `EventCard.vue` or detail modal - next task
 
 ### Next Steps

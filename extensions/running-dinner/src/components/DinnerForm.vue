@@ -112,9 +112,6 @@
             :min="2"
             :max="6"
           />
-          <small class="text-xs text-surface-500"
-            >Recommended: 2-4 people per group</small
-          >
         </div>
 
         <div class="flex items-center gap-3">

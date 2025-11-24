@@ -167,6 +167,7 @@ export class GroupConfigService {
     maxMembers: number;
     organizerId: number;
     preferredGroupSize: number;
+    allowPartnerPreferences: boolean;
     menu: {
       starter: { startTime: string; endTime: string };
       mainCourse: { startTime: string; endTime: string };
@@ -211,7 +212,10 @@ export class GroupConfigService {
       )) as Group;
 
       // 3. Create custom group-member fields
-      await this.ensureCustomFields(createdGroup.id);
+      await this.ensureCustomFields(
+        createdGroup.id,
+        options.allowPartnerPreferences,
+      );
 
       // 4. Create EventMetadata in KV store
       const eventMetadataStore = useEventMetadataStore();
@@ -220,6 +224,7 @@ export class GroupConfigService {
         menu: options.menu,
         afterParty: options.afterParty,
         preferredGroupSize: options.preferredGroupSize,
+        allowPartnerPreferences: options.allowPartnerPreferences,
         status: 'active',
         organizerId: options.organizerId,
       });
@@ -240,8 +245,13 @@ export class GroupConfigService {
 
   /**
    * Ensure custom group-member fields exist on the group
+   * @param groupId - The ChurchTools group ID
+   * @param allowPartnerPreferences - Whether to create the partner preference field
    */
-  async ensureCustomFields(groupId: number): Promise<void> {
+  async ensureCustomFields(
+    groupId: number,
+    allowPartnerPreferences: boolean,
+  ): Promise<void> {
     try {
       // Get existing fields
       const existingFieldsResponse = await churchtoolsClient.get(
@@ -285,15 +295,19 @@ export class GroupConfigService {
           helpText:
             'Please provide detailed allergy information for meal planning',
         },
-        {
+      ];
+
+      // Conditionally add partner preference field
+      if (allowPartnerPreferences) {
+        requiredFields.push({
           name: 'partnerPreference',
           label: 'Partner Preference',
           fieldType: 'text',
           isRequired: false,
           helpText:
             'Enter names or emails of people you would like to be grouped with (comma-separated)',
-        },
-      ];
+        });
+      }
 
       // Create missing fields
       for (const field of requiredFields) {
