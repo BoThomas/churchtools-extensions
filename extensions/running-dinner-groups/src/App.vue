@@ -26,12 +26,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
 import { useEventMetadataStore } from './stores/eventMetadata';
 import { useDinnerGroupStore } from './stores/dinnerGroup';
 import { useRouteStore } from './stores/route';
 import OrganizerView from './views/OrganizerView.vue';
-import Toast from '@churchtools-extensions/prime-volt/volt/Toast.vue';
-import ConfirmDialog from '@churchtools-extensions/prime-volt/volt/ConfirmDialog.vue';
+import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
+import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 
 const initializing = ref(true);
 
@@ -39,8 +40,25 @@ const eventMetadataStore = useEventMetadataStore();
 const dinnerGroupStore = useDinnerGroupStore();
 const routeStore = useRouteStore();
 
-onMounted(async () => {
+declare const window: Window &
+  typeof globalThis & {
+    settings: {
+      base_url?: string;
+    };
+  };
+
+const baseUrl = window.settings?.base_url ?? import.meta.env.VITE_API_BASE_URL;
+churchtoolsClient.setBaseUrl(baseUrl);
+
+async function init() {
   try {
+    // Development mode login
+    const username = import.meta.env.VITE_USERNAME;
+    const password = import.meta.env.VITE_PASSWORD;
+    if (import.meta.env.MODE === 'development' && username && password) {
+      await churchtoolsClient.post('/login', { username, password });
+    }
+
     // Load all data from KV stores in parallel
     await Promise.all([
       eventMetadataStore.fetchAll(),
@@ -52,5 +70,9 @@ onMounted(async () => {
   } finally {
     initializing.value = false;
   }
+}
+
+onMounted(() => {
+  void init();
 });
 </script>

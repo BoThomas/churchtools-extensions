@@ -106,15 +106,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
-import { useChuchtoolsStore } from '@/stores/churchtools';
-import Button from '@churchtools-extensions/prime-volt/volt/Button.vue';
-import Message from '@churchtools-extensions/prime-volt/volt/Message.vue';
-import Dialog from '@churchtools-extensions/prime-volt/volt/Dialog.vue';
-import Card from '@churchtools-extensions/prime-volt/volt/Card.vue';
-import Badge from '@churchtools-extensions/prime-volt/volt/Badge.vue';
+import { useChurchtoolsStore } from '@/stores/churchtools';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
+import Card from '@churchtools-extensions/prime-volt/Card.vue';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 
 const eventMetadataStore = useEventMetadataStore();
-const churchtoolsStore = useChuchtoolsStore();
+const churchtoolsStore = useChurchtoolsStore();
 
 const parentGroupReady = ref(false);
 const loadingParent = ref(true);
