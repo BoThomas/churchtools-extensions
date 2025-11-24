@@ -106,7 +106,7 @@
 
         <!-- Partner Preferences Option -->
         <div
-          class="flex items-start gap-3 p-4 mt-4 bg-surface-50 dark:bg-surface-800 rounded-lg"
+          class="flex items-start gap-3 p-3 mt-4 bg-primary-50 dark:bg-primary-900/20 rounded border border-primary-200 dark:border-primary-800"
         >
           <Checkbox
             id="allow-partner-preferences"
@@ -120,7 +120,7 @@
             >
               Allow Partner Preferences
             </label>
-            <p class="text-xs text-surface-500 mt-1">
+            <p class="text-xs text-surface-600 dark:text-surface-400 mt-1">
               When enabled, participants can specify other people they'd like to
               be grouped with during registration. The grouping algorithm will
               try to respect these preferences when creating dinner groups.
@@ -267,50 +267,77 @@
             </label>
           </div>
 
-          <template v-if="hasAfterParty">
-            <!-- After Party Time -->
-            <div class="flex flex-col gap-2">
-              <label for="after-party-time" class="font-semibold text-sm">
-                Time
-              </label>
-              <DatePicker
-                id="after-party-time"
-                v-model="formData.afterParty.time"
-                timeOnly
-                hourFormat="24"
-                placeholder="e.g., 00:00"
-              />
-            </div>
-
-            <!-- After Party Location -->
-            <div class="flex flex-col gap-2">
-              <label for="after-party-location" class="font-semibold text-sm">
-                Location
-              </label>
-              <InputText
-                id="after-party-location"
-                v-model="formData.afterParty.location"
-                placeholder="e.g., Bar Central"
-              />
-            </div>
-
-            <!-- After Party Description -->
-            <div class="flex flex-col gap-2">
+          <!-- Dessert as After Party Option -->
+          <div
+            class="flex items-start gap-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded border border-primary-200 dark:border-primary-800"
+            :class="{ 'opacity-50': !hasAfterParty }"
+          >
+            <Checkbox
+              id="dessert-at-after-party"
+              v-model="formData.afterParty.isDessertLocation"
+              binary
+              :disabled="!hasAfterParty"
+            />
+            <div class="flex-1">
               <label
-                for="after-party-description"
+                for="dessert-at-after-party"
                 class="font-semibold text-sm"
+                :class="{
+                  'cursor-pointer': hasAfterParty,
+                  'cursor-not-allowed': !hasAfterParty,
+                }"
               >
-                Description
+                Hold dessert at after party location
               </label>
-              <textarea
-                id="after-party-description"
-                v-model="formData.afterParty.description"
-                rows="2"
-                placeholder="Additional details about the after party..."
-                class="p-inputtext p-component"
-              />
+              <p class="text-xs text-surface-600 dark:text-surface-400 mt-1">
+                Instead of dessert at different homes, all groups gather at the
+                after party venue for dessert.
+              </p>
             </div>
-          </template>
+          </div>
+
+          <!-- After Party Time -->
+          <div class="flex flex-col gap-2">
+            <label for="after-party-time" class="font-semibold text-sm">
+              Time
+            </label>
+            <DatePicker
+              id="after-party-time"
+              v-model="formData.afterParty.time"
+              timeOnly
+              hourFormat="24"
+              placeholder="e.g., 00:00"
+              :disabled="!hasAfterParty"
+            />
+          </div>
+
+          <!-- After Party Location -->
+          <div class="flex flex-col gap-2">
+            <label for="after-party-location" class="font-semibold text-sm">
+              Location
+            </label>
+            <InputText
+              id="after-party-location"
+              v-model="formData.afterParty.location"
+              placeholder="e.g., Bar Central"
+              :disabled="!hasAfterParty"
+            />
+          </div>
+
+          <!-- After Party Description -->
+          <div class="flex flex-col gap-2">
+            <label for="after-party-description" class="font-semibold text-sm">
+              Description
+            </label>
+            <textarea
+              id="after-party-description"
+              v-model="formData.afterParty.description"
+              rows="2"
+              placeholder="Additional details about the after party..."
+              class="p-inputtext p-component"
+              :disabled="!hasAfterParty"
+            />
+          </div>
         </div>
       </Fieldset>
 
@@ -408,6 +435,7 @@ const formData = reactive({
     time: null as Date | null,
     location: '',
     description: '',
+    isDessertLocation: false,
   },
 });
 
@@ -468,6 +496,7 @@ watch(hasAfterParty, (value) => {
     formData.afterParty.time = null;
     formData.afterParty.location = '';
     formData.afterParty.description = '';
+    formData.afterParty.isDessertLocation = false;
   }
 });
 
@@ -496,6 +525,7 @@ function resetForm() {
   formData.afterParty.time = null;
   formData.afterParty.location = '';
   formData.afterParty.description = '';
+  formData.afterParty.isDessertLocation = false;
   clearErrors();
 }
 
@@ -575,6 +605,7 @@ async function handleSubmit() {
         time: combineDateTime(validatedData.date, formData.afterParty.time),
         location: formData.afterParty.location,
         description: formData.afterParty.description || undefined,
+        isDessertLocation: formData.afterParty.isDessertLocation,
       };
     }
 

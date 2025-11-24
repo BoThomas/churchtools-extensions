@@ -36,6 +36,7 @@ export const AfterPartySchema = z.object({
   time: z.string(),
   location: z.string(),
   description: z.string().optional(),
+  isDessertLocation: z.boolean().default(false), // If true, dessert course happens at after party location for all groups
 });
 export type AfterParty = z.infer<typeof AfterPartySchema>;
 
