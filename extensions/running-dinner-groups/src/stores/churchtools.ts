@@ -1,14 +1,26 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { Group, GroupMember } from '@/types/models';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
+import type { Group, GroupMember, Person } from '@/types/models';
 
 /**
  * ChurchTools API wrapper store
  * Provides functions to interact with ChurchTools Groups API
  */
-export const useChuchtoolsStore = defineStore('churchtools', () => {
+export const useChurchtoolsStore = defineStore('churchtools', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
+
+  // Helper to normalize API responses (handle both direct array and { data: [] } formats)
+  function normalizeResponse<T>(response: any): T[] {
+    if (Array.isArray(response)) {
+      return response as T[];
+    } else if (response && typeof response === 'object' && 'data' in response) {
+      return (response as { data: T[] }).data;
+    }
+    console.warn('Unexpected API response format:', response);
+    return [];
+  }
 
   // ===== GROUPS =====
 
@@ -19,10 +31,10 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // Search for group with name "Running Dinner"
-      console.log('TODO: getParentGroup - search for "Running Dinner" group');
-      return null;
+      const response = await churchtoolsClient.get('/groups');
+      const groups = normalizeResponse<Group>(response);
+      const parentGroup = groups.find((g) => g.name === 'Running Dinner');
+      return parentGroup || null;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getParentGroup error:', err);
@@ -39,14 +51,33 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // GET /groups with filter for targetGroupId = parentId
-      console.log('TODO: getChildGroups for parent', parentId);
-      return [];
+      const response = await churchtoolsClient.get('/groups');
+      const groups = normalizeResponse<Group>(response);
+      return groups.filter((g) => g.targetGroupId === parentId);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getChildGroups error:', err);
       return [];
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Get a single group by ID
+   */
+  async function getGroup(groupId: number): Promise<Group | null> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const group = (await churchtoolsClient.get(
+        `/groups/${groupId}`,
+      )) as Group;
+      return group;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error';
+      console.error('getGroup error:', err);
+      return null;
     } finally {
       loading.value = false;
     }
@@ -59,10 +90,8 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // POST /groups
-      console.log('TODO: createChildGroup', data);
-      return null;
+      const group = (await churchtoolsClient.post('/groups', data)) as Group;
+      return group;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('createChildGroup error:', err);
@@ -82,9 +111,7 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // PUT /groups/{id}
-      console.log('TODO: updateGroup', groupId, data);
+      await churchtoolsClient.patch(`/groups/${groupId}`, data);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('updateGroup error:', err);
@@ -101,9 +128,7 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // DELETE /groups/{id}
-      console.log('TODO: deleteGroup', groupId);
+      await churchtoolsClient.deleteApi(`/groups/${groupId}`);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('deleteGroup error:', err);
@@ -122,10 +147,30 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call with pagination
-      // GET /groups/{id}/members
-      console.log('TODO: getGroupMembers for group', groupId);
-      return [];
+      let allMembers: GroupMember[] = [];
+      let page = 1;
+      let hasMorePages = true;
+
+      // ChurchTools API returns paginated results (typically 10 per page)
+      while (hasMorePages) {
+        const response = await churchtoolsClient.get(
+          `/groups/${groupId}/members?page=${page}`,
+        );
+        const members = normalizeResponse<GroupMember>(response);
+
+        if (members.length === 0) {
+          hasMorePages = false;
+        } else {
+          allMembers = [...allMembers, ...members];
+          page++;
+          // If we got less than 10, it's likely the last page
+          if (members.length < 10) {
+            hasMorePages = false;
+          }
+        }
+      }
+
+      return allMembers;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getGroupMembers error:', err);
@@ -144,10 +189,10 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // GET /groups/{id}/memberfields
-      console.log('TODO: getGroupMemberFields for group', groupId);
-      return [];
+      const response = await churchtoolsClient.get(
+        `/groups/${groupId}/memberfields`,
+      );
+      return normalizeResponse<any>(response);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getGroupMemberFields error:', err);
@@ -167,10 +212,11 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // POST /groups/{id}/memberfields
-      console.log('TODO: createGroupMemberField', groupId, field);
-      return null;
+      const created = await churchtoolsClient.post(
+        `/groups/${groupId}/memberfields`,
+        field,
+      );
+      return created;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('createGroupMemberField error:', err);
@@ -185,14 +231,12 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
   /**
    * Get current logged-in user
    */
-  async function getCurrentUser(): Promise<any> {
+  async function getCurrentUser(): Promise<Person | null> {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // GET /whoami
-      console.log('TODO: getCurrentUser');
-      return null;
+      const user = (await churchtoolsClient.get('/whoami')) as Person;
+      return user;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getCurrentUser error:', err);
@@ -205,18 +249,36 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
   /**
    * Get person by ID
    */
-  async function getPerson(personId: number): Promise<any> {
+  async function getPerson(personId: number): Promise<Person | null> {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // GET /persons/{id}
-      console.log('TODO: getPerson', personId);
-      return null;
+      const person = (await churchtoolsClient.get(
+        `/persons/${personId}`,
+      )) as Person;
+      return person;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getPerson error:', err);
       return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Get all persons (for leader selection)
+   */
+  async function getAllPersons(): Promise<Person[]> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await churchtoolsClient.get('/persons');
+      return normalizeResponse<Person>(response);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error';
+      console.error('getAllPersons error:', err);
+      return [];
     } finally {
       loading.value = false;
     }
@@ -229,13 +291,52 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      // TODO: Implement ChurchTools API call
-      // GET /groups with search query
-      console.log('TODO: searchGroups', query);
-      return [];
+      const response = await churchtoolsClient.get('/groups');
+      const groups = normalizeResponse<Group>(response);
+      return groups.filter((g) =>
+        g.name.toLowerCase().includes(query.toLowerCase()),
+      );
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('searchGroups error:', err);
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Get group types
+   */
+  async function getGroupTypes(): Promise<any[]> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await churchtoolsClient.get('/grouptypes');
+      return normalizeResponse<any>(response);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error';
+      console.error('getGroupTypes error:', err);
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Get roles for a group type
+   */
+  async function getGroupTypeRoles(groupTypeId: number): Promise<any[]> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await churchtoolsClient.get(
+        `/grouptypes/${groupTypeId}/roles`,
+      );
+      return normalizeResponse<any>(response);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error';
+      console.error('getGroupTypeRoles error:', err);
       return [];
     } finally {
       loading.value = false;
@@ -247,6 +348,7 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     error,
     getParentGroup,
     getChildGroups,
+    getGroup,
     createChildGroup,
     updateGroup,
     deleteGroup,
@@ -255,6 +357,9 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     createGroupMemberField,
     getCurrentUser,
     getPerson,
+    getAllPersons,
     searchGroups,
+    getGroupTypes,
+    getGroupTypeRoles,
   };
 });

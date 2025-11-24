@@ -155,6 +155,11 @@ export interface GroupMember {
     }[];
   };
   groupMemberStatus: 'active' | 'waiting' | 'inactive';
+  groupTypeRoleId?: number;
+  groupTypeRole?: {
+    id: number;
+    name: string;
+  };
   fields?: GroupMemberFields;
   memberStartDate?: string;
   waitinglistPosition?: number;
@@ -171,8 +176,10 @@ export interface Group {
   groupStatusId: number;
   information?: {
     note?: string;
+    meetingTime?: string;
     groupCategoryId?: number | null;
     campusId?: number | null;
+    endDate?: string;
   };
   settings?: {
     isOpenForMembers?: boolean;
@@ -183,6 +190,23 @@ export interface Group {
     inStatistic?: boolean;
   };
   targetGroupId?: number | null; // Parent group ID
+}
+
+/**
+ * Simplified ChurchTools Person
+ * (actual type comes from @churchtools/churchtools-client)
+ */
+export interface Person {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phoneNumbers?: { phoneNumber: string }[];
+  addresses?: {
+    street?: string;
+    zip?: string;
+    city?: string;
+  }[];
 }
 
 // ==================== Service Result Types ====================
