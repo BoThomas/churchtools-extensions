@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <!-- Parent Group Setup Component -->
+    <!-- Organizer Group Setup Component -->
     <ParentGroupSetup
       ref="parentGroupSetupRef"
       @created="handleParentGroupCreated"
