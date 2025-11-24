@@ -143,6 +143,25 @@ Organizer Flow (Extension UI) Part 2:
 - **Extension KV Store**: Dinner groups (meal groups), routes, metadata, workflow status
 - **Extension UI**: Organizer tools only (no participant UI)
 
+### Optional Features
+
+The extension supports several optional features that organizers can enable per event:
+
+1. **Partner Preferences** (`allowPartnerPreferences`)
+   - Allows participants to specify people they'd like to be grouped with
+   - If disabled: No partner preference field is created, algorithm groups randomly
+   - If enabled: Custom field created, algorithm tries to honor preferences
+
+2. **Dessert at After Party** (`afterParty.isDessertLocation`)
+   - Allows holding dessert at a central venue instead of individual homes
+   - If disabled: Standard 3-location routing (starter → main → dessert at different homes)
+   - If enabled: Simplified 2-location routing (starter → main → all to after party for dessert)
+   - Benefits:
+     - Simplifies logistics (no need for dessert hosts)
+     - Creates unified closing celebration
+     - Easier for large groups
+     - Reduces travel between meals
+
 ### Status & Lifecycle Management
 
 **ChurchTools manages** (via group settings):
@@ -274,6 +293,7 @@ interface EventMetadata {
     time: string;
     location: string;
     description?: string;
+    isDessertLocation: boolean; // If true, dessert course happens at after party location for all groups
   };
 
   // Configuration
@@ -541,6 +561,7 @@ class RoutingService {
   /**
    * Assign routes to dinner groups
    * Constraint: No group meets another group more than once
+   * Special case: If dessert is at after party location, all groups go to the same venue for dessert
    */
   assignRoutes(
     eventMetadata: EventMetadata,
@@ -548,10 +569,13 @@ class RoutingService {
     members: GroupMember[], // For address lookup
   ): RoutingResult {
     // Reuses logic from: extensions/running-dinner/src/algorithms/routing.ts
-    // 1. Validate groups have balanced meal assignments
-    // 2. Use backtracking algorithm to assign routes
-    // 3. Populate addresses from ChurchTools person data
-    // 4. Return routes
+    // 1. Check if dessert is at after party (eventMetadata.afterParty.isDessertLocation)
+    // 2a. If yes: Simplified routing - only assign starter and main course hosts,
+    //     dessert location is after party venue for all groups
+    // 2b. If no: Standard routing - all three meals at different homes
+    // 3. Use backtracking algorithm to assign routes
+    // 4. Populate addresses from ChurchTools person data
+    // 5. Return routes
   }
 }
 
@@ -580,6 +604,7 @@ class EmailService {
     // - Event details
     // - Group members with contact info
     // - Full route (3 stops with addresses, times, Google Maps links)
+    //   - Special handling: If dessert is at after party, show venue instead of home
     // - Dietary restrictions of guests at each stop
     // - After party info
   }
@@ -648,6 +673,11 @@ interface EmailContent {
    - Preferred group size (default: 2)
    - Menu timings (start/end for each meal)
    - Optional: After party details
+     - Time and location
+     - Optional: Hold dessert at after party location (checkbox)
+       - When enabled, all groups gather at after party venue for dessert instead of visiting individual homes
+       - Simplifies logistics and creates a unified closing celebration
+   - Optional: Partner preferences (checkbox)
 4. Click "Create" → Extension:
    - Creates ChurchTools child group
    - Configures settings: `isOpenForMembers: false` initially, waitlist enabled, max members
@@ -1562,6 +1592,7 @@ Users can:
   - **Partner preferences toggle** (organizer can enable/disable)
   - Menu timing (starter, main course, dessert)
   - Optional after party section
+    - **Dessert at after party location** (checkbox when after party enabled)
   - Integration with GroupConfigService
   - Toast notifications for success/error
   - Conditional custom field creation based on settings

@@ -177,6 +177,7 @@ export class GroupConfigService {
       time: string;
       location: string;
       description?: string;
+      isDessertLocation?: boolean;
     };
   }): Promise<number> {
     try {
@@ -222,7 +223,14 @@ export class GroupConfigService {
       const eventMetadataId = await eventMetadataStore.create({
         groupId: createdGroup.id,
         menu: options.menu,
-        afterParty: options.afterParty,
+        afterParty: options.afterParty
+          ? {
+              time: options.afterParty.time,
+              location: options.afterParty.location,
+              description: options.afterParty.description,
+              isDessertLocation: options.afterParty.isDessertLocation ?? false,
+            }
+          : undefined,
         preferredGroupSize: options.preferredGroupSize,
         allowPartnerPreferences: options.allowPartnerPreferences,
         status: 'active',

@@ -37,6 +37,134 @@ export class RoutingService {
   ): RoutingResult {
     const warnings: string[] = [];
 
+    // Check if dessert is at after party location
+    const dessertAtAfterParty =
+      eventMetadata.afterParty?.isDessertLocation ?? false;
+
+    if (dessertAtAfterParty) {
+      // Special case: dessert happens at after party for all groups
+      return this.assignRoutesWithCentralDessert(
+        eventMetadata,
+        dinnerGroups,
+        warnings,
+      );
+    }
+
+    // Standard routing: all meals at different homes
+    return this.assignRoutesStandard(eventMetadata, dinnerGroups, warnings);
+  }
+
+  /**
+   * Assign routes when dessert is at a central after party location
+   */
+  private assignRoutesWithCentralDessert(
+    eventMetadata: EventMetadata,
+    dinnerGroups: CategoryValue<DinnerGroup>[],
+    warnings: string[],
+  ): RoutingResult {
+    // Validate that all groups have assigned meals
+    const groupsWithoutMeals = dinnerGroups.filter(
+      (g) => !g.value.assignedMeal,
+    );
+    if (groupsWithoutMeals.length > 0) {
+      throw new Error(
+        `All groups must have an assigned meal. ${groupsWithoutMeals.length} groups are missing meal assignments.`,
+      );
+    }
+
+    // Group dinner groups by meal type
+    const starterGroups = dinnerGroups.filter(
+      (g) => g.value.assignedMeal === 'starter',
+    );
+    const mainCourseGroups = dinnerGroups.filter(
+      (g) => g.value.assignedMeal === 'mainCourse',
+    );
+    const dessertGroups = dinnerGroups.filter(
+      (g) => g.value.assignedMeal === 'dessert',
+    );
+
+    // For central dessert, we only need equal starters and main courses
+    // Dessert groups don't host, they just mark the after party venue
+    if (starterGroups.length !== mainCourseGroups.length) {
+      throw new Error(
+        `Need equal number of starter and main course groups. ` +
+          `Starters: ${starterGroups.length}, Main: ${mainCourseGroups.length}`,
+      );
+    }
+
+    warnings.push(
+      `Dessert will be held at the after party location (${eventMetadata.afterParty?.location}) for all groups. ` +
+        `No individual dessert hosts needed.`,
+    );
+
+    // Build lookup maps
+    const groupById = new Map<number, CategoryValue<DinnerGroup>>();
+    dinnerGroups.forEach((g) => {
+      groupById.set(g.id, g);
+    });
+
+    // Simplified assignment: only need to pair starters with main courses
+    // Each group goes to one starter location and one main course location
+    // Then everyone goes to the same dessert location (after party)
+    const routes: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[] = [];
+
+    // Use a simple round-robin assignment to avoid duplicates as much as possible
+    for (let i = 0; i < dinnerGroups.length; i++) {
+      const group = dinnerGroups[i];
+      const stops: RouteStop[] = [];
+
+      // Find starter host (rotate through starter groups)
+      const starterIndex = i % starterGroups.length;
+      const starterHost = starterGroups[starterIndex];
+
+      stops.push({
+        meal: 'starter',
+        hostDinnerGroupId: starterHost.id,
+        startTime: eventMetadata.menu.starter.startTime,
+        endTime: eventMetadata.menu.starter.endTime,
+      });
+
+      // Find main course host (rotate through main course groups, offset to reduce duplicates)
+      const mainIndex =
+        (i + Math.floor(starterGroups.length / 2)) % mainCourseGroups.length;
+      const mainHost = mainCourseGroups[mainIndex];
+
+      stops.push({
+        meal: 'mainCourse',
+        hostDinnerGroupId: mainHost.id,
+        startTime: eventMetadata.menu.mainCourse.startTime,
+        endTime: eventMetadata.menu.mainCourse.endTime,
+      });
+
+      // Dessert: use first dessert group as placeholder (represents after party)
+      // In reality, all groups go to after party location, not a home
+      const dessertPlaceholder = dessertGroups[0] || starterGroups[0]; // Fallback to any group
+
+      stops.push({
+        meal: 'dessert',
+        hostDinnerGroupId: dessertPlaceholder.id,
+        startTime: eventMetadata.menu.dessert.startTime,
+        endTime: eventMetadata.menu.dessert.endTime,
+      });
+
+      routes.push({
+        eventMetadataId: eventMetadata.id!,
+        dinnerGroupId: group.id,
+        stops,
+      });
+    }
+
+    return { routes, warnings };
+  }
+
+  /**
+   * Standard route assignment: all meals at different homes
+   */
+  private assignRoutesStandard(
+    eventMetadata: EventMetadata,
+    dinnerGroups: CategoryValue<DinnerGroup>[],
+    warnings: string[],
+  ): RoutingResult {
     // Validate that all groups have assigned meals
     const groupsWithoutMeals = dinnerGroups.filter(
       (g) => !g.value.assignedMeal,

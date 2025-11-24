@@ -84,17 +84,39 @@ export class EmailService {
             ? 'Main Course'
             : 'Dessert';
 
+      // Check if this is dessert at after party location
+      const isDessertAtAfterParty =
+        stop.meal === 'dessert' && eventMetadata.afterParty?.isDessertLocation;
+
       htmlBody += `
         <h4>${index + 1}. ${mealName} (${stop.startTime} - ${stop.endTime})</h4>
         <p>
-          <strong>Host:</strong> ${hostName} (Group #${hostGroup.value.groupNumber})<br>
-          <strong>Address:</strong> ${hostAddress}<br>
       `;
 
-      // Add Google Maps link if address is available
-      if (hostAddress !== 'Address not provided') {
-        const encodedAddress = encodeURIComponent(hostAddress);
+      if (isDessertAtAfterParty) {
+        // Dessert is at after party location for everyone
+        htmlBody += `
+          <strong>Location:</strong> ${eventMetadata.afterParty!.location} (After Party Venue)<br>
+          <em>All groups gather at the after party location for dessert!</em><br>
+        `;
+
+        // Add Google Maps link for after party location
+        const encodedAddress = encodeURIComponent(
+          eventMetadata.afterParty!.location,
+        );
         htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">View on Google Maps</a><br>`;
+      } else {
+        // Standard home-based meal
+        htmlBody += `
+          <strong>Host:</strong> ${hostName} (Group #${hostGroup.value.groupNumber})<br>
+          <strong>Address:</strong> ${hostAddress}<br>
+        `;
+
+        // Add Google Maps link if address is available
+        if (hostAddress !== 'Address not provided') {
+          const encodedAddress = encodeURIComponent(hostAddress);
+          htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">View on Google Maps</a><br>`;
+        }
       }
 
       // Add dietary restrictions of guests at this stop
@@ -182,9 +204,22 @@ export class EmailService {
           : stop.meal === 'mainCourse'
             ? 'Main Course'
             : 'Dessert';
+
+      // Check if this is dessert at after party location
+      const isDessertAtAfterParty =
+        stop.meal === 'dessert' && eventMetadata.afterParty?.isDessertLocation;
+
       textBody += `\n${index + 1}. ${mealName} (${stop.startTime} - ${stop.endTime})\n`;
-      textBody += `   Host: ${hostName} (Group #${hostGroup.value.groupNumber})\n`;
-      textBody += `   Address: ${hostAddress}\n`;
+
+      if (isDessertAtAfterParty) {
+        // Dessert is at after party location for everyone
+        textBody += `   Location: ${eventMetadata.afterParty!.location} (After Party Venue)\n`;
+        textBody += `   All groups gather at the after party location for dessert!\n`;
+      } else {
+        // Standard home-based meal
+        textBody += `   Host: ${hostName} (Group #${hostGroup.value.groupNumber})\n`;
+        textBody += `   Address: ${hostAddress}\n`;
+      }
     });
 
     if (eventMetadata.afterParty) {
