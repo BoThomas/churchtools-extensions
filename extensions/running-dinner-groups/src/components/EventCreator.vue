@@ -409,6 +409,13 @@ const loading = ref(false);
 const generalError = ref<string | null>(null);
 const hasAfterParty = ref(false);
 
+// Helper function to create a time object
+function createTime(hours: number, minutes: number = 0): Date {
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
 // Form data
 const formData = reactive({
   name: '',
@@ -419,20 +426,20 @@ const formData = reactive({
   allowPartnerPreferences: false,
   menu: {
     starter: {
-      startTime: null as Date | null,
-      endTime: null as Date | null,
+      startTime: createTime(18, 0) as Date | null, // 18:00
+      endTime: createTime(19, 30) as Date | null, // 19:30
     },
     mainCourse: {
-      startTime: null as Date | null,
-      endTime: null as Date | null,
+      startTime: createTime(20, 0) as Date | null, // 20:00
+      endTime: createTime(21, 30) as Date | null, // 21:30
     },
     dessert: {
-      startTime: null as Date | null,
-      endTime: null as Date | null,
+      startTime: createTime(22, 0) as Date | null, // 22:00
+      endTime: createTime(23, 30) as Date | null, // 23:30
     },
   },
   afterParty: {
-    time: null as Date | null,
+    time: createTime(0, 0) as Date | null, // 00:00
     location: '',
     description: '',
     isDessertLocation: false,
@@ -515,14 +522,14 @@ function resetForm() {
   formData.maxMembers = 30;
   formData.preferredGroupSize = 2;
   formData.allowPartnerPreferences = false;
-  formData.menu.starter.startTime = null;
-  formData.menu.starter.endTime = null;
-  formData.menu.mainCourse.startTime = null;
-  formData.menu.mainCourse.endTime = null;
-  formData.menu.dessert.startTime = null;
-  formData.menu.dessert.endTime = null;
+  formData.menu.starter.startTime = createTime(18, 0);
+  formData.menu.starter.endTime = createTime(19, 30);
+  formData.menu.mainCourse.startTime = createTime(20, 0);
+  formData.menu.mainCourse.endTime = createTime(21, 30);
+  formData.menu.dessert.startTime = createTime(22, 0);
+  formData.menu.dessert.endTime = createTime(23, 30);
   hasAfterParty.value = false;
-  formData.afterParty.time = null;
+  formData.afterParty.time = createTime(0, 0);
   formData.afterParty.location = '';
   formData.afterParty.description = '';
   formData.afterParty.isDessertLocation = false;
