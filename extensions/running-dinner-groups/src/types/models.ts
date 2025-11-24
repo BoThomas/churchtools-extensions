@@ -1,0 +1,206 @@
+import { z } from 'zod';
+
+// ==================== Common Types ====================
+
+export const MealType = z.enum(['starter', 'mainCourse', 'dessert']);
+export type MealType = z.infer<typeof MealType>;
+
+export const EventStatus = z.enum([
+  'draft', // Group created, not yet published
+  'published', // Registration open, group visible
+  'registration-closed', // Joining locked
+  'groups-created', // Meal groups assigned
+  'routes-assigned', // Routes published
+  'completed', // Event finished
+]);
+export type EventStatus = z.infer<typeof EventStatus>;
+
+// ==================== Event Metadata ====================
+
+export const MenuConfigSchema = z.object({
+  starter: z.object({
+    startTime: z.string(),
+    endTime: z.string(),
+  }),
+  mainCourse: z.object({
+    startTime: z.string(),
+    endTime: z.string(),
+  }),
+  dessert: z.object({
+    startTime: z.string(),
+    endTime: z.string(),
+  }),
+});
+export type MenuConfig = z.infer<typeof MenuConfigSchema>;
+
+export const AfterPartySchema = z.object({
+  time: z.string(),
+  location: z.string(),
+  description: z.string().optional(),
+});
+export type AfterParty = z.infer<typeof AfterPartySchema>;
+
+/**
+ * EventMetadata stores additional metadata not managed by ChurchTools group.
+ * This is stored in the extension's KV store and references a ChurchTools group.
+ */
+export const EventMetadataSchema = z.object({
+  id: z.number().optional(), // KV store ID (CategoryValue)
+  groupId: z.number(), // ChurchTools child group ID
+
+  // Menu timing
+  menu: MenuConfigSchema,
+
+  // Optional after party
+  afterParty: AfterPartySchema.optional(),
+
+  // Configuration
+  preferredGroupSize: z.number().int().min(2).default(2),
+
+  // Status tracking
+  status: EventStatus.default('draft'),
+
+  // Metadata
+  organizerId: z.number(), // ChurchTools person ID
+  createdAt: z.string(), // ISO timestamp
+  updatedAt: z.string(), // ISO timestamp
+});
+
+export type EventMetadata = z.infer<typeof EventMetadataSchema>;
+
+// ==================== Dinner Group ====================
+
+/**
+ * DinnerGroup represents a meal group (2-4 people eating together).
+ * Stored in KV store, references ChurchTools person IDs.
+ */
+export const DinnerGroupSchema = z.object({
+  id: z.number().optional(), // KV store ID (CategoryValue)
+  eventMetadataId: z.number(), // Reference to EventMetadata
+  ctGroupId: z.number(), // ChurchTools group ID
+  groupNumber: z.number(), // Human-readable (1, 2, 3...)
+
+  // Members (ChurchTools person IDs)
+  memberPersonIds: z.array(z.number()),
+
+  // Meal assignment
+  assignedMeal: MealType,
+  hostPersonId: z.number().optional(), // Which member hosts this meal
+
+  // Metadata
+  createdAt: z.string(), // ISO timestamp
+  updatedAt: z.string(), // ISO timestamp
+});
+
+export type DinnerGroup = z.infer<typeof DinnerGroupSchema>;
+
+// ==================== Route ====================
+
+export const RouteStopSchema = z.object({
+  meal: MealType,
+  hostDinnerGroupId: z.number(), // Which dinner group hosts this meal
+  // Address will be fetched from ChurchTools person data at runtime
+  startTime: z.string(),
+  endTime: z.string(),
+});
+export type RouteStop = z.infer<typeof RouteStopSchema>;
+
+/**
+ * Route represents a dinner route for one meal group.
+ * Stored in KV store, references DinnerGroup IDs.
+ */
+export const RouteSchema = z.object({
+  id: z.number().optional(), // KV store ID (CategoryValue)
+  eventMetadataId: z.number(), // Reference to EventMetadata
+  dinnerGroupId: z.number(), // Reference to DinnerGroup
+
+  // Route stops (always 3: starter → main → dessert)
+  stops: z.array(RouteStopSchema).length(3),
+
+  // Metadata
+  createdAt: z.string(), // ISO timestamp
+  updatedAt: z.string(), // ISO timestamp
+});
+
+export type Route = z.infer<typeof RouteSchema>;
+
+// ==================== ChurchTools Types ====================
+
+/**
+ * ChurchTools Group Member custom fields
+ * (these are read from ChurchTools, not stored in our KV)
+ */
+export interface GroupMemberFields {
+  mealPreference?: 'starter' | 'mainCourse' | 'dessert' | 'none';
+  dietaryRestrictions?: string;
+  allergyInfo?: string;
+  partnerPreference?: string; // Comma-separated emails or names
+}
+
+/**
+ * Simplified ChurchTools Group Member
+ * (actual type comes from @churchtools/churchtools-client)
+ */
+export interface GroupMember {
+  personId: number;
+  person: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phoneNumbers?: { phoneNumber: string }[];
+    addresses?: {
+      street?: string;
+      zip?: string;
+      city?: string;
+    }[];
+  };
+  groupMemberStatus: 'active' | 'waiting' | 'inactive';
+  fields?: GroupMemberFields;
+  memberStartDate?: string;
+  waitinglistPosition?: number;
+}
+
+/**
+ * Simplified ChurchTools Group
+ * (actual type comes from @churchtools/churchtools-client)
+ */
+export interface Group {
+  id: number;
+  name: string;
+  groupTypeId: number;
+  groupStatusId: number;
+  information?: {
+    note?: string;
+    groupCategoryId?: number | null;
+    campusId?: number | null;
+  };
+  settings?: {
+    isOpenForMembers?: boolean;
+    isPublic?: boolean;
+    isHidden?: boolean;
+    allowWaitinglist?: boolean;
+    maxMembers?: number | null;
+    inStatistic?: boolean;
+  };
+  targetGroupId?: number | null; // Parent group ID
+}
+
+// ==================== Service Result Types ====================
+
+export interface GroupingResult {
+  dinnerGroups: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>[];
+  warnings: string[];
+  waitlistedPersonIds: number[]; // People excluded from groups
+}
+
+export interface RoutingResult {
+  routes: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[];
+  warnings: string[];
+}
+
+export interface EmailContent {
+  subject: string;
+  htmlBody: string;
+  textBody: string;
+}

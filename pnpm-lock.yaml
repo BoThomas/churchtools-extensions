@@ -119,6 +119,52 @@ importers:
         specifier: ^1.4.2
         version: 1.4.2
 
+  extensions/running-dinner-groups:
+    dependencies:
+      '@churchtools-extensions/build-tools':
+        specifier: workspace:*
+        version: link:../../packages/build-tools
+      '@churchtools-extensions/ct-utils':
+        specifier: workspace:*
+        version: link:../../packages/ct-utils
+      '@churchtools-extensions/persistance':
+        specifier: workspace:*
+        version: link:../../packages/persistance
+      '@churchtools-extensions/prime-volt':
+        specifier: workspace:*
+        version: link:../../packages/prime-volt
+      '@churchtools-extensions/shared-styles':
+        specifier: workspace:*
+        version: link:../../packages/shared-styles
+      '@primevue/forms':
+        specifier: ^4.3.9
+        version: 4.4.1(vue@3.5.24(typescript@5.9.3))
+      '@primevue/icons':
+        specifier: ^4.3.9
+        version: 4.4.1(vue@3.5.24(typescript@5.9.3))
+      '@tailwindcss/vite':
+        specifier: ^4.1.13
+        version: 4.1.17(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2))
+      pinia:
+        specifier: ^3.0.3
+        version: 3.0.4(typescript@5.9.3)(vue@3.5.24(typescript@5.9.3))
+      primevue:
+        specifier: ^4.3.9
+        version: 4.4.1(vue@3.5.24(typescript@5.9.3))
+      tailwind-merge:
+        specifier: ^3.3.1
+        version: 3.4.0
+      vue:
+        specifier: ^3.5.22
+        version: 3.5.24(typescript@5.9.3)
+      zod:
+        specifier: ^4.1.11
+        version: 4.1.12
+    devDependencies:
+      '@churchtools/churchtools-client':
+        specifier: ^1.4.2
+        version: 1.4.2
+
   extensions/translator:
     dependencies:
       '@churchtools-extensions/build-tools':
