@@ -45,12 +45,9 @@ export class GroupConfigService {
 
       const userMembership = members.find((m) => m.personId === currentUser.id);
 
-      // Check if user has Leiter or Co-Leiter role
+      // Check if user is an active member of the group
       const isLeader =
-        userMembership &&
-        userMembership.groupTypeRoleId &&
-        (userMembership.groupTypeRole?.name === 'Leiter' ||
-          userMembership.groupTypeRole?.name === 'Co-Leiter');
+        userMembership && userMembership.groupMemberStatus === 'active';
 
       return {
         exists: true,

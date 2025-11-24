@@ -1,7 +1,12 @@
 <template>
   <div class="space-y-4">
+    <!-- Loading State -->
+    <div v-if="checking" class="flex justify-center py-8">
+      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+    </div>
+
     <!-- Warning Banner when organizer group is missing -->
-    <div v-if="!parentGroupExists" class="space-y-4">
+    <div v-else-if="!parentGroupExists" class="space-y-4">
       <Message severity="warn" :closable="false">
         <strong>Organizer group 'Running Dinner' not found.</strong>
         <p class="mt-1 text-sm">
@@ -18,14 +23,14 @@
 
     <!-- Permission Error when user is not a leader -->
     <Message
-      v-if="parentGroupExists && !isLeader"
+      v-else-if="parentGroupExists && !isLeader"
       severity="error"
       :closable="false"
     >
       <strong>Permission Denied</strong>
       <p class="mt-1 text-sm">
-        You must be a leader (Leiter or Co-Leiter) of the 'Running Dinner'
-        organizer group to use this extension.
+        You must be a member of the 'Running Dinner' organizer group to use this
+        extension.
       </p>
     </Message>
 
@@ -57,7 +62,7 @@
           </label>
           <Select
             v-model="selectedLeader"
-            :options="persons"
+            :options="availableLeaders"
             option-label="displayName"
             dataKey="id"
             placeholder="Select a leader"
@@ -79,7 +84,7 @@
           </label>
           <Multiselect
             v-model="selectedCoLeaders"
-            :options="persons"
+            :options="availableCoLeaders"
             option-label="displayName"
             dataKey="id"
             placeholder="Select co-leaders (optional)"
@@ -168,7 +173,9 @@ const emit = defineEmits<{
 const toast = useToast();
 const churchtoolsStore = useChurchtoolsStore();
 
+const checking = ref(true);
 const parentGroupExists = ref(false);
+const parentGroupId = ref<number | null>(null);
 const isLeader = ref(false);
 const showCreateDialog = ref(false);
 const loading = ref(false);
@@ -189,6 +196,19 @@ let filterTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Computed to check if user has permission
 const hasPermission = computed(() => parentGroupExists.value && isLeader.value);
+
+// Computed lists to exclude already selected persons
+const availableLeaders = computed(() => {
+  // Exclude co-leaders from leader selection
+  const coLeaderIds = new Set(selectedCoLeaders.value.map((p) => p.id));
+  return persons.value.filter((p) => !coLeaderIds.has(p.id));
+});
+
+const availableCoLeaders = computed(() => {
+  // Exclude the selected leader from co-leader selection
+  const leaderId = selectedLeader.value?.id;
+  return persons.value.filter((p) => p.id !== leaderId);
+});
 
 // Helper to create person with display name
 function createPersonWithDisplay(
@@ -258,9 +278,11 @@ onMounted(async () => {
 });
 
 async function checkParentGroup() {
+  checking.value = true;
   try {
     const result = await groupConfigService.checkParentGroup();
     parentGroupExists.value = result.exists;
+    parentGroupId.value = result.group?.id || null;
     isLeader.value = result.isLeader || false;
   } catch (err) {
     console.error('Failed to check parent group:', err);
@@ -270,6 +292,8 @@ async function checkParentGroup() {
       detail: 'Failed to check parent group status',
       life: 5000,
     });
+  } finally {
+    checking.value = false;
   }
 }
 
@@ -368,6 +392,7 @@ function closeCreateDialog() {
 
 defineExpose({
   parentGroupExists,
+  parentGroupId,
   isLeader,
   hasPermission,
   checkParentGroup,
