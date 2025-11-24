@@ -1,22 +1,20 @@
 <template>
   <div class="space-y-4">
     <!-- Warning Banner when parent group is missing -->
-    <Message v-if="!parentGroupExists" severity="warn" :closable="false">
-      <div class="flex items-center justify-between">
-        <div>
-          <strong>Parent group 'Running Dinner' not found.</strong>
-          <p class="mt-1 text-sm">
-            Please create the parent group to start organizing events.
-          </p>
-        </div>
-        <Button
-          label="Create Parent Group"
-          icon="pi pi-plus"
-          severity="warn"
-          @click="showCreateDialog = true"
-        />
-      </div>
-    </Message>
+    <div v-if="!parentGroupExists" class="space-y-4">
+      <Message severity="warn" :closable="false">
+        <strong>Parent group 'Running Dinner' not found.</strong>
+        <p class="mt-1 text-sm">
+          Please create the parent group to start organizing events.
+        </p>
+      </Message>
+      <Button
+        label="Create Parent Group"
+        icon="pi pi-plus"
+        severity="warn"
+        @click="showCreateDialog = true"
+      />
+    </div>
 
     <!-- Permission Error when user is not a leader -->
     <Message
@@ -126,9 +124,8 @@
 
       <template #footer>
         <div class="flex justify-end gap-2">
-          <Button
+          <SecondaryButton
             label="Cancel"
-            severity="secondary"
             :disabled="loading"
             @click="closeCreateDialog"
           />
@@ -157,6 +154,7 @@ import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Multiselect from '@churchtools-extensions/prime-volt/Multiselect.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 
 const emit = defineEmits<{
