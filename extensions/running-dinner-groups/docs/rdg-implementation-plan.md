@@ -408,32 +408,33 @@ class GroupConfigService {
     leaderPersonId: number;
     coLeaderPersonIds: number[];
   }): Promise<Group> {
-    // 1. Create group via ChurchTools API:
+    // 1. Get group types to find "Dienst" type
+    // GET /group/grouptypes
+
+    // 2. Get available roles for Dienst group type
+    // GET /group/roles (then filter by groupTypeId)
+
+    // 3. Create group via ChurchTools API (minimal required fields):
     const groupData = {
       name: 'Running Dinner',
-      groupTypeId: <DIENST_TYPE_ID>, // Service/Dienst type
-      groupStatusId: <ACTIVE_STATUS_ID>,
-      information: {
-        note: 'Parent group for organizing Running Dinner events. Managed by extension.',
-        groupCategoryId: null,
-        campusId: null,
-      },
-      settings: {
-        isOpenForMembers: false,      // No direct joining
-        isPublic: false,              // Not public
-        isHidden: false,              // Visible to members
-        allowWaitinglist: false,      // No waitlist needed
-        maxMembers: null,             // No limit
-        inStatistic: false,           // Don't include in stats
-      },
+      groupTypeId: dienstType.id,
+      groupStatusId: 1, // 1=active, 2=pending, 3=archived, 4=finished
+      // Note: Settings like isOpenForMembers, isPublic etc. are configured
+      // through PATCH /groups/{id} after creation or use defaults
     };
+    // POST /groups
 
-    // 2. Create group
-    // 3. Assign Leiter role to leader
-    // 4. Assign Co-Leiter role(s) to co-leaders
-    // 5. Deactivate all other group type roles
-    // 6. Store parent group ID in extension KV store metadata
-    // 7. Return created group
+    // 4. Assign Leiter role to leader
+    // PUT /groups/{id}/members/{personId}
+    // Body: { groupTypeRoleId: leiterRole.id, groupMemberStatus: 'active' }
+
+    // 5. Assign Co-Leiter role(s) to co-leaders
+    // PUT /groups/{id}/members/{personId} for each co-leader
+    // Body: { groupTypeRoleId: coLeiterRole.id, groupMemberStatus: 'active' }
+
+    // Note: No need to "deactivate" other roles - just don't assign anyone to them
+
+    // 6. Return created group
   }
 
   /**
@@ -1633,22 +1634,24 @@ src/
   - Type: "Dienst" (Service group)
   - Roles: Only "Leiter" and "Co-Leiter" active (all other roles deactivated)
   - Settings: No joining allowed (`isOpenForMembers: false`), not public
-  - Permissions: Only leaders can create events and use organizer features
+  - Permissions: Any active member can use organizer features (checked via groupMemberStatus === 'active')
 - Child group pattern: "Running Dinner - [Event Name]"
 
 ### ChurchTools API Notes for Role Management
 
 **Group Type Roles**: Each group type in ChurchTools has predefined roles (Leiter, Co-Leiter, Teilnehmer, etc.). When creating a parent group:
 
-1. Query group type ID for "Dienst" (Service)
-2. Get available roles for that group type
-3. Assign members to "Leiter" and "Co-Leiter" roles using `groupTypeRoleId`
-4. To "deactivate" other roles: Simply don't assign anyone to them (or ensure role settings prevent auto-assignment)
+1. Query group type ID for "Dienst" (Service) via `GET /group/grouptypes`
+2. Get available roles via `GET /group/roles` and filter by `groupTypeId`
+3. Assign members to "Leiter" and "Co-Leiter" roles using `PUT /groups/{id}/members/{personId}` with `groupTypeRoleId`
+4. To "deactivate" other roles: Simply don't assign anyone to them
+5. Permission check: User just needs to be an active member (groupMemberStatus === 'active'), not necessarily a Leiter
 
 **API Endpoints Needed**:
 
 - `GET /groups/{id}/members` - List current members and their roles
-- `POST /groups/{id}/members` - Add member with specific role
-- `PUT /groups/{id}/members/{memberId}` - Update member role
-- `GET /grouptypes` - Get available group types (find "Dienst" ID)
-- `GET /grouptypes/{id}/roles` - Get roles for a group type
+- `PUT /groups/{id}/members/{personId}` - Add/update member with specific role (body: `{groupTypeRoleId, groupMemberStatus}`)
+- `DELETE /groups/{id}/members/{personId}` - Remove member
+- `GET /group/grouptypes` - Get available group types (find "Dienst" ID)
+- `GET /group/roles` - Get all roles (filter by `groupTypeId` client-side)
+- `POST /groups` - Create group (requires: `name`, `groupTypeId`, `groupStatusId` where 1=active)
