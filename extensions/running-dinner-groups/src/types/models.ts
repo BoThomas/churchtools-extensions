@@ -55,6 +55,7 @@ export const EventMetadataSchema = z.object({
 
   // Configuration
   preferredGroupSize: z.number().int().min(2).default(2),
+  allowPartnerPreferences: z.boolean().default(false), // Whether participants can specify partner preferences
 
   // Status tracking (extension workflow, not ChurchTools group state)
   status: EventStatus.default('active'),

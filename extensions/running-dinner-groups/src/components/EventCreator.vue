@@ -101,9 +101,30 @@
             <small v-if="errors.preferredGroupSize" class="text-red-500">{{
               errors.preferredGroupSize
             }}</small>
-            <small class="text-surface-500">
-              Recommended: 2 for couples, 3-4 for singles
-            </small>
+          </div>
+        </div>
+
+        <!-- Partner Preferences Option -->
+        <div
+          class="flex items-start gap-3 p-4 mt-4 bg-surface-50 dark:bg-surface-800 rounded-lg"
+        >
+          <Checkbox
+            id="allow-partner-preferences"
+            v-model="formData.allowPartnerPreferences"
+            binary
+          />
+          <div class="flex-1">
+            <label
+              for="allow-partner-preferences"
+              class="font-semibold text-sm cursor-pointer"
+            >
+              Allow Partner Preferences
+            </label>
+            <p class="text-xs text-surface-500 mt-1">
+              When enabled, participants can specify other people they'd like to
+              be grouped with during registration. The grouping algorithm will
+              try to respect these preferences when creating dinner groups.
+            </p>
           </div>
         </div>
       </Fieldset>
@@ -368,6 +389,7 @@ const formData = reactive({
   date: null as Date | null,
   maxMembers: 30,
   preferredGroupSize: 2,
+  allowPartnerPreferences: false,
   menu: {
     starter: {
       startTime: null as Date | null,
@@ -463,6 +485,7 @@ function resetForm() {
   formData.date = null;
   formData.maxMembers = 30;
   formData.preferredGroupSize = 2;
+  formData.allowPartnerPreferences = false;
   formData.menu.starter.startTime = null;
   formData.menu.starter.endTime = null;
   formData.menu.mainCourse.startTime = null;
@@ -565,6 +588,7 @@ async function handleSubmit() {
       maxMembers: validatedData.maxMembers,
       organizerId: currentUser.id,
       preferredGroupSize: validatedData.preferredGroupSize,
+      allowPartnerPreferences: formData.allowPartnerPreferences,
       menu,
       afterParty,
     });
