@@ -285,6 +285,36 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
   }
 
   /**
+   * Search persons with pagination
+   */
+  async function searchPersons(
+    query: string = '',
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<Person[]> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      if (query) {
+        params.append('query', query);
+      }
+      const response = await churchtoolsClient.get(
+        `/persons?${params.toString()}`,
+      );
+      return normalizeResponse<Person>(response);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error';
+      console.error('searchPersons error:', err);
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
    * Search for groups by name
    */
   async function searchGroups(query: string): Promise<Group[]> {
@@ -358,6 +388,7 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
     getCurrentUser,
     getPerson,
     getAllPersons,
+    searchPersons,
     searchGroups,
     getGroupTypes,
     getGroupTypeRoles,

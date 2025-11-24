@@ -63,6 +63,7 @@
             :loading="loadingPersons"
             :disabled="loading"
             filter
+            @filter="filterPersons"
             class="w-full"
           />
           <small class="text-surface-500">
@@ -83,6 +84,7 @@
             :loading="loadingPersons"
             :disabled="loading"
             filter
+            @filter="filterPersons"
             class="w-full"
           />
           <small class="text-surface-500">
@@ -143,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { groupConfigService } from '@/services/GroupConfigService';
 import { useChurchtoolsStore } from '@/stores/churchtools';
@@ -175,25 +177,82 @@ const persons = ref<(Person & { displayName: string })[]>([]);
 const selectedLeader = ref<Person | null>(null);
 const selectedCoLeaders = ref<Person[]>([]);
 
+// Protected persons that should never be removed from the list
+const protectedPersons = ref<Map<number, Person & { displayName: string }>>(
+  new Map(),
+);
+
+// Debounce timer for search
+let filterTimeout: ReturnType<typeof setTimeout> | null = null;
+
 // Computed to check if user has permission
 const hasPermission = computed(() => parentGroupExists.value && isLeader.value);
 
+// Helper to create person with display name
+function createPersonWithDisplay(
+  person: Person,
+): Person & { displayName: string } {
+  return {
+    ...person,
+    displayName: `${person.firstName} ${person.lastName}${person.email ? ` (${person.email})` : ''}`,
+  };
+}
+
+// Helper to add person to protected list
+function addProtectedPerson(person: Person & { displayName: string }) {
+  protectedPersons.value.set(person.id, person);
+}
+
+// Helper to merge search results with protected persons
+function mergePersons(
+  searchResults: Person[],
+): (Person & { displayName: string })[] {
+  const resultsWithDisplay = searchResults.map(createPersonWithDisplay);
+
+  // Create a map for deduplication
+  const personMap = new Map<number, Person & { displayName: string }>();
+
+  // Add protected persons first (they appear at the top)
+  protectedPersons.value.forEach((person) => {
+    personMap.set(person.id, person);
+  });
+
+  // Add search results
+  resultsWithDisplay.forEach((person) => {
+    if (!personMap.has(person.id)) {
+      personMap.set(person.id, person);
+    }
+  });
+
+  return Array.from(personMap.values());
+}
+
+// Watch for selection changes to update protected persons
+watch(selectedLeader, (newLeader) => {
+  if (newLeader) {
+    addProtectedPerson(newLeader as Person & { displayName: string });
+  }
+});
+
+watch(selectedCoLeaders, (newCoLeaders) => {
+  newCoLeaders.forEach((coLeader) => {
+    addProtectedPerson(coLeader as Person & { displayName: string });
+  });
+});
+
 onMounted(async () => {
   await checkParentGroup();
-  await loadPersons();
 
-  // Auto-select current user as default leader
-  if (!selectedLeader.value && persons.value.length > 0) {
-    const currentUser = await churchtoolsStore.getCurrentUser();
-    if (currentUser) {
-      const currentPerson = persons.value.find(
-        (p: Person & { displayName: string }) => p.id === currentUser.id,
-      );
-      if (currentPerson) {
-        selectedLeader.value = currentPerson;
-      }
-    }
+  // Load current user first and protect them
+  const currentUser = await churchtoolsStore.getCurrentUser();
+  if (currentUser) {
+    const currentPersonWithDisplay = createPersonWithDisplay(currentUser);
+    addProtectedPerson(currentPersonWithDisplay);
+    selectedLeader.value = currentPersonWithDisplay;
   }
+
+  // Load initial batch of persons (200)
+  await loadPersons();
 });
 
 async function checkParentGroup() {
@@ -212,21 +271,41 @@ async function checkParentGroup() {
   }
 }
 
-async function loadPersons() {
+async function loadPersons(query: string = '') {
   try {
     loadingPersons.value = true;
-    const allPersons = await churchtoolsStore.getAllPersons();
-    // Add displayName for Select component
-    persons.value = allPersons.map((p: Person) => ({
-      ...p,
-      displayName: `${p.firstName} ${p.lastName}${p.email ? ` (${p.email})` : ''}`,
-    }));
+    const limit = query ? 20 : 200; // 20 for search, 200 for initial load
+    const searchResults = await churchtoolsStore.searchPersons(query, 1, limit);
+
+    // Add initial load results to protected list
+    if (!query) {
+      searchResults.forEach((person) => {
+        addProtectedPerson(createPersonWithDisplay(person));
+      });
+    }
+
+    persons.value = mergePersons(searchResults);
   } catch (err) {
     console.error('Failed to load persons:', err);
     error.value = 'Failed to load persons list';
   } finally {
     loadingPersons.value = false;
   }
+}
+
+async function filterPersons(event: { value: string }) {
+  // Clear existing timeout
+  if (filterTimeout) {
+    clearTimeout(filterTimeout);
+  }
+
+  // Show loading immediately
+  loadingPersons.value = true;
+
+  // Debounce the API call - wait 600ms after user stops typing
+  filterTimeout = setTimeout(async () => {
+    await loadPersons(event.value);
+  }, 600);
 }
 
 async function handleCreate() {
