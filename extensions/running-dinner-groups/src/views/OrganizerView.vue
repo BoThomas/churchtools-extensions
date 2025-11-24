@@ -14,9 +14,16 @@
           <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-50">
             Running Dinner Events
           </h1>
-          <p class="text-surface-600 dark:text-surface-400 mt-1">
-            Manage your running dinner events
-          </p>
+          <a
+            v-if="parentGroupSetupRef?.parentGroupId"
+            :href="getGroupUrl(parentGroupSetupRef.parentGroupId)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1"
+          >
+            Open Organizer Group
+            <i class="pi pi-external-link text-xs"></i>
+          </a>
         </div>
         <Button
           label="Create New Event"
@@ -210,6 +217,13 @@ function formatMenuTime(isoTime: string): string {
   } catch {
     return isoTime;
   }
+}
+
+function getGroupUrl(groupId: number): string {
+  const baseUrl = import.meta.env.DEV
+    ? import.meta.env.VITE_EXTERNAL_API_URL.replace(/\/$/, '')
+    : window.location.origin;
+  return `${baseUrl}/groups/${groupId}/dashboard`;
 }
 
 function viewEvent(event: CategoryValue<EventMetadata>) {
