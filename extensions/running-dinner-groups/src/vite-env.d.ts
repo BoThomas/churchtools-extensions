@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@churchtools-extensions/build-tools/extension-info" />
 
 interface ImportMetaEnv {
   readonly VITE_KEY: string;

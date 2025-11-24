@@ -15,7 +15,20 @@
   <!-- Main Application -->
   <div v-else class="min-h-screen flex flex-col">
     <div class="flex-1 p-4">
-      <OrganizerView />
+      <Tabs v-model:value="activeTab">
+        <TabList>
+          <Tab value="settings">Settings</Tab>
+          <Tab value="organize">Organize</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel value="settings">
+            <SettingsView />
+          </TabPanel>
+          <TabPanel value="organize">
+            <OrganizerView />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </div>
   </div>
 
@@ -31,9 +44,16 @@ import { useEventMetadataStore } from './stores/eventMetadata';
 import { useDinnerGroupStore } from './stores/dinnerGroup';
 import { useRouteStore } from './stores/route';
 import OrganizerView from './views/OrganizerView.vue';
+import SettingsView from './views/SettingsView.vue';
+import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
+import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
+import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
+import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
+import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 
+const activeTab = ref('organize');
 const initializing = ref(true);
 
 const eventMetadataStore = useEventMetadataStore();
