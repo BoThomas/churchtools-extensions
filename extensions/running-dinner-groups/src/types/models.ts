@@ -6,11 +6,10 @@ export const MealType = z.enum(['starter', 'mainCourse', 'dessert']);
 export type MealType = z.infer<typeof MealType>;
 
 export const EventStatus = z.enum([
-  'draft', // Group created, not yet published
-  'published', // Registration open, group visible
-  'registration-closed', // Joining locked
+  'active', // Event active, no dinner groups yet
   'groups-created', // Meal groups assigned
-  'routes-assigned', // Routes published
+  'routes-assigned', // Routes created but emails not sent
+  'notifications-sent', // Route emails sent to participants
   'completed', // Event finished
 ]);
 export type EventStatus = z.infer<typeof EventStatus>;
@@ -57,8 +56,8 @@ export const EventMetadataSchema = z.object({
   // Configuration
   preferredGroupSize: z.number().int().min(2).default(2),
 
-  // Status tracking
-  status: EventStatus.default('draft'),
+  // Status tracking (extension workflow, not ChurchTools group state)
+  status: EventStatus.default('active'),
 
   // Metadata
   organizerId: z.number(), // ChurchTools person ID
