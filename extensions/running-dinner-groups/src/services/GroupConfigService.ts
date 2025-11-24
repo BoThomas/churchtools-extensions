@@ -224,8 +224,6 @@ export class GroupConfigService {
         preferredGroupSize: options.preferredGroupSize,
         status: 'active',
         organizerId: options.organizerId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       });
 
       console.log(

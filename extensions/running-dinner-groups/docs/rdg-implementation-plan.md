@@ -1,5 +1,96 @@
 # Running Dinner Groups Extension - Implementation Plan
 
+## Implementation Status
+
+**Last Updated**: November 24, 2025
+
+### ✅ Completed Components
+
+#### Core Infrastructure
+- [x] TypeScript configuration with path mappings (@/* → ./src/*)
+- [x] Project structure and folder organization
+- [x] Type definitions (`src/types/models.ts`) with Zod schemas
+  - EventMetadata, DinnerGroup, Route, RouteStop
+  - GroupMember, Group, Person (ChurchTools types)
+  - All types properly validated with Zod
+
+#### Pinia Stores (State Management)
+- [x] `churchtools.ts` - ChurchTools API wrapper
+  - Parent/child group operations
+  - Group member fetching
+  - Person lookups
+  - Group settings management
+- [x] `eventMetadata.ts` - Event metadata CRUD
+  - Full CRUD operations with KV store
+  - Automatic timestamp management
+- [x] `dinnerGroup.ts` - Dinner group CRUD
+  - Batch creation support
+  - Event-scoped queries
+  - Full CRUD operations
+- [x] `route.ts` - Route CRUD
+  - Batch creation support
+  - Event and group scoped queries
+  - Full CRUD operations
+
+#### Services (Business Logic)
+- [x] `GroupConfigService.ts` - ChurchTools group configuration
+  - Parent group creation with leader assignment
+  - Child group creation and configuration
+  - Custom field management
+  - Group settings updates
+- [x] `GroupingService.ts` - Dinner group creation algorithm
+  - Full port from running-dinner extension
+  - Preference graph building (mutual/one-sided)
+  - Greedy grouping algorithm
+  - Meal assignment with preferences
+  - Preference mismatch detection
+- [x] `RoutingService.ts` - Route assignment algorithm
+  - **Full port from running-dinner extension**
+  - Advanced backtracking with state restoration
+  - Capacity checking (3 groups per location)
+  - Scoring system for optimization
+  - Detailed error diagnostics
+  - Relaxed mode for < 9 groups
+- [x] `EmailService.ts` - Email generation and sending
+  - Route email generation (HTML + plain text)
+  - Personalized content with dietary info
+  - Batch sending support
+  - Console fallback for testing
+
+#### Vue Components
+- [x] `ParentGroupSetup.vue` - Parent group creation wizard
+  - Group existence checking
+  - Leader/co-leader selection
+  - Group creation workflow
+
+### 🚧 In Progress / TODO
+
+#### Vue Components (Remaining)
+- [ ] `EventCard.vue` - Event display card
+- [ ] `EventCreator.vue` - Event creation modal
+- [ ] `MemberList.vue` - Group member list with filters
+- [ ] `DinnerGroupBuilder.vue` - Dinner group creation UI
+- [ ] `DinnerGroupCard.vue` - Individual dinner group display
+- [ ] `RouteAssignment.vue` - Route assignment UI
+- [ ] `RouteCard.vue` - Individual route display
+- [ ] `EmailPreview.vue` - Email preview and sending
+
+#### Main Views
+- [ ] `OrganizerView.vue` - Main dashboard
+  - Event list
+  - Workflow orchestration
+  - Status management
+
+#### Testing & Integration
+- [ ] End-to-end workflow testing
+- [ ] Parent group creation flow
+- [ ] Event creation flow
+- [ ] Dinner group algorithm testing
+- [ ] Route assignment algorithm testing
+- [ ] Email generation testing
+
+---
+
 ## Overview
 
 This document outlines the complete implementation plan for the **Running Dinner Groups** extension for ChurchTools. This extension takes a ChurchTools-native approach by leveraging the built-in **Group Management** system for participant registration and data collection, while providing organizers with powerful automation tools for group creation, meal routing, and communication.
