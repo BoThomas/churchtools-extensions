@@ -7,7 +7,8 @@
 ### ✅ Completed Components
 
 #### Core Infrastructure
-- [x] TypeScript configuration with path mappings (@/* → ./src/*)
+
+- [x] TypeScript configuration with path mappings (@/_ → ./src/_)
 - [x] Project structure and folder organization
 - [x] Type definitions (`src/types/models.ts`) with Zod schemas
   - EventMetadata, DinnerGroup, Route, RouteStop
@@ -15,6 +16,7 @@
   - All types properly validated with Zod
 
 #### Pinia Stores (State Management)
+
 - [x] `churchtools.ts` - ChurchTools API wrapper
   - Parent/child group operations
   - Group member fetching
@@ -33,6 +35,7 @@
   - Full CRUD operations
 
 #### Services (Business Logic)
+
 - [x] `GroupConfigService.ts` - ChurchTools group configuration
   - Parent group creation with leader assignment
   - Child group creation and configuration
@@ -58,6 +61,7 @@
   - Console fallback for testing
 
 #### Vue Components
+
 - [x] `ParentGroupSetup.vue` - Parent group creation wizard
   - Group existence checking
   - Leader/co-leader selection
@@ -66,6 +70,7 @@
 ### 🚧 In Progress / TODO
 
 #### Vue Components (Remaining)
+
 - [ ] `EventCard.vue` - Event display card
 - [ ] `EventCreator.vue` - Event creation modal
 - [ ] `MemberList.vue` - Group member list with filters
@@ -76,12 +81,14 @@
 - [ ] `EmailPreview.vue` - Email preview and sending
 
 #### Main Views
+
 - [ ] `OrganizerView.vue` - Main dashboard
   - Event list
   - Workflow orchestration
   - Status management
 
 #### Testing & Integration
+
 - [ ] End-to-end workflow testing
 - [ ] Parent group creation flow
 - [ ] Event creation flow
