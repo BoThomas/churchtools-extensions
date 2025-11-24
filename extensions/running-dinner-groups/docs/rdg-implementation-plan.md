@@ -36,9 +36,23 @@ Organizer Flow (Extension UI) Part 2:
 
 ### Separation of Concerns
 
-- **ChurchTools Groups**: Participant management, registration, contact data
-- **Extension KV Store**: Dinner groups (meal groups), routes, metadata
+- **ChurchTools Groups**: Participant management, registration, contact data, lifecycle (open/close registration, archive)
+- **Extension KV Store**: Dinner groups (meal groups), routes, metadata, workflow status
 - **Extension UI**: Organizer tools only (no participant UI)
+
+### Status & Lifecycle Management
+
+**ChurchTools manages** (via group settings):
+
+- `isOpenForMembers`: Whether participants can join (toggle via extension UI)
+- `isPublic`: Whether group is publicly visible
+- `isHidden`: Whether group is hidden
+- `isArchived`: End-of-life state (managed in ChurchTools)
+
+**Extension tracks** (in EventMetadata KV store):
+
+- `status`: Workflow progress (`'active'` → `'groups-created'` → `'routes-assigned'` → `'notifications-sent'` → `'completed'`)
+- Only tracks extension-specific workflow, not ChurchTools group state
 
 ## Technology Stack
 
@@ -162,14 +176,13 @@ interface EventMetadata {
   // Configuration
   preferredGroupSize: number; // Default: 2 (couples)
 
-  // Status tracking
+  // Status tracking (extension workflow only)
   status:
-    | 'draft' // Group created, not yet published
-    | 'published' // Registration open, group visible
-    | 'registration-closed' // Joining locked
+    | 'active' // Event active, no dinner groups yet (ChurchTools handles registration via isOpenForMembers)
     | 'groups-created' // Meal groups assigned
-    | 'routes-assigned' // Routes published
-    | 'completed'; // Event finished
+    | 'routes-assigned' // Routes created but emails not sent
+    | 'notifications-sent' // Route emails sent to participants
+    | 'completed'; // Event finished (manual transition)
 
   // Metadata
   organizerId: number; // ChurchTools person ID
@@ -532,21 +545,21 @@ interface EmailContent {
    - Optional: After party details
 4. Click "Create" → Extension:
    - Creates ChurchTools child group
-   - Configures settings (waitlist, max members, etc.)
+   - Configures settings: `isOpenForMembers: false` initially, waitlist enabled, max members
    - Creates custom fields
    - Creates EventMetadata in KV store
-   - Sets status to 'draft'
+   - Sets status to 'active'
 5. Success toast → Event appears in list
 
-#### 2. Publish Event
+#### 2. Open/Close Registration
 
-1. Find event in list (status: draft)
-2. Click "Publish"
-3. Confirmation dialog
-4. Click confirm → Extension:
-   - Updates group: `isOpenForMembers = true`
-   - Updates EventMetadata status to 'published'
-5. Success toast → Participants can now join via ChurchTools
+1. Find event in list (ChurchTools group controls registration)
+2. Click "Open Registration" (if `isOpenForMembers: false`)
+   - Extension updates group: `isOpenForMembers = true`
+   - Success toast → Participants can now join via ChurchTools
+3. Or click "Close Registration" (if `isOpenForMembers: true`)
+   - Extension updates group: `isOpenForMembers = false`
+   - Success toast → No new joins allowed (waiting list still works)
 
 #### 3. Monitor Registrations
 
@@ -561,16 +574,7 @@ interface EmailContent {
    - **Dinner Groups**: (empty until created)
    - **Routes**: (empty until assigned)
 
-#### 4. Close Registration
-
-1. In Members tab, click "Close Registration"
-2. Confirmation dialog
-3. Click confirm → Extension:
-   - Updates group: `isOpenForMembers = false`
-   - Updates EventMetadata status to 'registration-closed'
-4. Success toast → No new joins allowed (waiting list still works)
-
-#### 5. Create Dinner Groups
+#### 4. Create Dinner Groups
 
 1. Navigate to "Dinner Groups" tab
 2. Click "Create Dinner Groups"
@@ -586,10 +590,10 @@ interface EmailContent {
    - Delete empty groups
 6. Click "Save Dinner Groups" → Extension:
    - Saves DinnerGroup[] to KV store
-   - Updates status to 'groups-created'
+   - Updates EventMetadata status to 'groups-created'
 7. Success toast
 
-#### 6. Assign Routes
+#### 5. Assign Routes
 
 1. Navigate to "Routes" tab
 2. Click "Assign Routes"
@@ -599,17 +603,25 @@ interface EmailContent {
 4. Review routes
 5. Click "Save Routes" → Extension:
    - Saves Route[] to KV store
-   - Updates status to 'routes-assigned'
+   - Updates EventMetadata status to 'routes-assigned'
 6. Success toast
 
-#### 7. Send Notifications
+#### 6. Send Notifications
 
 1. Routes tab, click "Send Email Notifications"
 2. Preview modal shows example email
 3. Click "Send to All" → Extension:
    - Generates personalized email for each dinner group
    - Sends via ChurchTools email API (or logs to console)
+   - Updates EventMetadata status to 'notifications-sent'
 4. Success toast with count of emails sent
+
+#### 7. Complete Event
+
+1. After event is finished, organizer can mark as completed
+2. Click "Mark as Completed" button
+3. Extension updates EventMetadata status to 'completed'
+4. Event can be archived in ChurchTools separately (using CT's archive feature)
 
 ### Participant Flow (ChurchTools Native)
 
@@ -991,36 +1003,37 @@ export const useRouteStore = defineStore('route', () => {
 
 ## Implementation Phases
 
-### Phase 1: Foundation ✅ Setup
+### Phase 1: Foundation ✅ Complete
 
 **Goal**: Project structure, ChurchTools integration, data models
 
 1. **Project Setup**
-   - [ ] Create `extensions/running-dinner-groups/` directory
-   - [ ] Copy `package.json`, `vite.config.ts`, `tsconfig.json` from running-dinner
-   - [ ] Update extension key to `running-dinner-groups`
-   - [ ] Install dependencies
-   - [ ] Setup main.ts and App.vue
+   - [x] Create `extensions/running-dinner-groups/` directory
+   - [x] Copy `package.json`, `vite.config.ts`, `tsconfig.json` from running-dinner
+   - [x] Update extension key to `running-dinner-groups`
+   - [x] Install dependencies
+   - [x] Setup main.ts and App.vue
 
 2. **Data Models**
-   - [ ] Create `src/types/models.ts` with TypeScript interfaces
-   - [ ] Add Zod schemas for validation (EventMetadata, DinnerGroup, Route)
-   - [ ] Export types
+   - [x] Create `src/types/models.ts` with TypeScript interfaces
+   - [x] Add Zod schemas for validation (EventMetadata, DinnerGroup, Route)
+   - [x] Export types
+   - [x] Simplified EventStatus to track extension workflow only
 
 3. **ChurchTools Store**
-   - [ ] Create `src/stores/churchtools.ts`
-   - [ ] Implement group CRUD operations
-   - [ ] Implement group type/status queries (for Dienst type)
-   - [ ] Implement group role management (assign Leiter, Co-Leiter)
-   - [ ] Implement member fetching (with pagination)
-   - [ ] Implement field management
-   - [ ] Test API calls with logging
+   - [x] Create `src/stores/churchtools.ts`
+   - [x] Implement group CRUD operations (placeholder implementations)
+   - [x] Implement group type/status queries (for Dienst type) - placeholder
+   - [x] Implement group role management (assign Leiter, Co-Leiter) - placeholder
+   - [x] Implement member fetching (with pagination) - placeholder
+   - [x] Implement field management - placeholder
+   - [ ] Test API calls with logging (will be done in Phase 2)
 
 4. **KV Store Setup**
-   - [ ] Create `src/stores/eventMetadata.ts` with PersistanceCategory
-   - [ ] Create `src/stores/dinnerGroup.ts` with PersistanceCategory
-   - [ ] Create `src/stores/route.ts` with PersistanceCategory
-   - [ ] Test data persistence
+   - [x] Create `src/stores/eventMetadata.ts` with PersistanceCategory
+   - [x] Create `src/stores/dinnerGroup.ts` with PersistanceCategory
+   - [x] Create `src/stores/route.ts` with PersistanceCategory
+   - [x] Test data persistence (lazy initialization pattern)
 
 ### Phase 2: Group Configuration Service
 
@@ -1384,7 +1397,7 @@ Users can:
 
 ### Phase Status
 
-- Phase 1: 🔜 Not Started (Foundation & Setup)
+- Phase 1: ✅ Complete (Foundation & Setup)
 - Phase 2: 🔜 Not Started (Group Configuration Service)
 - Phase 3: 🔜 Not Started (Event Management UI)
 - Phase 4: 🔜 Not Started (Grouping Algorithm & UI)
@@ -1392,7 +1405,7 @@ Users can:
 - Phase 6: 🔜 Not Started (Email Notifications)
 - Phase 7: 🔜 Not Started (Polish & Testing)
 
-### Overall Progress: 0%
+### Overall Progress: ~8% (Phase 1 Complete)
 
 ### Next Steps
 
