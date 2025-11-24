@@ -114,11 +114,7 @@
         </ul>
       </div>
       <template #footer>
-        <Button
-          label="Close"
-          severity="secondary"
-          @click="showCreateDialog = false"
-        />
+        <SecondaryButton label="Close" @click="showCreateDialog = false" />
       </template>
     </Dialog>
   </div>
@@ -136,6 +132,7 @@ import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 
 const eventMetadataStore = useEventMetadataStore();
 const churchtoolsStore = useChurchtoolsStore();
