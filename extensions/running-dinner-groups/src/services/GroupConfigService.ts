@@ -72,7 +72,8 @@ export class GroupConfigService {
   }): Promise<Group> {
     try {
       // 1. Get group types to find "Dienst" type
-      const groupTypesResponse = await churchtoolsClient.get('/grouptypes');
+      const groupTypesResponse =
+        await churchtoolsClient.get('/group/grouptypes');
       const groupTypes = Array.isArray(groupTypesResponse)
         ? groupTypesResponse
         : (groupTypesResponse as { data: any[] }).data;
@@ -88,12 +89,15 @@ export class GroupConfigService {
       }
 
       // 2. Get available roles for Dienst group type
-      const rolesResponse = await churchtoolsClient.get(
-        `/grouptypes/${dienstType.id}/roles`,
-      );
-      const roles = Array.isArray(rolesResponse)
+      const rolesResponse = await churchtoolsClient.get('/group/roles');
+      const allRoles = Array.isArray(rolesResponse)
         ? rolesResponse
         : (rolesResponse as { data: any[] }).data;
+
+      // Filter roles by group type
+      const roles = allRoles.filter(
+        (role: any) => role.groupTypeId === dienstType.id,
+      );
 
       const leiterRole = roles.find((role: any) => role.name === 'Leiter');
       const coLeiterRole = roles.find((role: any) => role.name === 'Co-Leiter');
@@ -103,22 +107,11 @@ export class GroupConfigService {
       }
 
       // 3. Create the parent group
+      // Note: groupStatusId 1 = 'active', 2 = 'pending', 3 = 'archived', 4 = 'finished'
       const groupData = {
         name: GroupConfigService.PARENT_GROUP_NAME,
         groupTypeId: dienstType.id,
-        information: {
-          note: 'Parent group for organizing Running Dinner events. Managed by extension.',
-          groupCategoryId: null,
-          campusId: null,
-        },
-        settings: {
-          isOpenForMembers: false, // No direct joining
-          isPublic: false, // Not public
-          isHidden: false, // Visible to members
-          allowWaitinglist: false, // No waitlist needed
-          maxMembers: null, // No limit
-          inStatistic: false, // Don't include in stats
-        },
+        groupStatusId: 1, // Active status
       };
 
       const createdGroup = (await churchtoolsClient.post(
@@ -126,19 +119,27 @@ export class GroupConfigService {
         groupData,
       )) as Group;
 
-      // 4. Assign Leiter role to leader
-      await churchtoolsClient.post(`/groups/${createdGroup.id}/members`, {
-        personId: options.leaderPersonId,
-        groupTypeRoleId: leiterRole.id,
-      });
+      // 4. Assign Leiter role to leader (if specified)
+      if (options.leaderPersonId) {
+        await churchtoolsClient.put(
+          `/groups/${createdGroup.id}/members/${options.leaderPersonId}`,
+          {
+            groupTypeRoleId: leiterRole.id,
+            groupMemberStatus: 'active',
+          },
+        );
+      }
 
       // 5. Assign Co-Leiter role(s) to co-leaders
       if (coLeiterRole && options.coLeaderPersonIds.length > 0) {
         for (const coLeaderId of options.coLeaderPersonIds) {
-          await churchtoolsClient.post(`/groups/${createdGroup.id}/members`, {
-            personId: coLeaderId,
-            groupTypeRoleId: coLeiterRole.id,
-          });
+          await churchtoolsClient.put(
+            `/groups/${createdGroup.id}/members/${coLeaderId}`,
+            {
+              groupTypeRoleId: coLeiterRole.id,
+              groupMemberStatus: 'active',
+            },
+          );
         }
       }
 

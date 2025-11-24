@@ -342,7 +342,7 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await churchtoolsClient.get('/grouptypes');
+      const response = await churchtoolsClient.get('/group/grouptypes');
       return normalizeResponse<any>(response);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
@@ -360,10 +360,10 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await churchtoolsClient.get(
-        `/grouptypes/${groupTypeId}/roles`,
-      );
-      return normalizeResponse<any>(response);
+      const response = await churchtoolsClient.get('/group/roles');
+      const allRoles = normalizeResponse<any>(response);
+      // Filter roles by group type
+      return allRoles.filter((role: any) => role.groupTypeId === groupTypeId);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getGroupTypeRoles error:', err);

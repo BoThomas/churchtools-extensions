@@ -1,15 +1,15 @@
 <template>
   <div class="space-y-4">
-    <!-- Warning Banner when parent group is missing -->
+    <!-- Warning Banner when organizer group is missing -->
     <div v-if="!parentGroupExists" class="space-y-4">
       <Message severity="warn" :closable="false">
-        <strong>Parent group 'Running Dinner' not found.</strong>
+        <strong>Organizer group 'Running Dinner' not found.</strong>
         <p class="mt-1 text-sm">
-          Please create the parent group to start organizing events.
+          Please create the organizer group to start planning events.
         </p>
       </Message>
       <Button
-        label="Create Parent Group"
+        label="Create Organizer Group"
         icon="pi pi-plus"
         severity="warn"
         @click="showCreateDialog = true"
@@ -25,14 +25,14 @@
       <strong>Permission Denied</strong>
       <p class="mt-1 text-sm">
         You must be a leader (Leiter or Co-Leiter) of the 'Running Dinner'
-        parent group to use this extension.
+        organizer group to use this extension.
       </p>
     </Message>
 
-    <!-- Create Parent Group Dialog -->
+    <!-- Create Organizer Group Dialog -->
     <Dialog
       v-model:visible="showCreateDialog"
-      header="Create Parent Group"
+      header="Create Organizer Group"
       :modal="true"
       :style="{ width: '90vw', maxWidth: '600px' }"
       :closable="!loading"
@@ -333,7 +333,7 @@ async function handleCreate() {
     toast.add({
       severity: 'success',
       summary: 'Success',
-      detail: `Parent group "Running Dinner" created successfully`,
+      detail: `Organizer group "Running Dinner" created successfully`,
       life: 5000,
     });
 
@@ -348,7 +348,7 @@ async function handleCreate() {
     error.value =
       err instanceof Error
         ? err.message
-        : 'Failed to create parent group. Please try again.';
+        : 'Failed to create organizer group. Please try again.';
     toast.add({
       severity: 'error',
       summary: 'Error',
