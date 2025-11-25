@@ -146,10 +146,13 @@ groupHasSpaceOnWaitinglist: boolean;
 - Set `automaticMoveUp: true` so waitlisted people auto-join when spots open
 - Use `waitinglistMaxPersons` if we want to limit how long the waitlist can get
 
-**Questions:**
+**✅ RESOLVED:** `automaticMoveUp` does NOT trigger notifications. We need to create a Routine with trigger `waiting` → `active` to notify people when promoted.
 
-- Does `automaticMoveUp` trigger any notifications? If not, we might need to use Routines for that.
-- When someone moves from waitlist to active, does CT send an email?
+**Form Fields Needed:**
+
+- Enable waitlist? (checkbox)
+- Waitlist limit? (number input, optional - null = unlimited)
+- Auto move-up? (checkbox, default: true)
 
 ### 5. Group Meetings (Treffen) for Meal Times
 
@@ -186,33 +189,23 @@ export type GroupMeeting = {
 
 ### 6. Group Places (Treffpunkt) for After-Event Location
 
-```typescript
-// API: GET /groups/{groupId}/places (deprecated but functional)
-{
-  id: number;
-  name: string | null;
-  street: string | null;
-  city: string | null;
-  geoLat: string | null;
-  geoLng: string | null;
-  // ... address fields
-}
-```
+~~The API `/groups/{groupId}/places` is deprecated.~~
 
-**This is perfect for the after-party location!**
+**✅ RESOLVED:** Use the Addresses API instead:
+
+```
+GET/POST /api/addresses/group/{groupId}
+```
 
 **Suggested Usage:**
 
-- Use a Group Place for the central after-party venue
+- Use Addresses API for the central after-party venue
 - This stores address info directly on the CT group
 - Members can see it in their group view
 
-**Questions:**
+### 7. Routines for Automation - ✅ FULLY API-CONTROLLABLE!
 
-- The API is marked `deprecated` - is there a replacement?
-- Can we use the Address API instead (`/addresses/{domainType}/{domainIdentifier}`)?
-
-### 7. Routines for Automation
+**See "Resolved Questions" section below for complete API documentation.**
 
 ```typescript
 export type Routine = {
@@ -224,20 +217,27 @@ export type Routine = {
   priority: number;
   steps: Array<RoutineStep>;
 };
-
-// Available actions include:
-// - 'send-member-email': Send email to member
-// - 'create-follow-up': Create a follow-up task
-// - 'add-member-to-group': Add member to another group
-// - 'change-member-status': Change membership status
-// - 'archive-member': Archive membership
-// - 'special:wait': Wait for a period
-// - 'special:repeat': Repeat the routine
 ```
 
-**This is powerful for our workflow automations!**
+**API Workflow:**
 
-**Suggested Routines:**
+1. `POST /api/routines` - Create routine with domainContext (groupId, roleId, status)
+2. `POST /api/routines/{id}/steps/validate` - Validate step before adding
+3. `PATCH /api/routines/{id}` - Add steps and/or enable
+4. `GET /api/routines/{id}/runs` - Check execution history
+
+**Available Actions:**
+
+- `send-member-email` - Send automated email with placeholders
+- `create-follow-up` - Create follow-up task
+- `add-member-to-group` - Add to another group
+- `edit-group-membership` - Edit role/fields
+- `change-member-status-*` - Change status
+- `remove-member` - Remove from group
+- `invite-member` - Invite to ChurchTools
+- `archive-member` - Archive person
+
+**Suggested Routines for Running Dinner:**
 
 1. **Waitlist Promotion Notification:**
    - Trigger: Member status changes from `waiting` to `active`
@@ -250,12 +250,6 @@ export type Routine = {
 3. **Post-Event Follow-up:**
    - Trigger: Could be manual or timed
    - Action: `create-follow-up` for feedback collection
-
-**Questions:**
-
-- Can we create routines programmatically via API, or only via CT UI?
-- What triggers are available? The types mention `group_membership` domain with status transitions.
-- Can we trigger routines based on dates (e.g., 1 day before event)?
 
 ### 8. Posts (Beiträge) for Communication
 
@@ -332,12 +326,14 @@ signupConditions?: {
 
 - **Event lifecycle status** → `groupStatusId` (pending → active → finished → archived)
 - **Visibility** → `settings.visibility` (hidden → intern → public)
-- **Registration open/closed** → `isOpenForMembers` + dates
-- **Waitlist management** → `allowWaitinglist`, `automaticMoveUp`
-- **After-party location** → Group Places or Addresses
+- **Registration open/closed** → `isOpenForMembers` + dates (**requires Leiter!**)
+- **Waitlist management** → `allowWaitinglist`, `automaticMoveUp`, `waitinglistMaxPersons`
+- **After-party location** → `/api/addresses/group/{groupId}`
 - **Event info/wiki link** → `information.note` (description)
 - **Announcements** → Posts
-- **Member notifications** → Routines (if API supports creation)
+- **Member notifications** → **Routines (fully API-controllable!)**
+- **Partner relationships** → Co-registration via `allowSpouseRegistration`, `allowOtherRegistration`
+- **Who registered whom** → `groupMember.registeredBy` relationship
 
 ### 🔶 Hybrid (CT + KV):
 
@@ -352,20 +348,229 @@ signupConditions?: {
 
 ---
 
-## Open Questions for Design Decision
+## Resolved Questions & Confirmed API Capabilities
 
-1. **Routine Creation:** Can we create/update Routines via API, or do organizers need to set them up manually in CT? If manual, should we provide a setup guide?
+### ✅ 1. Routine Creation via API - CONFIRMED WORKING!
 
-2. **Group Places Deprecation:** The `/groups/{groupId}/places` endpoint is deprecated. What's the recommended replacement? Should we use the generic `/addresses` API?
+Based on reverse-engineering the CT UI, **Routines can be fully created and managed via API**:
 
-3. **Minimum CT Version:** Which ChurchTools version introduced these features? We should document minimum requirements.
+```typescript
+// 1. Create a routine for a specific group/role/status combination
+POST /api/routines
+{
+  "domainType": "group_membership",
+  "name": "Routinen für Teilnehmer",
+  "domainContext": {
+    "groupId": 54,
+    "groupTypeRoleId": 22,        // Role ID (e.g., Teilnehmer)
+    "groupMemberStatus": "active"  // Trigger status
+  }
+}
+// Response: { "data": { "id": 25, "isEnabled": false, "steps": [] } }
 
-4. **Error States:** What happens if a CT API call fails mid-workflow (e.g., we created the group but failed to set settings)? Do we need rollback logic?
+// 2. Validate a step before adding
+POST /api/routines/{routineId}/steps/validate
+{
+  "actionData": {
+    "senderId": 0,
+    "subject": "test",
+    "body": "<p>hallo {{{person.firstName}}}</p>",
+    "addSignOutUrl": true
+  },
+  "actionKey": "send-member-email",
+  "isEnabled": true
+}
+// Response: 204 No Content (valid)
 
-5. **Permissions:** What CT permissions does an organizer need? Can we check these upfront and show a clear error?
+// 3. Add steps to the routine
+PATCH /api/routines/{routineId}
+{
+  "steps": [{
+    "actionData": {
+      "senderId": 0,
+      "subject": "Willkommen beim Running Dinner!",
+      "body": "<p>Hallo {{{person.firstName}}}, du bist dabei!</p>",
+      "addSignOutUrl": true
+    },
+    "actionKey": "send-member-email",
+    "isEnabled": true
+  }]
+}
 
-6. **GroupMeetings for Routes?** Could we creatively use GroupMeetings where each "meeting" represents a stop on the route? The times would be the meal times, and we'd store the host/location in comments. But this feels like a stretch.
+// 4. Enable the routine
+PATCH /api/routines/{routineId}
+{ "isEnabled": true }
 
-7. **Status Transitions:** Should we enforce status transitions in order (e.g., can't go from `pending` directly to `archived`)? Or allow any transition?
+// 5. Check routine runs
+GET /api/routines/{routineId}/runs?with_potential_domain_objects=true&include[]=domainObject
+```
 
-8. **Historical Data:** When archiving old events, should we also clean up KV store data, or keep it for statistics/history?
+**Available Placeholders** (from `/api/placeholders/email` and `/api/placeholders/group/{groupId}`):
+
+- Person: `{{{person.firstName}}}`, `{{{person.lastName}}}`, `{{{person.email}}}`, etc.
+- Group: `{{{group.name}}}`, `{{{group.meetingday}}}`, `{{{group.meetingtime}}}`, `{{{group.meetingplace}}}`
+- Membership: `{{{groupMember.role}}}`, `{{{groupMember.status}}}`, `{{{groupMember.startDate}}}`, `{{{groupMember.waitinglistPosition}}}`
+- **Custom Group Fields**: `{{{groupMemberField.mealpreference}}}`, `{{{groupMemberField.dietaryrestrictions}}}`, etc.
+
+**Available Actions** (from `POST /api/actions`):
+
+- `send-member-email` - Send automated email
+- `create-follow-up` - Create follow-up task
+- `add-member-to-group` - Add to another group
+- `edit-group-membership` - Edit role/fields
+- `change-member-status-*` - Change status (active→requested, active→to_delete, etc.)
+- `remove-member` - Remove from group
+- `invite-member` - Invite to ChurchTools
+- `archive-member` - Archive person
+
+**Suggested Routines for Running Dinner:**
+
+1. **Waitlist → Active Notification** (trigger: `waiting` → `active`)
+2. **Welcome Email** (trigger: new `active` member)
+3. **Late Cancellation Alert** (trigger: `active` → `to_delete` after registration closed)
+
+### ✅ 2. Addresses API - Replacement for Deprecated Places
+
+The correct API for group addresses is:
+
+```
+GET/POST /api/addresses/group/{groupId}
+```
+
+This replaces the deprecated `/groups/{groupId}/places` endpoint.
+
+### ✅ 3. Registration Dates - Requires Group Leader
+
+The `signUpOpeningDate` and `signUpClosingDate` features work, but **the group must have a "Leiter" (leader) assigned for people to be able to join**.
+
+**Action Required:** When creating an event group, we MUST:
+
+1. Prompt organizer to select a Leiter for the event group
+2. Or auto-assign the creating user as Leiter
+
+### ✅ 4. Waitlist & Auto Move-Up - No Automatic Notifications
+
+Confirmed settings:
+
+- `allowWaitinglist: boolean` - Enable waitlist when group is full
+- `automaticMoveUp: boolean` - Auto-promote from waitlist when spots open
+- `waitinglistMaxPersons: number | null` - Limit waitlist size (null = unlimited)
+
+**Important:** `automaticMoveUp` does NOT send notifications automatically. We need to create a **Routine** with trigger `waiting` → `active` to notify people when they move up.
+
+**Form Fields Needed:**
+
+- [ ] Enable waitlist? (checkbox)
+- [ ] Waitlist limit? (number, optional)
+- [ ] Auto move-up? (checkbox, default: true)
+
+### ✅ 5. Permissions - Organizers Are Admins (For Now)
+
+Deferred. For MVP, assume organizers have admin-level CT permissions.
+
+---
+
+## New Requirements Discovered
+
+### Co-Registration Settings ("Anmeldung weiterer Personen")
+
+CT supports multiple co-registration modes that we should utilize:
+
+```typescript
+settings: {
+  allowOtherRegistration: boolean; // Can register other people
+  allowSameEmailRegistration: boolean; // People with same email
+  allowSpouseRegistration: boolean; // Spouse (via CT relationships)
+  allowChildRegistration: boolean; // Children under 16 (via CT relationships)
+}
+```
+
+**Recommended Approach for Partner Preferences:**
+
+1. Enable `allowSpouseRegistration: true` - CT handles spouse relationships
+2. Enable `allowOtherRegistration: true` if we want "preferred partner" feature
+3. When someone registers another person, CT tracks this via `groupMember.registeredBy`
+4. We can query this relationship later when building dinner groups!
+
+**Placeholders available:**
+
+- `{{{groupMember.registeredBy}}}` - Name of person who registered them
+- `{{{groupMember.registeredBy-firstName}}}`, `{{{groupMember.registeredBy-email}}}`, etc.
+
+**This could replace our custom `partnerPreference` field!**
+
+- Instead of a text field where people type a name
+- Use CT's "register spouse" or "register other person" feature
+- Query `registeredBy` relationship when grouping
+- People registered together = prefer to be in same dinner group
+
+### Leader Requirement for Event Groups
+
+**Critical Discovery:** Child/event groups MUST have a "Leiter" assigned, otherwise no one can join the group.
+
+**Options:**
+
+1. Auto-assign the creating organizer as Leiter
+2. Prompt for Leiter selection in event creation form
+3. Use a shared "Running Dinner Orga" account as Leiter for all events
+
+### Kids Feature - Deferred
+
+The `allowChildRegistration` feature exists, but handling children at a Running Dinner adds complexity:
+
+- Do children count toward group size?
+- Do they need their own meal preferences?
+- How does this affect routing?
+
+**Decision:** Leave out child registration for MVP. Can revisit later.
+
+---
+
+## Updated Summary: CT Native vs KV Store
+
+### ✅ CT Native (No KV needed):
+
+- **Event lifecycle status** → `groupStatusId`
+- **Visibility** → `settings.visibility`
+- **Registration open/closed** → `isOpenForMembers` + dates
+- **Waitlist management** → `allowWaitinglist`, `automaticMoveUp`, `waitinglistMaxPersons`
+- **After-party location** → `/api/addresses/group/{groupId}`
+- **Event info/wiki link** → `information.note`
+- **Announcements** → Posts
+- **Member notifications** → **Routines (fully API-controllable!)**
+- **Partner relationships** → Co-registration (`registeredBy` tracking)
+- **Email templates** → `/api/htmltemplates?domain_type=email`
+
+### ❌ Keep in KV Store:
+
+- **Dinner groups** → Complex meal group assignments
+- **Routes** → Location assignments per course
+- **Workflow status** → Extension-specific states
+
+---
+
+## Remaining Open Questions
+
+1. **Error States:** What happens if a CT API call fails mid-workflow? Do we need rollback logic?
+
+2. **Status Transitions:** Should we enforce status transitions in order?
+
+3. **Historical Data:** When archiving old events, should we also clean up KV store data?
+
+4. **Routine Cleanup:** When deleting an event group, should we also delete associated routines?
+
+5. **Partner Preference Implementation:**
+   - Option A: Use CT's `registeredBy` relationship (simpler, CT-native)
+   - Option B: Keep custom `partnerPreference` text field (more flexible, but more work)
+   - **Recommendation:** Start with Option A, add Option B later if needed
+
+6. **Event Creation Form Fields:**
+   - Event name
+   - Event date
+   - Max participants
+   - Leiter selection (required!)
+   - Registration open/close dates (optional)
+   - Waitlist enabled? + Max waitlist size?
+   - Allow spouse co-registration?
+   - Allow other person co-registration? (for partner preferences)
+   - After-party location?
