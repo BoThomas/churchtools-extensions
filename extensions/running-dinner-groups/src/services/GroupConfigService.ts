@@ -181,16 +181,36 @@ export class GroupConfigService {
     };
   }): Promise<number> {
     try {
-      // 1. Get parent group to get its group type
-      const parentGroup = (await churchtoolsClient.get(
-        `/groups/${options.parentGroupId}`,
-      )) as Group;
+      // 1. Get group types to find "Maßnahme" type
+      const groupTypesResponse =
+        await churchtoolsClient.get('/group/grouptypes');
+      const groupTypes = Array.isArray(groupTypesResponse)
+        ? groupTypesResponse
+        : (groupTypesResponse as { data: any[] }).data;
 
-      // 2. Create child group
+      const massnahmeType = groupTypes.find(
+        (type: any) => type.name === 'Maßnahme',
+      );
+
+      if (!massnahmeType) {
+        throw new Error('Group type "Maßnahme" not found');
+      }
+
+      // 2. Create child group - according to API spec, creation only accepts flat fields
       const groupData = {
         name: options.name,
-        groupTypeId: parentGroup.groupTypeId,
-        targetGroupId: options.parentGroupId, // Set parent relationship
+        groupTypeId: massnahmeType.id,
+        groupStatusId: 1, // Active status
+        parentGroupId: options.parentGroupId, // Set parent relationship
+      };
+
+      const createdGroup = (await churchtoolsClient.post(
+        '/groups',
+        groupData,
+      )) as Group;
+
+      // 3. Update group with additional information and settings
+      await churchtoolsClient.patch(`/groups/${createdGroup.id}`, {
         information: {
           note: options.description,
           meetingTime: options.date,
@@ -205,20 +225,15 @@ export class GroupConfigService {
           maxMembers: options.maxMembers,
           inStatistic: true, // Include in stats
         },
-      };
+      });
 
-      const createdGroup = (await churchtoolsClient.post(
-        '/groups',
-        groupData,
-      )) as Group;
-
-      // 3. Create custom group-member fields
+      // 4. Create custom group-member fields
       await this.ensureCustomFields(
         createdGroup.id,
         options.allowPartnerPreferences,
       );
 
-      // 4. Create EventMetadata in KV store
+      // 5. Create EventMetadata in KV store
       const eventMetadataStore = useEventMetadataStore();
       const eventMetadataId = await eventMetadataStore.create({
         groupId: createdGroup.id,
@@ -276,12 +291,12 @@ export class GroupConfigService {
         {
           name: 'mealPreference',
           label: 'Meal Preference',
-          fieldType: 'select',
+          fieldTypeCode: 'select',
           options: [
-            { value: 'starter', label: 'Starter' },
-            { value: 'mainCourse', label: 'Main Course' },
-            { value: 'dessert', label: 'Dessert' },
-            { value: 'none', label: 'No Preference' },
+            { id: 'starter', name: 'Starter' },
+            { id: 'mainCourse', name: 'Main Course' },
+            { id: 'dessert', name: 'Dessert' },
+            { id: 'none', name: 'No Preference' },
           ],
           isRequired: true,
           helpText:
@@ -290,7 +305,7 @@ export class GroupConfigService {
         {
           name: 'dietaryRestrictions',
           label: 'Dietary Restrictions',
-          fieldType: 'textarea',
+          fieldTypeCode: 'textarea',
           isRequired: false,
           helpText:
             'Please list any dietary restrictions (vegetarian, vegan, allergies, etc.)',
@@ -298,7 +313,7 @@ export class GroupConfigService {
         {
           name: 'allergyInfo',
           label: 'Allergy Information',
-          fieldType: 'textarea',
+          fieldTypeCode: 'textarea',
           isRequired: false,
           helpText:
             'Please provide detailed allergy information for meal planning',
@@ -310,7 +325,7 @@ export class GroupConfigService {
         requiredFields.push({
           name: 'partnerPreference',
           label: 'Partner Preference',
-          fieldType: 'text',
+          fieldTypeCode: 'text',
           isRequired: false,
           helpText:
             'Enter names or emails of people you would like to be grouped with (comma-separated)',
@@ -323,19 +338,21 @@ export class GroupConfigService {
           const fieldData: any = {
             name: field.name,
             label: field.label,
-            fieldType: field.fieldType,
+            fieldTypeCode: field.fieldTypeCode,
             isRequired: field.isRequired,
             helpText: field.helpText,
-            requiredInRegistrationForm: field.isRequired,
+            securityLevel: 1, // Security level for field visibility
+            useInRegistrationForm: true, // Always show in registration form
+            requiredInRegistrationForm: field.isRequired, // Only required if field is required
           };
 
           // Add options for select fields
-          if (field.fieldType === 'select' && 'options' in field) {
+          if (field.fieldTypeCode === 'select' && 'options' in field) {
             fieldData.options = field.options;
           }
 
           await churchtoolsClient.post(
-            `/groups/${groupId}/memberfields`,
+            `/groups/${groupId}/memberfields/group`,
             fieldData,
           );
           console.log(`Created field: ${field.name}`);
