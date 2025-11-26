@@ -168,6 +168,16 @@ export class GroupConfigService {
     organizerId: number;
     preferredGroupSize: number;
     allowPartnerPreferences: boolean;
+    // CT-native registration settings
+    leaderPersonId: number; // Required - group must have a leader for people to join
+    signUpOpeningDate?: string | null; // ISO date when registration opens (null = immediate)
+    signUpClosingDate?: string | null; // ISO date when registration closes
+    // Waitlist settings
+    allowWaitinglist?: boolean; // Default: true
+    automaticMoveUp?: boolean; // Auto-promote from waitlist when spots open
+    waitlistMaxPersons?: number | null; // Max waitlist size (null = unlimited)
+    // Co-registration settings
+    allowSpouseRegistration?: boolean; // CT-native spouse co-registration
     menu: {
       starter: { startTime: string; endTime: string };
       mainCourse: { startTime: string; endTime: string };
@@ -209,7 +219,12 @@ export class GroupConfigService {
         groupData,
       )) as Group;
 
-      // 3. Update group with additional information and settings
+      // 3. Update group with additional information and settings using CT-native features
+      // Apply defaults for optional settings
+      const allowWaitinglist = options.allowWaitinglist ?? true;
+      const automaticMoveUp = options.automaticMoveUp ?? true;
+      const allowSpouseRegistration = options.allowSpouseRegistration ?? true;
+
       await churchtoolsClient.patch(`/groups/${createdGroup.id}`, {
         information: {
           note: options.description,
@@ -218,22 +233,40 @@ export class GroupConfigService {
           campusId: null,
         },
         settings: {
-          isOpenForMembers: false, // Initially closed, will be opened by organizer
-          isPublic: true, // Public so participants can find it
-          isHidden: false, // Visible
-          allowWaitinglist: true, // Enable waitlist
+          // Registration control - CT-native lifecycle management
+          isOpenForMembers: options.signUpOpeningDate ? false : true, // If opening date set, start closed; otherwise open immediately
+          signUpOpeningDate: options.signUpOpeningDate ?? null, // Auto-open registration at this date
+          signUpClosingDate: options.signUpClosingDate ?? null, // Auto-close registration at this date
+
+          // Visibility - 'intern' for MVP (church members only)
+          isPublic: false, // Not public (use 'intern' visibility)
+          isHidden: false, // Visible to church members
+
+          // Waitlist settings - CT-native waitlist management
+          allowWaitinglist: allowWaitinglist,
+          automaticMoveUp: automaticMoveUp, // Auto-promote from waitlist when spots open
+          waitinglistMaxPersons: options.waitlistMaxPersons ?? null, // null = unlimited
+
+          // Co-registration settings
+          allowSpouseRegistration: allowSpouseRegistration,
+          allowOtherRegistration: false, // Not needed if using partner preference field
+
+          // Capacity
           maxMembers: options.maxMembers,
-          inStatistic: true, // Include in stats
+          inStatistic: true,
         },
       });
 
-      // 4. Create custom group-member fields
+      // 4. Assign leader to the group (REQUIRED for people to be able to join)
+      await this.assignGroupLeader(createdGroup.id, options.leaderPersonId);
+
+      // 5. Create custom group-member fields
       await this.ensureCustomFields(
         createdGroup.id,
         options.allowPartnerPreferences,
       );
 
-      // 5. Create EventMetadata in KV store
+      // 6. Create EventMetadata in KV store
       const eventMetadataStore = useEventMetadataStore();
       const eventMetadataId = await eventMetadataStore.create({
         groupId: createdGroup.id,
@@ -263,6 +296,66 @@ export class GroupConfigService {
     } catch (error) {
       console.error('Failed to create child group:', error);
       throw new Error('Failed to create child group');
+    }
+  }
+
+  /**
+   * Assign a leader (Leiter) to a group
+   * This is REQUIRED for people to be able to join the group
+   * @param groupId - The ChurchTools group ID
+   * @param leaderPersonId - The person ID to assign as leader
+   */
+  async assignGroupLeader(
+    groupId: number,
+    leaderPersonId: number,
+  ): Promise<void> {
+    try {
+      // Get the group to find its type
+      const group = (await churchtoolsClient.get(
+        `/groups/${groupId}`,
+      )) as Group;
+
+      // Get roles for this group type
+      const rolesResponse = await churchtoolsClient.get('/group/roles');
+      const allRoles = Array.isArray(rolesResponse)
+        ? rolesResponse
+        : (rolesResponse as { data: any[] }).data;
+
+      // Filter roles by group type and find Leiter
+      const roles = allRoles.filter(
+        (role: any) => role.groupTypeId === group.groupTypeId,
+      );
+      const leiterRole = roles.find((role: any) => role.name === 'Leiter');
+
+      if (!leiterRole) {
+        console.warn(
+          'Leiter role not found for group type, using first available role',
+        );
+        // Use the first available role if Leiter doesn't exist
+        const fallbackRole = roles[0];
+        if (!fallbackRole) {
+          throw new Error('No roles available for this group type');
+        }
+      }
+
+      // Add the leader as a member with the Leiter role
+      await churchtoolsClient.put(
+        `/groups/${groupId}/members/${leaderPersonId}`,
+        {
+          groupTypeRoleId: leiterRole?.id || roles[0]?.id,
+          groupMemberStatus: 'active',
+        },
+      );
+
+      console.log(
+        'Group leader assigned:',
+        leaderPersonId,
+        'to group:',
+        groupId,
+      );
+    } catch (error) {
+      console.error('Failed to assign group leader:', error);
+      throw new Error('Failed to assign group leader');
     }
   }
 
