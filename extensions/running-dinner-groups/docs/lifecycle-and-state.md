@@ -69,11 +69,11 @@ export type GroupStatus = {
 | Event Completed | `finished` | Beendet | Event took place, data preserved |
 | Long-term Archive | `archived` | Archiviert | Old events, reduced visibility |
 
-**Questions:**
+**Implementation Notes:**
 
-- Do we want to use `pending` for the initial setup phase? This would prevent participants from seeing the event until it's "published."
-- Should we transition to `finished` automatically after the event date passes?
-- Is there a meaningful difference between `finished` and `archived` for our use case? `archived` seems more permanent.
+- **`pending` for setup phase:** Optional - could use for "draft" events before publishing. For MVP, create directly as `active`.
+- **Auto-transition to `finished`:** Not for MVP. Manual transition by organizer after event.
+- **`finished` vs `archived`:** Use `finished` for completed events (still visible to members), `archived` for long-term storage (reduced visibility). Both are read-only in extension.
 
 ### 2. Visibility Settings (`settings.visibility`)
 
@@ -91,10 +91,11 @@ visibility: GroupVisibility; // 'hidden' | 'intern' | 'restricted' | 'public'
 | Registration Open (anyone) | `public` | Public registration via GroupHomepage |
 | After Event | `intern` or `hidden` | Keep visible for members, or hide |
 
-**Questions:**
+**✅ RESOLVED:**
 
-- Do we always want Running Dinner events to be church-member-only (`intern`), or should we support `public` for community events?
-- What does `restricted` mean exactly? Could be useful for invite-only events.
+- **For MVP:** Only `intern` visibility (church members only)
+- **`restricted`** means only members with special access role - could be useful for invite-only events in the future, but not for MVP
+- **`public`** for community events can be considered later
 
 ### 3. Registration Control (`isOpenForMembers` + Dates)
 
@@ -115,11 +116,11 @@ signUpClosingDate: ZuluDateNullable;
 - We can still manually toggle `isOpenForMembers` if needed
 - Consider showing a countdown in the UI: "Registration opens in 3 days"
 
-**Questions:**
+**Implementation Notes (to verify during development):**
 
-- Do these dates work with timezones correctly?
-- What happens if `isOpenForMembers: false` but we're within the date range? Does the date override?
-- Should we validate that closing date is before event date?
+- Timezones: Test with CT installation timezone settings
+- Priority: Likely `isOpenForMembers: false` overrides dates (manual close always works)
+- Validation: Warn if closing date is after event date, but don't block
 
 ### 4. Waitlist Features
 
@@ -549,28 +550,73 @@ The `allowChildRegistration` feature exists, but handling children at a Running 
 
 ---
 
-## Remaining Open Questions
+## Resolved Design Decisions
 
-1. **Error States:** What happens if a CT API call fails mid-workflow? Do we need rollback logic?
+### 1. Error Handling Strategy
 
-2. **Status Transitions:** Should we enforce status transitions in order?
+**During child-group creation/setup:**
 
-3. **Historical Data:** When archiving old events, should we also clean up KV store data?
+- If any step fails → Delete the partially created group
+- Show detailed error: which step failed + error details
+- User can retry from scratch
 
-4. **Routine Cleanup:** When deleting an event group, should we also delete associated routines?
+**After initial setup (later operations):**
 
-5. **Partner Preference Implementation:**
-   - Option A: Use CT's `registeredBy` relationship (simpler, CT-native)
-   - Option B: Keep custom `partnerPreference` text field (more flexible, but more work)
-   - **Recommendation:** Start with Option A, add Option B later if needed
+- Do NOT delete the group
+- Show exactly what succeeded and what failed
+- Allow manual recovery/retry of failed operations
 
-6. **Event Creation Form Fields:**
-   - Event name
-   - Event date
-   - Max participants
-   - Leiter selection (required!)
-   - Registration open/close dates (optional)
-   - Waitlist enabled? + Max waitlist size?
-   - Allow spouse co-registration?
-   - Allow other person co-registration? (for partner preferences)
-   - After-party location?
+### 2. Partner Preference Implementation
+
+**Decision:** Keep the custom `partnerPreference` text field.
+
+**Reasoning:** A person might register themselves but still want to specify a preferred partner who registers separately. The `registeredBy` relationship only captures who registered whom, not arbitrary partner preferences.
+
+**Implementation:**
+
+- Keep `partnerPreference` as optional text field
+- Also enable `allowSpouseRegistration` for CT-native spouse handling
+- Grouping algorithm checks both: `registeredBy` pairs AND `partnerPreference` matches
+
+### 3. Archive & Deletion Behavior
+
+**Archiving:**
+
+- Allow archiving from extension UI
+- Archived events display in read-only mode
+- Block all edit operations for archived events
+- KV data is preserved (for history/reference)
+
+**Deletion:**
+
+- Allow deletion from extension UI
+- Deleting in extension → deletes CT group + KV data
+- If CT group is deleted externally → on extension load, detect orphaned KV data and clean up
+- Bidirectional sync: group deletion triggers KV cleanup, KV cleanup does NOT delete CT group (CT is source of truth for existence)
+
+### 4. KV Data Retention
+
+- **Keep forever** until explicit deletion of the event/group
+- When CT group is deleted → remove associated KV entries on next extension load
+- When event is deleted via extension UI → delete both CT group and KV entries
+- Archived events retain all KV data (read-only access)
+
+---
+
+## Final Event Creation Form Fields
+
+| Field                           | Required | Default             | Notes                                   |
+| ------------------------------- | -------- | ------------------- | --------------------------------------- |
+| Event name                      | ✅       | -                   | e.g., "Running Dinner - Dezember 2025"  |
+| Event date                      | ✅       | -                   | Date of the actual dinner event         |
+| Leiter (Leader)                 | ✅       | Current user?       | Required for CT group to accept members |
+| Max participants                | ✅       | 30                  | Limits active members                   |
+| Registration open date          | ❌       | Now                 | When registration opens                 |
+| Registration close date         | ❌       | Event date - 7 days | When registration closes                |
+| Enable waitlist                 | ❌       | true                | Allow waitlist when full                |
+| Waitlist limit                  | ❌       | null (unlimited)    | Max waitlist size                       |
+| Auto move-up                    | ❌       | true                | Auto-promote from waitlist              |
+| Allow spouse registration       | ❌       | true                | CT-native spouse co-registration        |
+| Partner preference field        | ❌       | true                | Custom text field for preferred partner |
+| After-party location            | ❌       | -                   | Optional central venue address          |
+| After-party is dessert location | ❌       | false               | If true, dessert is at after-party      |
