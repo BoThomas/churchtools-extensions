@@ -2,7 +2,7 @@
 
 ## Implementation Status
 
-**Last Updated**: November 24, 2025
+**Last Updated**: November 26, 2025
 
 ### ✅ Completed Components
 
@@ -69,21 +69,44 @@
 
 ### 🚧 In Progress / TODO
 
+#### New Services (from Lifecycle Research)
+
+- [ ] `RoutineService.ts` - **NEW** ChurchTools Routines management
+  - Create routines for waitlist notifications
+  - Welcome email automation
+  - Late cancellation alerts
+  - API: POST/PATCH/GET `/api/routines`
+- [ ] `AddressService.ts` - **NEW** Group address management
+  - After-party location storage via `/api/addresses/group/{groupId}`
+  - Replaces deprecated places API
+- [ ] `SyncService.ts` - **NEW** CT/KV data synchronization
+  - Detect deleted CT groups on extension load
+  - Clean up orphaned KV data
+  - Bidirectional sync logic
+
 #### Vue Components (Remaining)
 
 - [ ] `EventCard.vue` - Event display card
+  - **NEW:** Show archived state (read-only badge)
+  - **NEW:** Archive/Delete actions
 - [x] `EventCreator.vue` - Event creation modal
   - Complete form with validation
   - Menu timing configuration
   - **Partner preferences toggle** (configurable by organizer)
   - After party support
   - Integration with GroupConfigService
+  - **UPDATE NEEDED:** Add new form fields (see below)
 - [ ] `MemberList.vue` - Group member list with filters
+  - **NEW:** Show `registeredBy` relationship
 - [ ] `DinnerGroupBuilder.vue` - Dinner group creation UI
 - [ ] `DinnerGroupCard.vue` - Individual dinner group display
 - [ ] `RouteAssignment.vue` - Route assignment UI
 - [ ] `RouteCard.vue` - Individual route display
 - [ ] `EmailPreview.vue` - Email preview and sending
+- [ ] `EventSettings.vue` - **NEW** Event settings management
+  - Edit registration dates
+  - Waitlist settings
+  - Routine configuration
 
 #### Main Views
 
@@ -91,6 +114,8 @@
   - Event list
   - Workflow orchestration
   - Status management
+  - **NEW:** Archive/delete functionality
+  - **NEW:** Read-only mode for archived events
 
 #### Testing & Integration
 
@@ -100,6 +125,9 @@
 - [ ] Dinner group algorithm testing
 - [ ] Route assignment algorithm testing
 - [ ] Email generation testing
+- [ ] **NEW:** Routine creation testing
+- [ ] **NEW:** Archive/delete flow testing
+- [ ] **NEW:** KV sync on load testing
 
 ---
 
@@ -166,15 +194,33 @@ The extension supports several optional features that organizers can enable per 
 
 **ChurchTools manages** (via group settings):
 
+- `groupStatusId`: Lifecycle state (`active` → `finished` → `archived`)
 - `isOpenForMembers`: Whether participants can join (toggle via extension UI)
-- `isPublic`: Whether group is publicly visible
-- `isHidden`: Whether group is hidden
-- `isArchived`: End-of-life state (managed in ChurchTools)
+- `signUpOpeningDate` / `signUpClosingDate`: Automatic registration windows
+- `visibility`: `intern` for MVP (church members only)
+- `allowWaitinglist`, `automaticMoveUp`, `waitinglistMaxPersons`: Waitlist settings
+- `allowSpouseRegistration`: CT-native spouse co-registration
 
 **Extension tracks** (in EventMetadata KV store):
 
 - `status`: Workflow progress (`'active'` → `'groups-created'` → `'routes-assigned'` → `'notifications-sent'` → `'completed'`)
 - Only tracks extension-specific workflow, not ChurchTools group state
+
+**Lifecycle Mapping:**
+
+| Running Dinner Phase | CT Status  | German     | Extension Behavior     |
+| -------------------- | ---------- | ---------- | ---------------------- |
+| Registration Open    | `active`   | Aktiv      | Full editing           |
+| Groups/Routes Done   | `active`   | Aktiv      | Full editing           |
+| Event Completed      | `finished` | Beendet    | Read-only in extension |
+| Long-term Archive    | `archived` | Archiviert | Read-only in extension |
+
+**Archive & Deletion Behavior:**
+
+- **Archiving:** Allow from extension UI → sets CT `groupStatusId` to `archived` → read-only mode
+- **Deletion:** Allow from extension UI → deletes CT group + all KV data
+- **External deletion:** On extension load, detect missing CT groups and clean up orphaned KV data
+- **KV retention:** Keep forever until explicit deletion
 
 ## Technology Stack
 
@@ -236,20 +282,58 @@ The extension requires a parent group "Running Dinner" to organize all event chi
 
 When creating a child group for a running dinner event, the extension will automatically configure:
 
-1. **Waitlist**: Enabled with configurable max members
+1. **Leader Assignment** (REQUIRED):
+   - Event group MUST have a "Leiter" assigned for people to be able to join
+   - Prompt organizer to select Leiter (default: current user)
+
 2. **Registration Settings**:
    - `isOpenForMembers: true` (allow joining)
-   - `maxMembers: <configurable>` (e.g., 30)
-   - `allowWaitinglist: true`
-   - `signUpOpeningDate` & `signUpClosingDate` (optional)
-3. **Required Group Member Fields**:
+   - `visibility: 'intern'` (church members only for MVP)
+   - `maxMembers: <configurable>` (default: 30)
+   - `signUpOpeningDate` & `signUpClosingDate` (optional automatic windows)
+
+3. **Waitlist Settings**:
+   - `allowWaitinglist: <configurable>` (default: true)
+   - `automaticMoveUp: <configurable>` (default: true)
+   - `waitinglistMaxPersons: <configurable>` (default: null/unlimited)
+
+4. **Co-Registration Settings**:
+   - `allowSpouseRegistration: <configurable>` (default: true)
+   - `allowOtherRegistration: false` (not needed if using partner preference field)
+
+5. **Required Group Member Fields**:
    - Standard ChurchTools person fields (name, email, phone, address) - marked as required
-4. **Custom Group-Member Fields** (to be created):
+
+6. **Custom Group-Member Fields** (to be created):
    - `mealPreference` (select: starter | mainCourse | dessert | none) - **always created**
    - `dietaryRestrictions` (textarea) - **always created**
    - `allergyInfo` (textarea) - **always created**
-   - `partnerPreference` (text - comma-separated emails or names) - **conditionally created** (only if organizer enables "Allow Partner Preferences" during event creation)
+   - `partnerPreference` (text) - **conditionally created** (only if organizer enables it)
    - All marked as `requiredInRegistrationForm: true` for required fields
+
+7. **Routines** (automatic email notifications):
+   - **Waitlist promotion:** Trigger `waiting` → `active`, send welcome email
+   - Created via `/api/routines` after group creation
+
+### Event Creation Form Fields
+
+| Field                           | Required | Default             | Notes                                   |
+| ------------------------------- | -------- | ------------------- | --------------------------------------- |
+| Event name                      | ✅       | -                   | e.g., "Running Dinner - Dezember 2025"  |
+| Event date                      | ✅       | -                   | Date of the actual dinner event         |
+| Leiter (Leader)                 | ✅       | Current user        | Required for CT group to accept members |
+| Max participants                | ✅       | 30                  | Limits active members                   |
+| Registration open date          | ❌       | Now                 | When registration opens                 |
+| Registration close date         | ❌       | Event date - 7 days | When registration closes                |
+| Enable waitlist                 | ❌       | true                | Allow waitlist when full                |
+| Waitlist limit                  | ❌       | null (unlimited)    | Max waitlist size                       |
+| Auto move-up                    | ❌       | true                | Auto-promote from waitlist              |
+| Allow spouse registration       | ❌       | true                | CT-native spouse co-registration        |
+| Partner preference field        | ❌       | true                | Custom text field for preferred partner |
+| After-party location            | ❌       | -                   | Optional central venue address          |
+| After-party is dessert location | ❌       | false               | If true, dessert is at after-party      |
+| Menu timings                    | ✅       | -                   | Start/end times for each course         |
+| Preferred group size            | ❌       | 2                   | Target size for dinner groups           |
 
 ### Group Member Data Structure
 
@@ -300,13 +384,14 @@ interface EventMetadata {
   preferredGroupSize: number; // Default: 2 (couples)
   allowPartnerPreferences: boolean; // Default: false - Whether participants can specify partner preferences
 
-  // Status tracking (extension workflow only)
-  status:
-    | 'active' // Event active, no dinner groups yet (ChurchTools handles registration via isOpenForMembers)
+  // Extension workflow status (separate from CT groupStatusId!)
+  // CT groupStatusId: 1=pending, 2=active, 3=archived, 4=finished (lifecycle)
+  // This status: tracks extension-specific workflow progress
+  workflowStatus:
+    | 'setup' // Event created, waiting for registrations
     | 'groups-created' // Meal groups assigned
     | 'routes-assigned' // Routes created but emails not sent
-    | 'notifications-sent' // Route emails sent to participants
-    | 'completed'; // Event finished (manual transition)
+    | 'notifications-sent'; // Route emails sent to participants
 
   // Metadata
   organizerId: number; // ChurchTools person ID
@@ -369,28 +454,39 @@ interface Route {
 ```
 extensions/running-dinner-groups/
 ├── docs/
-│   └── implementation-plan.md
+│   ├── rdg-implementation-plan.md  # This file
+│   └── lifecycle-and-state.md      # CT feature integration decisions
 ├── src/
 │   ├── App.vue                      # Main app (single organizer view)
 │   ├── config.ts                    # Extension key
 │   ├── main.ts                      # App initialization
 │   ├── stores/
-│   │   ├── eventMetadata.ts        # Event metadata CRUD
-│   │   ├── dinnerGroup.ts          # Dinner group CRUD
-│   │   ├── route.ts                # Route CRUD
-│   │   └── churchtools.ts          # ChurchTools API wrapper (groups, members, fields)
+│   │   ├── eventMetadata.ts        # Event metadata CRUD (KV store)
+│   │   ├── dinnerGroup.ts          # Dinner group CRUD (KV store)
+│   │   ├── route.ts                # Route CRUD (KV store)
+│   │   └── churchtools.ts          # ChurchTools API wrapper
+│   │                                #   - Groups (CRUD, status, settings)
+│   │                                #   - Members (list, waitlist)
+│   │                                #   - Fields (custom group member fields)
+│   │                                #   - Routines (email automation)
+│   │                                #   - Addresses (after-party location)
+│   │                                #   - Persons (search for Leiter selection)
 │   ├── services/
 │   │   ├── GroupConfigService.ts   # Auto-configure child groups
 │   │   ├── GroupingService.ts      # Grouping algorithm (reuse from old extension)
 │   │   ├── RoutingService.ts       # Routing algorithm (reuse from old extension)
-│   │   └── EmailService.ts         # Email generation & sending
+│   │   ├── EmailService.ts         # Email generation & sending
+│   │   ├── RoutineService.ts       # Create/manage CT routines (welcome emails)
+│   │   ├── AddressService.ts       # Manage group addresses (after-party)
+│   │   └── SyncService.ts          # KV cleanup on orphaned data
 │   ├── views/
 │   │   └── OrganizerView.vue       # Main organizer dashboard
 │   ├── components/
 │   │   ├── ParentGroupSetup.vue    # Parent group creation wizard
-│   │   ├── EventCard.vue           # Display event (child group)
-│   │   ├── EventCreator.vue        # Create new event from group
-│   │   ├── MemberList.vue          # Display group members
+│   │   ├── EventCard.vue           # Display event (child group) with status
+│   │   ├── EventCreator.vue        # Create new event with full config
+│   │   ├── EventActions.vue        # Archive/delete confirmation dialogs
+│   │   ├── MemberList.vue          # Display group members + waitlist
 │   │   ├── DinnerGroupBuilder.vue  # Create & manage dinner groups
 │   │   ├── DinnerGroupCard.vue     # Display dinner group
 │   │   ├── RouteAssignment.vue     # Assign & display routes
@@ -630,6 +726,156 @@ interface EmailContent {
 }
 ```
 
+### 5. RoutineService (NEW)
+
+Manages ChurchTools Routines for automated notifications:
+
+```typescript
+class RoutineService {
+  /**
+   * Create a routine for waitlist promotion notifications
+   * Triggered when member status changes from 'waiting' to 'active'
+   */
+  async createWaitlistPromotionRoutine(
+    groupId: number,
+    roleId: number,
+    emailSubject: string,
+    emailBody: string,
+  ): Promise<number> {
+    // 1. Create routine
+    // POST /api/routines
+    // {
+    //   "domainType": "group_membership",
+    //   "name": "Waitlist Promotion Notification",
+    //   "domainContext": {
+    //     "groupId": groupId,
+    //     "groupTypeRoleId": roleId,
+    //     "groupMemberStatus": "active"  // Triggers when becoming active
+    //   }
+    // }
+    // 2. Add email step
+    // PATCH /api/routines/{id}
+    // {
+    //   "steps": [{
+    //     "actionKey": "send-member-email",
+    //     "actionData": {
+    //       "senderId": 0,
+    //       "subject": emailSubject,
+    //       "body": emailBody,
+    //       "addSignOutUrl": true
+    //     },
+    //     "isEnabled": true
+    //   }]
+    // }
+    // 3. Enable routine
+    // PATCH /api/routines/{id}
+    // { "isEnabled": true }
+    // 4. Return routine ID for storage
+  }
+
+  /**
+   * Delete routines associated with a group
+   */
+  async deleteGroupRoutines(groupId: number): Promise<void> {
+    // GET /api/groups/{groupId}/members/routines
+    // DELETE /api/routines/{id} for each
+  }
+
+  /**
+   * Get available placeholders for email templates
+   */
+  async getPlaceholders(groupId: number): Promise<PlaceholderInfo> {
+    // GET /api/placeholders/email
+    // GET /api/placeholders/group/{groupId}
+  }
+}
+
+// Available placeholders:
+// - {{{person.firstName}}}, {{{person.lastName}}}, {{{person.email}}}
+// - {{{group.name}}}, {{{group.meetingtime}}}
+// - {{{groupMember.role}}}, {{{groupMember.status}}}, {{{groupMember.waitinglistPosition}}}
+// - {{{groupMemberField.mealpreference}}}, {{{groupMemberField.dietaryrestrictions}}}
+```
+
+### 6. SyncService (NEW)
+
+Handles synchronization between ChurchTools and KV store:
+
+```typescript
+class SyncService {
+  /**
+   * On extension load, sync CT groups with KV data
+   * - Detect deleted CT groups
+   * - Clean up orphaned KV entries
+   */
+  async syncOnLoad(): Promise<SyncResult> {
+    // 1. Get all EventMetadata from KV store
+    // 2. For each, check if CT group still exists
+    // 3. If CT group deleted:
+    //    - Delete EventMetadata
+    //    - Delete associated DinnerGroups
+    //    - Delete associated Routes
+    // 4. Return sync results (deleted count, errors)
+  }
+
+  /**
+   * Delete an event and all associated data
+   */
+  async deleteEvent(eventMetadataId: number): Promise<void> {
+    // 1. Get EventMetadata
+    // 2. Delete CT group (this is source of truth)
+    // 3. Delete all KV data:
+    //    - Routes for this event
+    //    - DinnerGroups for this event
+    //    - EventMetadata
+  }
+
+  /**
+   * Archive an event (set CT group to archived status)
+   */
+  async archiveEvent(eventMetadataId: number): Promise<void> {
+    // 1. Get EventMetadata
+    // 2. Update CT group: groupStatusId = 3 (archived)
+    // 3. KV data remains unchanged (read-only access)
+  }
+}
+
+interface SyncResult {
+  deletedEvents: number;
+  errors: string[];
+}
+```
+
+### 7. AddressService (NEW)
+
+Manages group addresses (replaces deprecated places API):
+
+```typescript
+class AddressService {
+  /**
+   * Set after-party location for an event group
+   */
+  async setAfterPartyLocation(
+    groupId: number,
+    address: {
+      name: string;
+      street: string;
+      city: string;
+      zip: string;
+    },
+  ): Promise<void> {
+    // POST /api/addresses/group/{groupId}
+  }
+
+  /**
+   * Get after-party location for an event group
+   */
+  async getAfterPartyLocation(groupId: number): Promise<Address | null> {
+    // GET /api/addresses/group/{groupId}
+  }
+}
+```
+
 ## User Flows
 
 ### Organizer Workflow
@@ -666,35 +912,87 @@ interface EmailContent {
 1. Navigate to extension (parent group exists)
 2. Click "Create New Event"
 3. Modal opens with form:
+
+   **Basic Information**
    - Event name (e.g., "Running Dinner - December 2025")
-   - Description
+   - Description (optional)
    - Event date
+   - **Leiter (Leader)**: Person dropdown (required - groups need a leader for members to join!)
+
+   **Registration Settings**
    - Max participants (default: 30)
+   - **Waitlist Settings**:
+     - Enable waitlist (checkbox, default: true)
+     - Max waitlist size (default: 10)
+     - Auto move-up (checkbox, default: true)
+   - **Co-Registration Settings**:
+     - Allow spouse registration (checkbox, default: true)
+     - Allow other registration (checkbox, default: false)
+   - Registration opens (date, optional - leave blank for "open immediately")
+   - Registration closes (date, optional)
+
+   **Event Configuration**
    - Preferred group size (default: 2)
    - Menu timings (start/end for each meal)
    - Optional: After party details
-     - Time and location
+     - Time and location (uses Address API)
      - Optional: Hold dessert at after party location (checkbox)
        - When enabled, all groups gather at after party venue for dessert instead of visiting individual homes
        - Simplifies logistics and creates a unified closing celebration
-   - Optional: Partner preferences (checkbox)
+   - Optional: Partner preferences (checkbox - adds custom field for partner preference)
+
 4. Click "Create" → Extension:
-   - Creates ChurchTools child group
-   - Configures settings: `isOpenForMembers: false` initially, waitlist enabled, max members
+   - Creates ChurchTools child group with:
+     - `groupStatusId: 1` (pending) - waiting for registration to open
+     - `isOpenForMembers: false` initially
+     - `visibility: intern` (always for MVP)
+     - `allowWaitinglist: true/false` per settings
+     - `waitinglistMaxPersons` per settings
+     - `automaticMoveUp: true/false` per settings
+     - `allowSpouseRegistration: true/false` per settings
+     - `allowOtherRegistration: true/false` per settings
+     - `signUpOpeningDate` / `signUpClosingDate` if provided
+   - Assigns leader to group
    - Creates custom fields
    - Creates EventMetadata in KV store
-   - Sets status to 'active'
-5. Success toast → Event appears in list
+   - Optionally creates welcome email Routine (if configured)
+   - Sets after-party address via Address API (if provided)
+5. Success toast → Event appears in list with "Pending" status
 
-#### 2. Open/Close Registration
+#### 2. Activate Event (Open Registration)
 
-1. Find event in list (ChurchTools group controls registration)
-2. Click "Open Registration" (if `isOpenForMembers: false`)
-   - Extension updates group: `isOpenForMembers = true`
-   - Success toast → Participants can now join via ChurchTools
-3. Or click "Close Registration" (if `isOpenForMembers: true`)
-   - Extension updates group: `isOpenForMembers = false`
-   - Success toast → No new joins allowed (waiting list still works)
+1. Find event in list (status: "Pending")
+2. Click "Activate Event"
+   - Extension updates group: `groupStatusId = 2` (active)
+   - If no `signUpOpeningDate` set, also sets `isOpenForMembers = true`
+   - Success toast → Event status changes to "Active"
+3. Registration follows CT-native behavior:
+   - If `signUpOpeningDate` is set, registration opens automatically on that date
+   - If `signUpClosingDate` is set, registration closes automatically on that date
+   - Manual override: Click "Close Registration" to set `isOpenForMembers = false`
+   - Manual override: Click "Open Registration" to set `isOpenForMembers = true`
+
+#### 2a. Archive/Delete Event
+
+**Archive (soft delete - reversible):**
+
+1. Click "..." menu on event card → "Archive Event"
+2. Confirmation dialog: "Archive this event? It will be hidden but can be restored."
+3. Click "Archive" → Extension:
+   - Updates group: `groupStatusId = 3` (archived)
+   - Event disappears from active list, appears in "Archived" filter
+   - KV data preserved (read-only access for historical records)
+4. To restore: View archived events → Click "Restore" → Sets `groupStatusId = 2` (active)
+
+**Delete (hard delete - irreversible):**
+
+1. Click "..." menu on event card → "Delete Event"
+2. Confirmation dialog with event name: "Type event name to confirm deletion. This cannot be undone."
+3. Type event name, click "Delete Permanently" → Extension:
+   - Deletes CT group (source of truth)
+   - SyncService cleans up orphaned KV data on next load
+   - Event completely removed
+4. Success toast
 
 #### 3. Monitor Registrations
 
@@ -755,8 +1053,12 @@ interface EmailContent {
 
 1. After event is finished, organizer can mark as completed
 2. Click "Mark as Completed" button
-3. Extension updates EventMetadata status to 'completed'
-4. Event can be archived in ChurchTools separately (using CT's archive feature)
+3. Extension updates CT group: `groupStatusId = 4` (finished)
+4. Event appears with "Finished" badge
+5. KV data preserved for historical reference
+6. **Note**: "Finished" is distinct from "Archived":
+   - Finished = event happened, still visible in main list, data preserved
+   - Archived = hidden from view, can be restored if needed
 
 ### Participant Flow (ChurchTools Native)
 
@@ -768,13 +1070,27 @@ Participants never use the extension UI. They interact via ChurchTools:
    - Standard: Name, email, phone, address (pre-filled from profile)
    - Custom: Meal preference, dietary restrictions, partner preference
 4. **Submit**: ChurchTools saves as group member
+   - `registeredBy` field tracks who registered the person (for spouse/other registration)
 5. **Waitlist**: If max reached, automatically placed on waitlist
-6. **Receive Email**: After routes assigned, receives personalized email with:
+   - If `automaticMoveUp: true`, auto-promoted when spot opens (no notification!)
+6. **Welcome Email**: If Routine configured, CT automatically sends welcome email
+7. **Receive Route Email**: After routes assigned, receives personalized email with:
    - Group members and contact info
    - Full route (3 stops)
    - Dietary restrictions of guests
    - Google Maps links
    - After party details
+
+### Waitlist Promotion Flow
+
+When `automaticMoveUp: true` and a spot opens:
+
+1. ChurchTools automatically moves first waitlist person to active
+2. **No automatic notification** from CT!
+3. Options for notification:
+   - Manual: Organizer sends email to promoted person
+   - Future: Create a Routine with "member becomes active" trigger (if CT supports)
+   - Future: Extension periodically checks for promotions and sends notifications
 
 ## Views & Components
 
@@ -792,20 +1108,63 @@ Main dashboard with:
 Displays:
 
 - Event name & date
-- Status badge (color-coded)
-- Member count (active / max)
-- Quick actions: Publish, Close Registration, Delete (based on status)
+- Status badge (color-coded based on CT groupStatusId):
+  - 🟡 Pending (groupStatusId: 1) - yellow
+  - 🟢 Active (groupStatusId: 2) - green
+  - 🔵 Finished (groupStatusId: 4) - blue
+  - ⚫ Archived (groupStatusId: 3) - gray
+- Registration status: Open/Closed indicator
+- Member count (active / max + waitlist count)
+- Quick actions menu (⋯):
+  - Activate (if pending)
+  - Open/Close Registration (if active)
+  - Mark as Finished (if active)
+  - Archive (if active or finished)
+  - Delete (with confirmation)
 
 ### EventCreator.vue
 
-Modal dialog with form:
+Modal dialog with multi-section form:
 
-- Event details (name, description, date)
-- Configuration (max members, group size)
-- Menu timing
-- After party (optional)
+**Section 1: Basic Information**
+
+- Event name (text input, required)
+- Description (textarea, optional)
+- Event date (date picker, required)
+- Leiter/Leader (person dropdown, required - **critical for group joining!**)
+
+**Section 2: Registration Settings**
+
+- Max participants (number input, default: 30)
+- Waitlist enabled (checkbox, default: true)
+  - Max waitlist size (number input, shown if waitlist enabled)
+  - Auto move-up (checkbox, shown if waitlist enabled)
+- Allow spouse registration (checkbox, default: true)
+- Allow other registration (checkbox, default: false)
+- Registration opens (date picker, optional)
+- Registration closes (date picker, optional)
+
+**Section 3: Event Configuration**
+
+- Preferred group size (number input, default: 2)
+- Menu timing (time pickers for each course)
+- Partner preferences enabled (checkbox)
+
+**Section 4: After Party (optional)**
+
+- Enable after party (checkbox)
+  - After party time (time picker)
+  - Location name (text input)
+  - Street address (text input)
+  - City (text input)
+  - ZIP code (text input)
+- Hold dessert at after party (checkbox)
+
+**Footer**
+
+- Cancel / Create buttons
 - Validation with Zod
-- Submit → Calls GroupConfigService
+- Submit → Calls GroupConfigService + AddressService
 
 ### MemberList.vue
 
@@ -886,6 +1245,11 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
 
   async function createChildGroup(data: GroupCreate): Promise<Group> {
     // POST /groups
+    // Include all CT-native settings:
+    // - groupStatusId, visibility, maxMembers
+    // - isOpenForMembers, signUpOpeningDate, signUpClosingDate
+    // - allowWaitinglist, waitinglistMaxPersons, automaticMoveUp
+    // - allowSpouseRegistration, allowOtherRegistration
   }
 
   async function updateGroup(
@@ -893,6 +1257,13 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     data: Partial<Group>,
   ): Promise<void> {
     // PUT /groups/{id}
+  }
+
+  async function updateGroupStatus(
+    groupId: number,
+    groupStatusId: 1 | 2 | 3 | 4, // pending | active | archived | finished
+  ): Promise<void> {
+    // PATCH /groups/{id} with { groupStatusId }
   }
 
   async function deleteGroup(groupId: number): Promise<void> {
@@ -903,6 +1274,8 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
 
   async function getGroupMembers(groupId: number): Promise<GroupMember[]> {
     // GET /groups/{id}/members (paginated)
+    // Includes waitinglistPosition for waitlist members
+    // Includes registeredBy for co-registration tracking
   }
 
   // ===== FIELDS =====
@@ -930,17 +1303,59 @@ export const useChuchtoolsStore = defineStore('churchtools', () => {
     // GET /persons/{id}
   }
 
+  async function searchPersons(query: string): Promise<Person[]> {
+    // GET /persons?query={query}
+    // Used for Leiter selection dropdown
+  }
+
+  // ===== ROUTINES =====
+
+  async function createRoutine(data: RoutineCreate): Promise<Routine> {
+    // POST /api/routines
+  }
+
+  async function updateRoutine(
+    routineId: number,
+    data: Partial<Routine>,
+  ): Promise<void> {
+    // PATCH /api/routines/{id}
+  }
+
+  async function getGroupRoutines(groupId: number): Promise<Routine[]> {
+    // GET /api/routines?domainType=group&domainIdentifier={groupId}
+  }
+
+  // ===== ADDRESSES =====
+
+  async function getGroupAddresses(groupId: number): Promise<Address[]> {
+    // GET /api/addresses/group/{groupId}
+  }
+
+  async function createGroupAddress(
+    groupId: number,
+    address: AddressCreate,
+  ): Promise<Address> {
+    // POST /api/addresses/group/{groupId}
+  }
+
   return {
     getParentGroup,
     getChildGroups,
     createChildGroup,
     updateGroup,
+    updateGroupStatus,
     deleteGroup,
     getGroupMembers,
     getGroupMemberFields,
     createGroupMemberField,
     getCurrentUser,
     getPerson,
+    searchPersons,
+    createRoutine,
+    updateRoutine,
+    getGroupRoutines,
+    getGroupAddresses,
+    createGroupAddress,
   };
 });
 ```
@@ -1263,16 +1678,25 @@ export const useRouteStore = defineStore('route', () => {
   - Search functionality
 - [ ] Integrate into Members tab
 
-11. **Status Management**
-    - [ ] Implement publish action:
-      - Update group `isOpenForMembers = true`
-      - Update EventMetadata status to 'published'
+11. **Status Management (CT-Native)**
+    - [ ] Implement activate action:
+      - Update group `groupStatusId = 2` (active)
+      - Optionally set `isOpenForMembers = true`
       - Confirmation dialog
-    - [ ] Implement close registration action:
-      - Update group `isOpenForMembers = false`
-      - Update EventMetadata status to 'registration-closed'
+    - [ ] Implement finish event action:
+      - Update group `groupStatusId = 4` (finished)
       - Confirmation dialog
-    - [ ] Status badges and conditional actions
+    - [ ] Implement archive action:
+      - Update group `groupStatusId = 3` (archived)
+      - Event hidden from main list, KV data preserved
+      - Confirmation dialog
+    - [ ] Implement restore action (from archived):
+      - Update group `groupStatusId = 2` (active)
+    - [ ] Implement delete action:
+      - Delete CT group (source of truth)
+      - SyncService cleans up orphaned KV data
+      - Requires typing event name to confirm
+    - [ ] Status badges: 🟡 Pending, 🟢 Active, 🔵 Finished, ⚫ Archived
 
 ### Phase 4: Grouping Algorithm & UI
 
@@ -1366,6 +1790,64 @@ export const useRouteStore = defineStore('route', () => {
     - [ ] Add "Send Notifications" button to Routes tab
     - [ ] Opens EmailPreview modal
     - [ ] Batch send to all dinner groups
+
+### Phase 7: CT-Native Features & Services (NEW)
+
+**Goal**: Implement new CT-native features discovered in API research
+
+21. **RoutineService**
+    - [ ] Create `src/services/RoutineService.ts`
+    - [ ] Implement `createWelcomeEmailRoutine()`:
+      - POST /api/routines with domainType: "group"
+      - Configure trigger: "joining_group"
+      - Set email template with placeholders
+    - [ ] Implement `updateRoutineSteps()`:
+      - PATCH /api/routines/{id} to add email step
+    - [ ] Implement `enableRoutine()`:
+      - Validate steps work
+      - Enable routine
+    - [ ] Optional: Implement routine for waitlist promotion notification
+
+22. **AddressService**
+    - [ ] Create `src/services/AddressService.ts`
+    - [ ] Implement `setAfterPartyLocation()`:
+      - POST /api/addresses/group/{groupId}
+      - Store address for after-party venue
+    - [ ] Implement `getAfterPartyLocation()`:
+      - GET /api/addresses/group/{groupId}
+    - [ ] Integrate into EventCreator form
+
+23. **SyncService**
+    - [ ] Create `src/services/SyncService.ts`
+    - [ ] Implement `syncOnLoad()`:
+      - Compare KV store EventMetadata with CT groups
+      - Delete orphaned KV entries (CT group deleted externally)
+      - Return sync results
+    - [ ] Implement `deleteEvent()`:
+      - Delete CT group
+      - Clean up all related KV data
+    - [ ] Implement `archiveEvent()`:
+      - Set CT group to archived status
+      - Preserve KV data for historical access
+    - [ ] Run sync on extension load
+
+24. **Enhanced EventCreator**
+    - [ ] Update `src/components/EventCreator.vue` with new fields:
+      - Leiter selection (required - person dropdown)
+      - Waitlist settings (enable, max size, auto move-up)
+      - Co-registration settings (spouse, other)
+      - Registration date range (open/close dates)
+      - After-party address fields
+    - [ ] Call AddressService when after-party configured
+    - [ ] Optionally call RoutineService for welcome email
+
+25. **Archive/Delete UI**
+    - [ ] Create `src/components/EventActions.vue`:
+      - Archive confirmation dialog
+      - Delete confirmation dialog (requires typing event name)
+      - Restore from archive action
+    - [ ] Add "Archived" filter/tab to event list
+    - [ ] Add action menu to EventCard
 
 ## Open Questions & Decisions
 
@@ -1490,8 +1972,14 @@ export const useRouteStore = defineStore('route', () => {
 
 - EventMetadata in KV store references ChurchTools group ID
 - DinnerGroups reference ChurchTools person IDs
-- If group is deleted in ChurchTools, handle orphaned KV data
-- Implement soft delete or cleanup logic
+- **CT group is source of truth** - if deleted in CT, KV data is orphaned
+- **SyncService** runs on extension load to clean up orphaned KV data:
+  - Checks if CT groups still exist for each EventMetadata
+  - Deletes orphaned EventMetadata, DinnerGroups, and Routes
+  - Returns sync report (deleted count, errors)
+- **Archive vs Delete**:
+  - Archive: CT groupStatusId = 3, KV data preserved (read-only historical access)
+  - Delete: CT group deleted, KV data cleaned up by SyncService
 
 ## Migration from Old Extension
 
@@ -1542,7 +2030,8 @@ Users can:
 - Phase 4: 🔜 Not Started (Grouping Algorithm & UI)
 - Phase 5: 🔜 Not Started (Routing Algorithm & UI)
 - Phase 6: 🔜 Not Started (Email Notifications)
-- Phase 7: 🔜 Not Started (Polish & Testing)
+- Phase 7: 🔜 Not Started (CT-Native Features & Services) **NEW**
+- Phase 8+: 🔜 Future (Polish, Widgets, Advanced Features)
 
 ### Overall Progress: ~30% (Phase 1 & 2 Complete, Phase 3 Ongoing)
 
@@ -1649,16 +2138,22 @@ src/
 
 ### Key Differences from Old Extension
 
-| Aspect           | Old Extension        | New Extension               |
-| ---------------- | -------------------- | --------------------------- |
-| Participant Data | Extension KV Store   | ChurchTools Groups          |
-| Registration UI  | Custom Vue forms     | ChurchTools native          |
-| Group Management | Extension UI         | ChurchTools groups          |
-| Waitlist         | Manual in extension  | ChurchTools built-in        |
-| Custom Fields    | Extension data model | CT group-member fields      |
-| Data Storage     | 4 KV categories      | 3 KV categories + CT groups |
-| User Roles       | All users            | Group leaders only          |
-| Participant UI   | Full views           | None (CT native)            |
+| Aspect              | Old Extension        | New Extension                    |
+| ------------------- | -------------------- | -------------------------------- |
+| Participant Data    | Extension KV Store   | ChurchTools Groups               |
+| Registration UI     | Custom Vue forms     | ChurchTools native               |
+| Group Management    | Extension UI         | ChurchTools groups               |
+| Waitlist            | Manual in extension  | ChurchTools built-in             |
+| Custom Fields       | Extension data model | CT group-member fields           |
+| Data Storage        | 4 KV categories      | 3 KV categories + CT groups      |
+| User Roles          | All users            | Group leaders only               |
+| Participant UI      | Full views           | None (CT native)                 |
+| Event Status        | Extension-managed    | CT groupStatusId (native)        |
+| Registration Dates  | Manual open/close    | CT signUpOpeningDate/ClosingDate |
+| Spouse Registration | Not supported        | CT allowSpouseRegistration       |
+| Welcome Emails      | Not supported        | CT Routines (optional)           |
+| Event Locations     | Extension storage    | CT Addresses API                 |
+| Visibility          | Extension setting    | CT visibility (intern)           |
 
 ### Advantages of New Approach
 
@@ -1702,4 +2197,40 @@ src/
 - `DELETE /groups/{id}/members/{personId}` - Remove member
 - `GET /group/grouptypes` - Get available group types (find "Dienst" ID)
 - `GET /group/roles` - Get all roles (filter by `groupTypeId` client-side)
-- `POST /groups` - Create group (requires: `name`, `groupTypeId`, `groupStatusId` where 1=active)
+- `POST /groups` - Create group (requires: `name`, `groupTypeId`, `groupStatusId` where 1=pending, 2=active)
+- `PATCH /groups/{id}` - Update group settings (groupStatusId, isOpenForMembers, etc.)
+- `DELETE /groups/{id}` - Delete group (source of truth deletion)
+
+**New CT-Native API Endpoints (Phase 7)**:
+
+- `GET /api/routines?domainType=group&domainIdentifier={groupId}` - Get routines for a group
+- `POST /api/routines` - Create routine (welcome email on join)
+- `PATCH /api/routines/{id}` - Update routine (add steps, enable)
+- `POST /api/routines/{id}/steps/validate` - Validate routine steps work
+- `GET /api/addresses/group/{groupId}` - Get group addresses (after-party location)
+- `POST /api/addresses/group/{groupId}` - Create group address
+- `GET /persons?query={query}` - Search persons (for Leiter dropdown)
+
+---
+
+## Design Decisions Summary (from lifecycle-and-state.md)
+
+Key decisions made during API research and design phase:
+
+| Feature                    | Decision                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| **Event Status**           | Use CT-native `groupStatusId`: 1=pending, 2=active, 3=archived, 4=finished              |
+| **Visibility**             | Always `intern` for MVP (no public events)                                              |
+| **Registration**           | Use CT-native `isOpenForMembers` + `signUpOpeningDate`/`signUpClosingDate`              |
+| **Waitlist**               | Use CT-native `allowWaitinglist`, `waitinglistMaxPersons`, `automaticMoveUp`            |
+| **Waitlist Notifications** | `automaticMoveUp` doesn't notify - need Routine or manual notification                  |
+| **Co-Registration**        | Use CT-native `allowSpouseRegistration`, `allowOtherRegistration`                       |
+| **Partner Preferences**    | Keep custom field (user may want different partner than spouse)                         |
+| **Routines**               | Fully API-controllable! Use for welcome emails on group join                            |
+| **Addresses**              | Use `/api/addresses/group/{groupId}` for after-party location                           |
+| **Leader Requirement**     | Groups MUST have Leiter assigned for members to join!                                   |
+| **Error Handling**         | Preemptive validation + toast notifications (no retry queue for MVP)                    |
+| **Archive vs Delete**      | Archive = hidden but restorable (groupStatusId=3), Delete = permanent with confirmation |
+| **KV Data Retention**      | Preserved on archive (read-only), cleaned up by SyncService when CT group deleted       |
+
+See `lifecycle-and-state.md` for full details on each decision.
