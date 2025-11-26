@@ -66,6 +66,28 @@
       <!-- Configuration Section -->
       <Fieldset legend="Configuration">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Event Leader (Required) -->
+          <div class="flex flex-col gap-2 md:col-span-2">
+            <label for="leader" class="font-semibold text-sm">
+              Event Leader <span class="text-red-500">*</span>
+            </label>
+            <AutoComplete
+              id="leader"
+              v-model="selectedLeader"
+              :suggestions="filteredPersons"
+              optionLabel="displayName"
+              placeholder="Search for a person..."
+              @complete="searchPersons"
+              :invalid="!!errors.leader"
+            />
+            <small class="text-surface-500"
+              >The leader is required for participants to join the group</small
+            >
+            <small v-if="errors.leader" class="text-red-500">{{
+              errors.leader
+            }}</small>
+          </div>
+
           <!-- Max Participants -->
           <div class="flex flex-col gap-2">
             <label for="max-members" class="font-semibold text-sm">
@@ -125,6 +147,143 @@
               be grouped with during registration. The grouping algorithm will
               try to respect these preferences when creating dinner groups.
             </p>
+          </div>
+        </div>
+      </Fieldset>
+
+      <!-- Registration Settings Section -->
+      <Fieldset legend="Registration Settings">
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Registration Open Date -->
+            <div class="flex flex-col gap-2">
+              <label for="signup-open-date" class="font-semibold text-sm">
+                Registration Opens
+              </label>
+              <DatePicker
+                id="signup-open-date"
+                v-model="formData.signUpOpeningDate"
+                dateFormat="dd/mm/yy"
+                placeholder="Immediately (leave empty)"
+                showTime
+                hourFormat="24"
+              />
+              <small class="text-surface-500"
+                >Leave empty to open registration immediately</small
+              >
+            </div>
+
+            <!-- Registration Close Date -->
+            <div class="flex flex-col gap-2">
+              <label for="signup-close-date" class="font-semibold text-sm">
+                Registration Closes
+              </label>
+              <DatePicker
+                id="signup-close-date"
+                v-model="formData.signUpClosingDate"
+                dateFormat="dd/mm/yy"
+                placeholder="Manual close (leave empty)"
+                showTime
+                hourFormat="24"
+              />
+              <small class="text-surface-500"
+                >Leave empty to close manually</small
+              >
+            </div>
+          </div>
+
+          <!-- Spouse Registration -->
+          <div
+            class="flex items-start gap-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded border border-primary-200 dark:border-primary-800"
+          >
+            <Checkbox
+              id="allow-spouse-registration"
+              v-model="formData.allowSpouseRegistration"
+              binary
+            />
+            <div class="flex-1">
+              <label
+                for="allow-spouse-registration"
+                class="font-semibold text-sm cursor-pointer"
+              >
+                Allow Spouse Registration
+              </label>
+              <p class="text-xs text-surface-600 dark:text-surface-400 mt-1">
+                Allow participants to register their spouse together using
+                ChurchTools relationship data.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Fieldset>
+
+      <!-- Waitlist Settings Section -->
+      <Fieldset legend="Waitlist Settings">
+        <div class="space-y-4">
+          <div class="flex items-start gap-3">
+            <Checkbox
+              id="allow-waitlist"
+              v-model="formData.allowWaitinglist"
+              binary
+            />
+            <div class="flex-1">
+              <label
+                for="allow-waitlist"
+                class="font-semibold text-sm cursor-pointer"
+              >
+                Enable Waitlist
+              </label>
+              <p class="text-xs text-surface-600 dark:text-surface-400 mt-1">
+                Allow participants to join a waitlist when the event is full.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="flex items-start gap-3"
+            :class="{ 'opacity-50': !formData.allowWaitinglist }"
+          >
+            <Checkbox
+              id="auto-move-up"
+              v-model="formData.automaticMoveUp"
+              binary
+              :disabled="!formData.allowWaitinglist"
+            />
+            <div class="flex-1">
+              <label
+                for="auto-move-up"
+                class="font-semibold text-sm"
+                :class="{
+                  'cursor-pointer': formData.allowWaitinglist,
+                  'cursor-not-allowed': !formData.allowWaitinglist,
+                }"
+              >
+                Automatic Move-Up
+              </label>
+              <p class="text-xs text-surface-600 dark:text-surface-400 mt-1">
+                Automatically promote waitlisted participants when spots open.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="flex flex-col gap-2"
+            :class="{ 'opacity-50': !formData.allowWaitinglist }"
+          >
+            <label for="waitlist-max" class="font-semibold text-sm">
+              Waitlist Limit
+            </label>
+            <InputNumber
+              id="waitlist-max"
+              v-model="formData.waitlistMaxPersons"
+              :min="1"
+              :step="1"
+              placeholder="Unlimited (leave empty)"
+              :disabled="!formData.allowWaitinglist"
+            />
+            <small class="text-surface-500"
+              >Leave empty for unlimited waitlist</small
+            >
           </div>
         </div>
       </Fieldset>
@@ -366,7 +525,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { z } from 'zod';
 import { GroupConfigService } from '@/services/GroupConfigService';
 import { useChurchtoolsStore } from '@/stores/churchtools';
@@ -382,6 +541,13 @@ import InputNumber from '@churchtools-extensions/prime-volt/InputNumber.vue';
 import DatePicker from '@churchtools-extensions/prime-volt/DatePicker.vue';
 import Checkbox from '@churchtools-extensions/prime-volt/Checkbox.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import AutoComplete from '@churchtools-extensions/prime-volt/AutoComplete.vue';
+import type { Person } from '@/types/models';
+
+// Person with display name for autocomplete
+interface PersonWithDisplay extends Person {
+  displayName: string;
+}
 
 // Props
 interface Props {
@@ -409,6 +575,11 @@ const loading = ref(false);
 const generalError = ref<string | null>(null);
 const hasAfterParty = ref(false);
 
+// Person search state
+const selectedLeader = ref<PersonWithDisplay | null>(null);
+const filteredPersons = ref<PersonWithDisplay[]>([]);
+const allPersons = ref<PersonWithDisplay[]>([]);
+
 // Helper function to create a time object
 function createTime(hours: number, minutes: number = 0): Date {
   const date = new Date();
@@ -424,6 +595,15 @@ const formData = reactive({
   maxMembers: 30,
   preferredGroupSize: 2,
   allowPartnerPreferences: false,
+  // CT-native registration settings
+  signUpOpeningDate: null as Date | null,
+  signUpClosingDate: null as Date | null,
+  // Waitlist settings
+  allowWaitinglist: true,
+  automaticMoveUp: true,
+  waitlistMaxPersons: null as number | null,
+  // Co-registration settings
+  allowSpouseRegistration: true,
   menu: {
     starter: {
       startTime: createTime(18, 0) as Date | null, // 18:00
@@ -451,6 +631,7 @@ const errors = reactive({
   name: '',
   description: '',
   date: '',
+  leader: '',
   maxMembers: '',
   preferredGroupSize: '',
   starterStartTime: '',
@@ -472,6 +653,9 @@ const eventSchema = z.object({
   name: z.string().min(1, 'Event name is required'),
   description: z.string().optional(),
   date: z.date({ message: 'Event date is required' }),
+  leader: z
+    .number({ message: 'Event leader is required' })
+    .positive('Event leader is required'),
   maxMembers: z
     .number()
     .min(6, 'At least 6 participants needed')
@@ -496,6 +680,26 @@ const eventSchema = z.object({
     }),
   }),
 });
+
+// Load persons on mount
+onMounted(async () => {
+  await loadPersons();
+});
+
+async function loadPersons() {
+  const persons = await churchtoolsStore.searchPersons('', 1, 200);
+  allPersons.value = persons.map((p) => ({
+    ...p,
+    displayName: `${p.firstName} ${p.lastName}`,
+  }));
+}
+
+function searchPersons(event: { query: string }) {
+  const query = event.query.toLowerCase();
+  filteredPersons.value = allPersons.value.filter((p) =>
+    p.displayName.toLowerCase().includes(query),
+  );
+}
 
 // Watch hasAfterParty to clear after party data
 watch(hasAfterParty, (value) => {
@@ -522,6 +726,12 @@ function resetForm() {
   formData.maxMembers = 30;
   formData.preferredGroupSize = 2;
   formData.allowPartnerPreferences = false;
+  formData.signUpOpeningDate = null;
+  formData.signUpClosingDate = null;
+  formData.allowWaitinglist = true;
+  formData.automaticMoveUp = true;
+  formData.waitlistMaxPersons = null;
+  formData.allowSpouseRegistration = true;
   formData.menu.starter.startTime = createTime(18, 0);
   formData.menu.starter.endTime = createTime(19, 30);
   formData.menu.mainCourse.startTime = createTime(20, 0);
@@ -533,6 +743,7 @@ function resetForm() {
   formData.afterParty.location = '';
   formData.afterParty.description = '';
   formData.afterParty.isDessertLocation = false;
+  selectedLeader.value = null;
   clearErrors();
 }
 
@@ -555,8 +766,20 @@ async function handleSubmit() {
   clearErrors();
 
   try {
+    // Validate leader selection first (not part of Zod schema as it's a complex object)
+    if (!selectedLeader.value) {
+      errors.leader = 'Event leader is required';
+      return;
+    }
+
+    // Prepare data for validation
+    const dataToValidate = {
+      ...formData,
+      leader: selectedLeader.value.id,
+    };
+
     // Validate form data
-    const validatedData = eventSchema.parse(formData);
+    const validatedData = eventSchema.parse(dataToValidate);
 
     // Get current user
     const currentUser = await churchtoolsStore.getCurrentUser();
@@ -616,6 +839,14 @@ async function handleSubmit() {
       };
     }
 
+    // Prepare registration dates (convert to ISO if set)
+    const signUpOpeningDate = formData.signUpOpeningDate
+      ? formData.signUpOpeningDate.toISOString()
+      : null;
+    const signUpClosingDate = formData.signUpClosingDate
+      ? formData.signUpClosingDate.toISOString()
+      : null;
+
     // Create child group using GroupConfigService
     const groupConfigService = new GroupConfigService();
     const groupId = await groupConfigService.createChildGroup({
@@ -627,6 +858,16 @@ async function handleSubmit() {
       organizerId: currentUser.id,
       preferredGroupSize: validatedData.preferredGroupSize,
       allowPartnerPreferences: formData.allowPartnerPreferences,
+      // CT-native registration settings
+      leaderPersonId: selectedLeader.value.id,
+      signUpOpeningDate,
+      signUpClosingDate,
+      // Waitlist settings
+      allowWaitinglist: formData.allowWaitinglist,
+      automaticMoveUp: formData.automaticMoveUp,
+      waitlistMaxPersons: formData.waitlistMaxPersons,
+      // Co-registration settings
+      allowSpouseRegistration: formData.allowSpouseRegistration,
       menu,
       afterParty,
     });
