@@ -53,42 +53,18 @@
           v-else
           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
-          <Card v-for="event in eventMetadataStore.events" :key="event.id">
-            <template #title>
-              {{ getGroupName(event.value.groupId) || 'Loading...' }}
-            </template>
-            <template #content>
-              <div class="space-y-2">
-                <div class="flex items-center gap-2">
-                  <Badge
-                    :value="formatStatus(event.value.status)"
-                    :severity="getStatusSeverity(event.value.status)"
-                  />
-                </div>
-                <div class="text-sm text-surface-600 space-y-1">
-                  <p>
-                    <i class="pi pi-calendar-times text-xs mr-2"></i>
-                    {{ formatMenuTime(event.value.menu.starter.startTime) }}
-                  </p>
-                  <p>
-                    <i class="pi pi-users text-xs mr-2"></i>
-                    Group size: {{ event.value.preferredGroupSize }}
-                  </p>
-                </div>
-              </div>
-            </template>
-            <template #footer>
-              <div class="flex gap-2">
-                <Button
-                  label="View"
-                  icon="pi pi-eye"
-                  size="small"
-                  outlined
-                  @click="viewEvent(event)"
-                />
-              </div>
-            </template>
-          </Card>
+          <EventCard
+            v-for="event in eventMetadataStore.events"
+            :key="event.id"
+            :event="event"
+            :group="getGroup(event.value.groupId)"
+            :member-count="getMemberCount(event.value.groupId)"
+            :waitlist-count="getWaitlistCount(event.value.groupId)"
+            @view="handleViewEvent"
+            @archive="handleArchiveEvent"
+            @delete="handleDeleteEvent"
+            @toggle-registration="handleToggleRegistration"
+          />
         </div>
       </div>
     </template>
@@ -100,42 +76,67 @@
       :parent-group-id="parentGroupSetupRef.parentGroupId"
       @created="handleEventCreated"
     />
+
+    <!-- Event Detail Dialog -->
+    <EventDetail
+      v-if="selectedEvent"
+      v-model:visible="showDetailDialog"
+      :event="selectedEvent"
+      :group="selectedEvent ? getGroup(selectedEvent.value.groupId) : null"
+      @toggle-registration="handleToggleRegistration(selectedEvent!)"
+      @status-changed="handleStatusChanged"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
-import type { EventMetadata, Group } from '@/types/models';
+import type { EventMetadata, Group, GroupMember } from '@/types/models';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
 import { useChurchtoolsStore } from '@/stores/churchtools';
+import { useDinnerGroupStore } from '@/stores/dinnerGroup';
+import { useRouteStore } from '@/stores/route';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 import ParentGroupSetup from '@/components/ParentGroupSetup.vue';
 import EventCreator from '@/components/EventCreator.vue';
+import EventCard from '@/components/EventCard.vue';
+import EventDetail from '@/components/EventDetail.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
-import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 
 const eventMetadataStore = useEventMetadataStore();
 const churchtoolsStore = useChurchtoolsStore();
+const dinnerGroupStore = useDinnerGroupStore();
+const routeStore = useRouteStore();
+const confirm = useConfirm();
+const toast = useToast();
 
 const parentGroupSetupRef = ref<InstanceType<typeof ParentGroupSetup>>();
 const showCreateDialog = ref(false);
+const showDetailDialog = ref(false);
+const selectedEvent = ref<CategoryValue<EventMetadata> | null>(null);
 const groupCache = ref<Map<number, Group>>(new Map());
+const memberCache = ref<Map<number, GroupMember[]>>(new Map());
 
 onMounted(async () => {
-  // Load child groups for event names
-  await loadChildGroups();
+  await loadAllData();
 });
 
+async function loadAllData() {
+  await Promise.all([
+    loadChildGroups(),
+    dinnerGroupStore.fetchAll(),
+    routeStore.fetchAll(),
+  ]);
+}
+
 async function handleParentGroupCreated() {
-  // Refresh child groups after parent is created
   await loadChildGroups();
 }
 
-async function handleEventCreated(groupId: number) {
-  // Refresh child groups and event metadata
-  await loadChildGroups();
-  console.log('Event created with group ID:', groupId);
+async function handleEventCreated(_groupId: number) {
+  await loadAllData();
 }
 
 async function loadChildGroups() {
@@ -147,67 +148,149 @@ async function loadChildGroups() {
       childGroups.forEach((group) => {
         groupCache.value.set(group.id, group);
       });
+
+      // Load members for each group
+      for (const group of childGroups) {
+        const members = await churchtoolsStore.getGroupMembers(group.id);
+        memberCache.value.set(group.id, members);
+      }
     }
   } catch (error) {
     console.error('Failed to load child groups:', error);
   }
 }
 
-function getGroupName(groupId: number): string | null {
-  return groupCache.value.get(groupId)?.name || null;
+function getGroup(groupId: number): Group | null {
+  return groupCache.value.get(groupId) || null;
 }
 
-function formatStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    active: 'Active',
-    'groups-created': 'Groups Created',
-    'routes-assigned': 'Routes Assigned',
-    'notifications-sent': 'Notifications Sent',
-    completed: 'Completed',
-  };
-  return statusMap[status] || status;
+function getMemberCount(groupId: number): number {
+  const members = memberCache.value.get(groupId) || [];
+  return members.filter((m) => m.groupMemberStatus === 'active').length;
 }
 
-function getStatusSeverity(
-  status: string,
-): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
-  const severityMap: Record<
-    string,
-    'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast'
-  > = {
-    active: 'info',
-    'groups-created': 'warn',
-    'routes-assigned': 'warn',
-    'notifications-sent': 'success',
-    completed: 'secondary',
-  };
-  return severityMap[status] || 'info';
-}
-
-function formatMenuTime(isoTime: string): string {
-  try {
-    const date = new Date(isoTime);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return isoTime;
-  }
+function getWaitlistCount(groupId: number): number {
+  const members = memberCache.value.get(groupId) || [];
+  return members.filter((m) => m.groupMemberStatus === 'waiting').length;
 }
 
 function getGroupUrl(groupId: number): string {
   const baseUrl = import.meta.env.DEV
-    ? import.meta.env.VITE_EXTERNAL_API_URL.replace(/\/$/, '')
+    ? import.meta.env.VITE_EXTERNAL_API_URL?.replace(/\/$/, '')
     : window.location.origin;
   return `${baseUrl}/groups/${groupId}/dashboard`;
 }
 
-function viewEvent(event: CategoryValue<EventMetadata>) {
-  // TODO: Implement event detail modal
-  console.log('View event:', event);
+function handleViewEvent(event: CategoryValue<EventMetadata>) {
+  selectedEvent.value = event;
+  showDetailDialog.value = true;
+}
+
+async function handleArchiveEvent(event: CategoryValue<EventMetadata>) {
+  confirm.require({
+    message:
+      'Archive this event? It will be set to read-only but can be restored later.',
+    header: 'Archive Event',
+    icon: 'pi pi-inbox',
+    accept: async () => {
+      try {
+        // Update CT group status to archived (3)
+        await churchtoolsStore.updateGroup(event.value.groupId, {
+          groupStatusId: 3,
+        } as any);
+
+        toast.add({
+          severity: 'success',
+          summary: 'Archived',
+          detail: 'Event has been archived',
+          life: 3000,
+        });
+
+        await loadChildGroups();
+      } catch (error) {
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to archive event',
+          life: 5000,
+        });
+      }
+    },
+  });
+}
+
+async function handleDeleteEvent(event: CategoryValue<EventMetadata>) {
+  const group = getGroup(event.value.groupId);
+  const eventName = group?.name || `Event #${event.value.groupId}`;
+
+  confirm.require({
+    message: `Permanently delete "${eventName}"? This will delete the ChurchTools group and all associated data. This cannot be undone.`,
+    header: 'Delete Event',
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        // Delete dinner groups and routes from KV store
+        await dinnerGroupStore.deleteByEventId(event.id);
+        await routeStore.deleteByEventId(event.id);
+
+        // Delete event metadata from KV store
+        await eventMetadataStore.remove(event.id);
+
+        // Delete CT group
+        await churchtoolsStore.deleteGroup(event.value.groupId);
+
+        toast.add({
+          severity: 'success',
+          summary: 'Deleted',
+          detail: 'Event has been permanently deleted',
+          life: 3000,
+        });
+
+        await loadAllData();
+      } catch (error) {
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to delete event',
+          life: 5000,
+        });
+      }
+    },
+  });
+}
+
+async function handleToggleRegistration(event: CategoryValue<EventMetadata>) {
+  const group = getGroup(event.value.groupId);
+  const isCurrentlyOpen = group?.settings?.isOpenForMembers ?? false;
+
+  try {
+    await churchtoolsStore.updateGroup(event.value.groupId, {
+      settings: {
+        ...group?.settings,
+        isOpenForMembers: !isCurrentlyOpen,
+      },
+    } as any);
+
+    toast.add({
+      severity: 'success',
+      summary: 'Updated',
+      detail: `Registration ${!isCurrentlyOpen ? 'opened' : 'closed'}`,
+      life: 3000,
+    });
+
+    await loadChildGroups();
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update registration status',
+      life: 5000,
+    });
+  }
+}
+
+async function handleStatusChanged() {
+  await loadAllData();
 }
 </script>
