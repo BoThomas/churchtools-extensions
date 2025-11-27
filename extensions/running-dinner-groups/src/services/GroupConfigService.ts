@@ -170,6 +170,7 @@ export class GroupConfigService {
     allowPartnerPreferences: boolean;
     // CT-native registration settings
     leaderPersonId: number; // Required - group must have a leader for people to join
+    coLeaderPersonIds?: number[]; // Optional co-leaders
     signUpOpeningDate?: string | null; // ISO date when registration opens (null = immediate)
     signUpClosingDate?: string | null; // ISO date when registration closes
     // Waitlist settings
@@ -259,6 +260,14 @@ export class GroupConfigService {
 
       // 4. Assign leader to the group (REQUIRED for people to be able to join)
       await this.assignGroupLeader(createdGroup.id, options.leaderPersonId);
+
+      // 4b. Assign co-leaders if provided
+      if (options.coLeaderPersonIds && options.coLeaderPersonIds.length > 0) {
+        await this.assignGroupCoLeaders(
+          createdGroup.id,
+          options.coLeaderPersonIds,
+        );
+      }
 
       // 5. Create custom group-member fields
       await this.ensureCustomFields(
@@ -356,6 +365,63 @@ export class GroupConfigService {
     } catch (error) {
       console.error('Failed to assign group leader:', error);
       throw new Error('Failed to assign group leader');
+    }
+  }
+
+  /**
+   * Assign co-leaders (Co-Leiter) to a group
+   * @param groupId - The ChurchTools group ID
+   * @param coLeaderPersonIds - Array of person IDs to assign as co-leaders
+   */
+  async assignGroupCoLeaders(
+    groupId: number,
+    coLeaderPersonIds: number[],
+  ): Promise<void> {
+    try {
+      // Get the group to find its type
+      const group = (await churchtoolsClient.get(
+        `/groups/${groupId}`,
+      )) as Group;
+
+      // Get roles for this group type
+      const rolesResponse = await churchtoolsClient.get('/group/roles');
+      const allRoles = Array.isArray(rolesResponse)
+        ? rolesResponse
+        : (rolesResponse as { data: any[] }).data;
+
+      // Filter roles by group type and find Co-Leiter
+      const roles = allRoles.filter(
+        (role: any) => role.groupTypeId === group.groupTypeId,
+      );
+      const coLeiterRole = roles.find((role: any) => role.name === 'Co-Leiter');
+
+      if (!coLeiterRole) {
+        console.warn(
+          'Co-Leiter role not found for group type, skipping co-leader assignment',
+        );
+        return;
+      }
+
+      // Assign each co-leader
+      for (const coLeaderId of coLeaderPersonIds) {
+        await churchtoolsClient.put(
+          `/groups/${groupId}/members/${coLeaderId}`,
+          {
+            groupTypeRoleId: coLeiterRole.id,
+            groupMemberStatus: 'active',
+          },
+        );
+      }
+
+      console.log(
+        'Group co-leaders assigned:',
+        coLeaderPersonIds,
+        'to group:',
+        groupId,
+      );
+    } catch (error) {
+      console.error('Failed to assign group co-leaders:', error);
+      throw new Error('Failed to assign group co-leaders');
     }
   }
 

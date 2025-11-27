@@ -69,15 +69,20 @@
           <!-- Event Leader (Required) -->
           <div class="flex flex-col gap-2 md:col-span-2">
             <label for="leader" class="font-semibold text-sm">
-              Event Leader <span class="text-red-500">*</span>
+              Event Leader (Leiter) <span class="text-red-500">*</span>
             </label>
-            <AutoComplete
+            <Select
               id="leader"
-              v-model="selectedLeader"
-              :suggestions="filteredPersons"
-              optionLabel="displayName"
-              placeholder="Search for a person..."
-              @complete="searchPersons"
+              v-model="personSelector.selectedLeader.value"
+              :options="personSelector.availableLeaders.value"
+              option-label="displayName"
+              dataKey="id"
+              placeholder="Select a leader"
+              :loading="personSelector.loadingPersons.value"
+              :disabled="loading"
+              filter
+              @filter="personSelector.filterPersons"
+              class="w-full"
               :invalid="!!errors.leader"
             />
             <small class="text-surface-500"
@@ -86,6 +91,29 @@
             <small v-if="errors.leader" class="text-red-500">{{
               errors.leader
             }}</small>
+          </div>
+
+          <!-- Co-Leaders (Optional) -->
+          <div class="flex flex-col gap-2 md:col-span-2">
+            <label for="co-leaders" class="font-semibold text-sm">
+              Co-Leaders (Co-Leiter)
+            </label>
+            <Multiselect
+              id="co-leaders"
+              v-model="personSelector.selectedCoLeaders.value"
+              :options="personSelector.availableCoLeaders.value"
+              option-label="displayName"
+              dataKey="id"
+              placeholder="Select co-leaders (optional)"
+              :loading="personSelector.loadingPersons.value"
+              :disabled="loading"
+              filter
+              @filter="personSelector.filterPersons"
+              class="w-full"
+            />
+            <small class="text-surface-500"
+              >Additional leaders who can help organize this event</small
+            >
           </div>
 
           <!-- Max Participants -->
@@ -525,7 +553,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { z } from 'zod';
 import { GroupConfigService } from '@/services/GroupConfigService';
 import { useChurchtoolsStore } from '@/stores/churchtools';
@@ -541,13 +569,9 @@ import InputNumber from '@churchtools-extensions/prime-volt/InputNumber.vue';
 import DatePicker from '@churchtools-extensions/prime-volt/DatePicker.vue';
 import Checkbox from '@churchtools-extensions/prime-volt/Checkbox.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
-import AutoComplete from '@churchtools-extensions/prime-volt/AutoComplete.vue';
-import type { Person } from '@/types/models';
-
-// Person with display name for autocomplete
-interface PersonWithDisplay extends Person {
-  displayName: string;
-}
+import Select from '@churchtools-extensions/prime-volt/Select.vue';
+import Multiselect from '@churchtools-extensions/prime-volt/Multiselect.vue';
+import { usePersonSelector } from '@/composables/usePersonSelector';
 
 // Props
 interface Props {
@@ -575,10 +599,10 @@ const loading = ref(false);
 const generalError = ref<string | null>(null);
 const hasAfterParty = ref(false);
 
-// Person search state
-const selectedLeader = ref<PersonWithDisplay | null>(null);
-const filteredPersons = ref<PersonWithDisplay[]>([]);
-const allPersons = ref<PersonWithDisplay[]>([]);
+// Person selector composable (auto-selects current user as leader)
+const personSelector = usePersonSelector({
+  autoSelectCurrentUser: true,
+});
 
 // Helper function to create a time object
 function createTime(hours: number, minutes: number = 0): Date {
@@ -681,25 +705,16 @@ const eventSchema = z.object({
   }),
 });
 
-// Load persons on mount
-onMounted(async () => {
-  await loadPersons();
-});
-
-async function loadPersons() {
-  const persons = await churchtoolsStore.searchPersons('', 1, 200);
-  allPersons.value = persons.map((p) => ({
-    ...p,
-    displayName: `${p.firstName} ${p.lastName}`,
-  }));
-}
-
-function searchPersons(event: { query: string }) {
-  const query = event.query.toLowerCase();
-  filteredPersons.value = allPersons.value.filter((p) =>
-    p.displayName.toLowerCase().includes(query),
-  );
-}
+// Initialize person selector when dialog becomes visible
+watch(
+  () => props.visible,
+  async (visible) => {
+    if (visible) {
+      await personSelector.initialize();
+    }
+  },
+  { immediate: true },
+);
 
 // Watch hasAfterParty to clear after party data
 watch(hasAfterParty, (value) => {
@@ -743,7 +758,7 @@ function resetForm() {
   formData.afterParty.location = '';
   formData.afterParty.description = '';
   formData.afterParty.isDessertLocation = false;
-  selectedLeader.value = null;
+  personSelector.reset();
   clearErrors();
 }
 
@@ -767,7 +782,7 @@ async function handleSubmit() {
 
   try {
     // Validate leader selection first (not part of Zod schema as it's a complex object)
-    if (!selectedLeader.value) {
+    if (!personSelector.selectedLeader.value) {
       errors.leader = 'Event leader is required';
       return;
     }
@@ -775,7 +790,7 @@ async function handleSubmit() {
     // Prepare data for validation
     const dataToValidate = {
       ...formData,
-      leader: selectedLeader.value.id,
+      leader: personSelector.selectedLeader.value.id,
     };
 
     // Validate form data
@@ -859,7 +874,8 @@ async function handleSubmit() {
       preferredGroupSize: validatedData.preferredGroupSize,
       allowPartnerPreferences: formData.allowPartnerPreferences,
       // CT-native registration settings
-      leaderPersonId: selectedLeader.value.id,
+      leaderPersonId: personSelector.selectedLeader.value!.id,
+      coLeaderPersonIds: personSelector.coLeaderIds.value,
       signUpOpeningDate,
       signUpClosingDate,
       // Waitlist settings

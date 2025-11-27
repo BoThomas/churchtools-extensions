@@ -61,15 +61,15 @@
             Leader (Leiter) <span class="text-red-500">*</span>
           </label>
           <Select
-            v-model="selectedLeader"
-            :options="availableLeaders"
+            v-model="personSelector.selectedLeader.value"
+            :options="personSelector.availableLeaders.value"
             option-label="displayName"
             dataKey="id"
             placeholder="Select a leader"
-            :loading="loadingPersons"
+            :loading="personSelector.loadingPersons.value"
             :disabled="loading"
             filter
-            @filter="filterPersons"
+            @filter="personSelector.filterPersons"
             class="w-full"
           />
           <small class="text-surface-500">
@@ -83,15 +83,15 @@
             Co-Leaders (Co-Leiter)
           </label>
           <Multiselect
-            v-model="selectedCoLeaders"
-            :options="availableCoLeaders"
+            v-model="personSelector.selectedCoLeaders.value"
+            :options="personSelector.availableCoLeaders.value"
             option-label="displayName"
             dataKey="id"
             placeholder="Select co-leaders (optional)"
-            :loading="loadingPersons"
+            :loading="personSelector.loadingPersons.value"
             :disabled="loading"
             filter
-            @filter="filterPersons"
+            @filter="personSelector.filterPersons"
             class="w-full"
           />
           <small class="text-surface-500">
@@ -142,7 +142,7 @@
             label="Create"
             icon="pi pi-check"
             :loading="loading"
-            :disabled="!selectedLeader"
+            :disabled="!personSelector.selectedLeader.value"
             @click="handleCreate"
           />
         </div>
@@ -152,11 +152,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { groupConfigService } from '@/services/GroupConfigService';
-import { useChurchtoolsStore } from '@/stores/churchtools';
-import type { Person } from '@/types/models';
+import { usePersonSelector } from '@/composables/usePersonSelector';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
@@ -171,7 +170,11 @@ const emit = defineEmits<{
 }>();
 
 const toast = useToast();
-const churchtoolsStore = useChurchtoolsStore();
+
+// Person selector composable (auto-selects current user as leader)
+const personSelector = usePersonSelector({
+  autoSelectCurrentUser: true,
+});
 
 const checking = ref(true);
 const parentGroupExists = ref(false);
@@ -179,102 +182,16 @@ const parentGroupId = ref<number | null>(null);
 const isLeader = ref(false);
 const showCreateDialog = ref(false);
 const loading = ref(false);
-const loadingPersons = ref(false);
 const error = ref<string | null>(null);
-
-const persons = ref<(Person & { displayName: string })[]>([]);
-const selectedLeader = ref<Person | null>(null);
-const selectedCoLeaders = ref<Person[]>([]);
-
-// Protected persons that should never be removed from the list
-const protectedPersons = ref<Map<number, Person & { displayName: string }>>(
-  new Map(),
-);
-
-// Debounce timer for search
-let filterTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Computed to check if user has permission
 const hasPermission = computed(() => parentGroupExists.value && isLeader.value);
 
-// Computed lists to exclude already selected persons
-const availableLeaders = computed(() => {
-  // Exclude co-leaders from leader selection
-  const coLeaderIds = new Set(selectedCoLeaders.value.map((p) => p.id));
-  return persons.value.filter((p) => !coLeaderIds.has(p.id));
-});
-
-const availableCoLeaders = computed(() => {
-  // Exclude the selected leader from co-leader selection
-  const leaderId = selectedLeader.value?.id;
-  return persons.value.filter((p) => p.id !== leaderId);
-});
-
-// Helper to create person with display name
-function createPersonWithDisplay(
-  person: Person,
-): Person & { displayName: string } {
-  return {
-    ...person,
-    displayName: `${person.firstName} ${person.lastName}${person.email ? ` (${person.email})` : ''}`,
-  };
-}
-
-// Helper to add person to protected list
-function addProtectedPerson(person: Person & { displayName: string }) {
-  protectedPersons.value.set(person.id, person);
-}
-
-// Helper to merge search results with protected persons
-function mergePersons(
-  searchResults: Person[],
-): (Person & { displayName: string })[] {
-  const resultsWithDisplay = searchResults.map(createPersonWithDisplay);
-
-  // Create a map for deduplication
-  const personMap = new Map<number, Person & { displayName: string }>();
-
-  // Add protected persons first (they appear at the top)
-  protectedPersons.value.forEach((person) => {
-    personMap.set(person.id, person);
-  });
-
-  // Add search results
-  resultsWithDisplay.forEach((person) => {
-    if (!personMap.has(person.id)) {
-      personMap.set(person.id, person);
-    }
-  });
-
-  return Array.from(personMap.values());
-}
-
-// Watch for selection changes to update protected persons
-watch(selectedLeader, (newLeader) => {
-  if (newLeader) {
-    addProtectedPerson(newLeader as Person & { displayName: string });
-  }
-});
-
-watch(selectedCoLeaders, (newCoLeaders) => {
-  newCoLeaders.forEach((coLeader) => {
-    addProtectedPerson(coLeader as Person & { displayName: string });
-  });
-});
-
 onMounted(async () => {
   await checkParentGroup();
 
-  // Load current user first and protect them
-  const currentUser = await churchtoolsStore.getCurrentUser();
-  if (currentUser) {
-    const currentPersonWithDisplay = createPersonWithDisplay(currentUser);
-    addProtectedPerson(currentPersonWithDisplay);
-    selectedLeader.value = currentPersonWithDisplay;
-  }
-
-  // Load initial batch of persons (200)
-  await loadPersons();
+  // Initialize person selector (loads current user and persons)
+  await personSelector.initialize();
 });
 
 async function checkParentGroup() {
@@ -297,45 +214,8 @@ async function checkParentGroup() {
   }
 }
 
-async function loadPersons(query: string = '') {
-  try {
-    loadingPersons.value = true;
-    const limit = query ? 20 : 200; // 20 for search, 200 for initial load
-    const searchResults = await churchtoolsStore.searchPersons(query, 1, limit);
-
-    // Add initial load results to protected list
-    if (!query) {
-      searchResults.forEach((person) => {
-        addProtectedPerson(createPersonWithDisplay(person));
-      });
-    }
-
-    persons.value = mergePersons(searchResults);
-  } catch (err) {
-    console.error('Failed to load persons:', err);
-    error.value = 'Failed to load persons list';
-  } finally {
-    loadingPersons.value = false;
-  }
-}
-
-async function filterPersons(event: { value: string }) {
-  // Clear existing timeout
-  if (filterTimeout) {
-    clearTimeout(filterTimeout);
-  }
-
-  // Show loading immediately
-  loadingPersons.value = true;
-
-  // Debounce the API call - wait 600ms after user stops typing
-  filterTimeout = setTimeout(async () => {
-    await loadPersons(event.value);
-  }, 600);
-}
-
 async function handleCreate() {
-  if (!selectedLeader.value) {
+  if (!personSelector.selectedLeader.value) {
     toast.add({
       severity: 'warn',
       summary: 'Validation Error',
@@ -350,8 +230,8 @@ async function handleCreate() {
     error.value = null;
 
     await groupConfigService.createParentGroup({
-      leaderPersonId: selectedLeader.value.id,
-      coLeaderPersonIds: selectedCoLeaders.value.map((p: Person) => p.id),
+      leaderPersonId: personSelector.selectedLeader.value.id,
+      coLeaderPersonIds: personSelector.coLeaderIds.value,
     });
 
     toast.add({
