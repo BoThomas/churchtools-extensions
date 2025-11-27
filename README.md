@@ -79,6 +79,63 @@ The `.env` file is included in `.gitignore` to prevent sensitive data from being
 > This can be done in the ChurchTools admin settings under
 > "API Settings" > "Integration" > "Cross-Origin Resource Sharing"
 
+### Local HTTPS Setup
+
+The dev server requires HTTPS with local certificates. We use [mkcert](https://github.com/FiloSottile/mkcert) to generate locally-trusted certificates.
+
+#### Install mkcert
+
+**macOS:**
+
+```bash
+brew install mkcert
+```
+
+**Linux (Debian/Ubuntu):**
+
+```bash
+sudo apt install libnss3-tools
+curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+chmod +x mkcert-v*-linux-amd64
+sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+```
+
+**Windows (Chocolatey):**
+
+```bash
+choco install mkcert
+```
+
+**Windows (Scoop):**
+
+```bash
+scoop install mkcert
+```
+
+#### Generate Certificates
+
+1. Install the local CA (run once per machine):
+
+   ```bash
+   mkcert -install
+   ```
+
+2. Create and generate certificates in the `certs` folder:
+
+   ```bash
+   mkdir certs
+   cd certs
+   mkcert localhost 127.0.0.1 ::1
+   ```
+
+3. Rename the generated files:
+   ```bash
+   mv localhost+2-key.pem localhost-key.pem
+   mv localhost+2.pem localhost.pem
+   ```
+
+The `certs/` folder is gitignored, so each developer needs to generate their own certificates.
+
 ### Building
 
 Build all extensions and packages:
