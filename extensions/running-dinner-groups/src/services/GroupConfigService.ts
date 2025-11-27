@@ -191,6 +191,8 @@ export class GroupConfigService {
       isDessertLocation?: boolean;
     };
   }): Promise<number> {
+    let createdGroupId: number | null = null;
+
     try {
       // 1. Get group types to find "Maßnahme" type
       const groupTypesResponse =
@@ -219,6 +221,9 @@ export class GroupConfigService {
         '/groups',
         groupData,
       )) as Group;
+
+      // Track created group ID for cleanup on failure
+      createdGroupId = createdGroup.id;
 
       // 3. Update group with additional information and settings using CT-native features
       // Apply defaults for optional settings
@@ -304,7 +309,28 @@ export class GroupConfigService {
       return createdGroup.id;
     } catch (error) {
       console.error('Failed to create child group:', error);
-      throw new Error('Failed to create child group');
+
+      // Clean up: delete the created group if it exists
+      if (createdGroupId !== null) {
+        try {
+          console.log(
+            'Cleaning up: deleting partially created group',
+            createdGroupId,
+          );
+          await churchtoolsClient.deleteApi(`/groups/${createdGroupId}`);
+          console.log('Successfully deleted group', createdGroupId);
+        } catch (deleteError) {
+          console.error(
+            'Failed to delete partially created group:',
+            deleteError,
+          );
+        }
+      }
+
+      // Preserve the original error message
+      const originalMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to create child group: ${originalMessage}`);
     }
   }
 
@@ -364,7 +390,9 @@ export class GroupConfigService {
       );
     } catch (error) {
       console.error('Failed to assign group leader:', error);
-      throw new Error('Failed to assign group leader');
+      const originalMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to assign group leader: ${originalMessage}`);
     }
   }
 
@@ -421,7 +449,9 @@ export class GroupConfigService {
       );
     } catch (error) {
       console.error('Failed to assign group co-leaders:', error);
-      throw new Error('Failed to assign group co-leaders');
+      const originalMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to assign group co-leaders: ${originalMessage}`);
     }
   }
 
@@ -519,7 +549,9 @@ export class GroupConfigService {
       }
     } catch (error) {
       console.error('Failed to ensure custom fields:', error);
-      throw new Error('Failed to create custom fields');
+      const originalMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to create custom fields: ${originalMessage}`);
     }
   }
 
@@ -542,7 +574,9 @@ export class GroupConfigService {
       console.log('Group settings updated:', groupId, settings);
     } catch (error) {
       console.error('Failed to update group settings:', error);
-      throw new Error('Failed to update group settings');
+      const originalMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to update group settings: ${originalMessage}`);
     }
   }
 
