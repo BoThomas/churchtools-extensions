@@ -2,7 +2,7 @@
 
 ## Implementation Status
 
-**Last Updated**: November 26, 2025
+**Last Updated**: November 28, 2025
 
 ### ✅ Completed Components
 
@@ -66,6 +66,59 @@
   - Group existence checking
   - Leader/co-leader selection
   - Group creation workflow
+- [x] `EventCreator.vue` - Event creation modal
+  - Complete form with validation
+  - Menu timing configuration
+  - **Partner preferences toggle** (configurable by organizer)
+  - After party support
+  - Integration with GroupConfigService
+- [x] `EventCard.vue` - Event display card
+  - CT group status badge (Draft/Active/Finished/Archived)
+  - Extension workflow status badge
+  - Member count with waitlist indicator
+  - Registration open/closed status
+  - Actions menu (Open in CT, Toggle Registration, Archive, Delete)
+- [x] `MemberList.vue` - Group member list with filters
+  - DataTable with search and status filtering
+  - Columns: Name, Status, Meal Preference, Dietary restrictions, Contact, Registration date
+  - Copy-to-clipboard for contact info
+  - Active/Waitlist stats
+- [x] `EventDetail.vue` - Full event detail modal
+  - Tabs: Overview, Members, Dinner Groups, Routes
+  - Event info, menu times, after party display
+  - Quick actions (Open in CT, Toggle Registration)
+  - Integration with all sub-components
+- [x] `DinnerGroupBuilder.vue` - Dinner group creation UI
+  - Stats (active members, groups created, unassigned)
+  - Create Groups / Save / Reset actions
+  - Grid display of dinner group cards
+  - Add unassigned members to groups dialog
+  - Warnings display
+- [x] `DinnerGroupCard.vue` - Individual dinner group display
+  - Group number and meal assignment badge
+  - Member list with host indicator
+  - Host address display
+  - Dietary restrictions summary
+  - Editable actions (set host, remove member, delete group)
+- [x] `RouteAssignment.vue` - Route assignment UI
+  - Stats (groups, routes, notification status)
+  - Assign Routes / Save / Send Notifications actions
+  - Route cards grid display
+  - Warnings display
+- [x] `RouteCard.vue` - Individual route display
+  - 3 meal stops with time and location
+  - Google Maps links
+  - Host info and "Hosting" indicator
+  - After party info
+
+#### Main Views
+
+- [x] `OrganizerView.vue` - Main dashboard
+  - Event list with EventCard grid
+  - Member counts per event
+  - Archive/delete/toggle registration handlers
+  - EventDetail dialog integration
+  - Full data loading with member cache
 
 ### 🚧 In Progress / TODO
 
@@ -86,36 +139,11 @@
 
 #### Vue Components (Remaining)
 
-- [ ] `EventCard.vue` - Event display card
-  - **NEW:** Show archived state (read-only badge)
-  - **NEW:** Archive/Delete actions
-- [x] `EventCreator.vue` - Event creation modal
-  - Complete form with validation
-  - Menu timing configuration
-  - **Partner preferences toggle** (configurable by organizer)
-  - After party support
-  - Integration with GroupConfigService
-  - **UPDATE NEEDED:** Add new form fields (see below)
-- [ ] `MemberList.vue` - Group member list with filters
-  - **NEW:** Show `registeredBy` relationship
-- [ ] `DinnerGroupBuilder.vue` - Dinner group creation UI
-- [ ] `DinnerGroupCard.vue` - Individual dinner group display
-- [ ] `RouteAssignment.vue` - Route assignment UI
-- [ ] `RouteCard.vue` - Individual route display
 - [ ] `EmailPreview.vue` - Email preview and sending
 - [ ] `EventSettings.vue` - **NEW** Event settings management
   - Edit registration dates
   - Waitlist settings
   - Routine configuration
-
-#### Main Views
-
-- [ ] `OrganizerView.vue` - Main dashboard
-  - Event list
-  - Workflow orchestration
-  - Status management
-  - **NEW:** Archive/delete functionality
-  - **NEW:** Read-only mode for archived events
 
 #### Testing & Integration
 
