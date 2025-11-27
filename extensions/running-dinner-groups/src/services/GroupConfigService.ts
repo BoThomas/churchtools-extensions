@@ -332,9 +332,30 @@ export class GroupConfigService {
         }
       }
 
-      // Preserve the original error message
-      const originalMessage =
-        error instanceof Error ? error.message : String(error);
+      // Extract meaningful error message from API response
+      let originalMessage = 'Unknown error';
+      if (error instanceof Error) {
+        originalMessage = error.message;
+        // Check for ChurchTools API error structure in the cause or response
+        const anyError = error as any;
+        if (anyError.response?.data?.message) {
+          originalMessage = anyError.response.data.message;
+        } else if (anyError.response?.data?.translatedMessage) {
+          originalMessage = anyError.response.data.translatedMessage;
+        } else if (anyError.cause?.message) {
+          originalMessage = anyError.cause.message;
+        }
+      } else if (typeof error === 'object' && error !== null) {
+        const errorObj = error as any;
+        if (errorObj.message) {
+          originalMessage = errorObj.message;
+        } else if (errorObj.translatedMessage) {
+          originalMessage = errorObj.translatedMessage;
+        }
+      } else {
+        originalMessage = String(error);
+      }
+
       throw new Error(`Failed to create child group: ${originalMessage}`);
     }
   }
