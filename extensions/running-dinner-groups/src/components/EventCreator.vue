@@ -527,26 +527,32 @@
           </div>
         </div>
       </Fieldset>
-
-      <!-- Error Message -->
-      <Message v-if="generalError" severity="error" :closable="true">
-        {{ generalError }}
-      </Message>
     </form>
 
     <template #footer>
-      <div class="flex justify-end gap-2">
-        <SecondaryButton
-          label="Cancel"
-          @click="handleCancel"
-          :disabled="loading"
-        />
-        <Button
-          label="Create Event"
-          icon="pi pi-check"
-          @click="handleSubmit"
-          :loading="loading"
-        />
+      <div class="flex flex-col gap-3 w-full pt-2">
+        <!-- Error Message - shown next to buttons -->
+        <Message
+          v-if="generalError"
+          severity="error"
+          :closable="true"
+          class="m-0"
+        >
+          {{ generalError }}
+        </Message>
+        <div class="flex justify-end gap-2">
+          <SecondaryButton
+            label="Cancel"
+            @click="handleCancel"
+            :disabled="loading"
+          />
+          <Button
+            label="Create Event"
+            icon="pi pi-check"
+            @click="handleSubmit"
+            :loading="loading"
+          />
+        </div>
       </div>
     </template>
   </Dialog>
@@ -932,10 +938,24 @@ async function handleSubmit() {
     } else {
       // Handle general errors
       console.error('Failed to create event:', error);
-      generalError.value =
+      const errorMessage =
         error instanceof Error
           ? error.message
           : 'Failed to create event. Please try again.';
+
+      // Check for duplicate name error
+      if (
+        errorMessage.includes('duplicate') ||
+        errorMessage.includes('already exists') ||
+        errorMessage.includes('same name')
+      ) {
+        errors.name =
+          'A event with this name already exists. Please choose a different name.';
+        generalError.value =
+          'A event with this name already exists. Please choose a different name.';
+      } else {
+        generalError.value = errorMessage;
+      }
 
       toast.add({
         severity: 'error',
