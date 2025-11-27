@@ -264,13 +264,18 @@ export class GroupConfigService {
       });
 
       // 4. Assign leader to the group (REQUIRED for people to be able to join)
-      await this.assignGroupLeader(createdGroup.id, options.leaderPersonId);
+      await this.assignGroupLeader(
+        createdGroup.id,
+        options.leaderPersonId,
+        massnahmeType.id,
+      );
 
       // 4b. Assign co-leaders if provided
       if (options.coLeaderPersonIds && options.coLeaderPersonIds.length > 0) {
         await this.assignGroupCoLeaders(
           createdGroup.id,
           options.coLeaderPersonIds,
+          massnahmeType.id,
         );
       }
 
@@ -339,17 +344,14 @@ export class GroupConfigService {
    * This is REQUIRED for people to be able to join the group
    * @param groupId - The ChurchTools group ID
    * @param leaderPersonId - The person ID to assign as leader
+   * @param groupTypeId - The group type ID (to find the correct role)
    */
   async assignGroupLeader(
     groupId: number,
     leaderPersonId: number,
+    groupTypeId: number,
   ): Promise<void> {
     try {
-      // Get the group to find its type
-      const group = (await churchtoolsClient.get(
-        `/groups/${groupId}`,
-      )) as Group;
-
       // Get roles for this group type
       const rolesResponse = await churchtoolsClient.get('/group/roles');
       const allRoles = Array.isArray(rolesResponse)
@@ -358,8 +360,16 @@ export class GroupConfigService {
 
       // Filter roles by group type and find Leiter
       const roles = allRoles.filter(
-        (role: any) => role.groupTypeId === group.groupTypeId,
+        (role: any) => role.groupTypeId === groupTypeId,
       );
+
+      console.log(
+        'Group type ID:',
+        groupTypeId,
+        'Available roles for this type:',
+        roles.map((r: any) => ({ id: r.id, name: r.name })),
+      );
+
       const leiterRole = roles.find((role: any) => role.name === 'Leiter');
 
       if (!leiterRole) {
@@ -369,7 +379,9 @@ export class GroupConfigService {
         // Use the first available role if Leiter doesn't exist
         const fallbackRole = roles[0];
         if (!fallbackRole) {
-          throw new Error('No roles available for this group type');
+          throw new Error(
+            `No roles available for group type ID ${groupTypeId}. Please configure roles for the "Maßnahme" group type in ChurchTools under Settings > Groups > Group Types.`,
+          );
         }
       }
 
@@ -400,17 +412,14 @@ export class GroupConfigService {
    * Assign co-leaders (Co-Leiter) to a group
    * @param groupId - The ChurchTools group ID
    * @param coLeaderPersonIds - Array of person IDs to assign as co-leaders
+   * @param groupTypeId - The group type ID (to find the correct role)
    */
   async assignGroupCoLeaders(
     groupId: number,
     coLeaderPersonIds: number[],
+    groupTypeId: number,
   ): Promise<void> {
     try {
-      // Get the group to find its type
-      const group = (await churchtoolsClient.get(
-        `/groups/${groupId}`,
-      )) as Group;
-
       // Get roles for this group type
       const rolesResponse = await churchtoolsClient.get('/group/roles');
       const allRoles = Array.isArray(rolesResponse)
@@ -419,7 +428,7 @@ export class GroupConfigService {
 
       // Filter roles by group type and find Co-Leiter
       const roles = allRoles.filter(
-        (role: any) => role.groupTypeId === group.groupTypeId,
+        (role: any) => role.groupTypeId === groupTypeId,
       );
       const coLeiterRole = roles.find((role: any) => role.name === 'Co-Leiter');
 
