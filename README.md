@@ -51,6 +51,9 @@ Perfect for churches with international members who need live translation during
 
 ### 🍽️ [Running Dinner](./extensions/running-dinner/)
 
+> [!CAUTION]
+> Not yet production-ready and may be replaced by the Running Dinner Groups extension which uses ChurchTools' native group management.
+
 Organize progressive dinner events where participants travel between homes for each course.
 
 A Running Dinner is a social event where groups host one course (starter, main, or dessert) at their home while visiting other homes for the remaining courses. Great for building community connections!
@@ -59,12 +62,12 @@ A Running Dinner is a social event where groups host one course (starter, main, 
 
 → [Read more](./extensions/running-dinner/README.md)
 
-> [!WARNING]
-> Not yet production-ready and may be replaced by the Running Dinner Groups extension which uses ChurchTools' native group management.
-
 ---
 
 ### 🍽️ [Running Dinner Groups](./extensions/running-dinner-groups/)
+
+> [!CAUTION]
+> Not yet production-ready and under active development.
 
 Running Dinner with deep ChurchTools group integration.
 
@@ -73,9 +76,6 @@ An alternative version of Running Dinner that uses ChurchTools' native group man
 **Features**: ChurchTools group integration • Custom field-based registration • Email notifications • Same powerful grouping and routing algorithms
 
 → [Read more](./extensions/running-dinner-groups/README.md)
-
-> [!WARNING]
-> Not yet production-ready and under active development.
 
 ---
 

@@ -2,7 +2,7 @@
 
 Organize and manage Running Dinner events directly in ChurchTools using native group management.
 
-> [!WARNING]
+> [!CAUTION]
 > This extension is still under active development and not yet ready for production use.
 
 > [!NOTE]

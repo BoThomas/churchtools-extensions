@@ -2,7 +2,7 @@
 
 Organize and manage Running Dinner events directly in ChurchTools.
 
-> [!WARNING]
+> [!CAUTION]
 > This Extension is in exploratory development and not yet ready for production use.
 > It may be replaced by the [Running Dinner Groups](../running-dinner-groups/README.md) extension which offers deeper ChurchTools integration.
 
