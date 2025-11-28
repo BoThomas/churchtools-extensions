@@ -231,35 +231,42 @@ export class GroupConfigService {
       const automaticMoveUp = options.automaticMoveUp ?? true;
       const allowSpouseRegistration = options.allowSpouseRegistration ?? true;
 
+      // Determine signUpOpeningDate:
+      // - If provided, use the scheduled date (registration opens at that time)
+      // - If null/not provided, use current timestamp to open registration immediately
+      // NOTE: ChurchTools API automatically sets isOpenForMembers=true when signUpOpeningDate is reached
+      const signUpOpeningDate =
+        options.signUpOpeningDate ?? new Date().toISOString();
+
       await churchtoolsClient.patch(`/groups/${createdGroup.id}`, {
+        // Registration settings - all at root level
+        visibility: 'intern', // 'restricted' = only leaders can see, 'intern' = church members can see and register
+        signUpOpeningDate: signUpOpeningDate, // Controls when registration opens (auto-sets isOpenForMembers=true)
+        signUpClosingDate: options.signUpClosingDate ?? null, // Auto-close registration at this date
+
+        // Visibility settings - at root level
+        isPublic: false, // Not public to external visitors
+        isHidden: false, // Visible in group listings
+
+        // Waitlist settings - at root level
+        allowWaitinglist: allowWaitinglist,
+        automaticMoveUp: automaticMoveUp, // Auto-promote from waitlist when spots open
+        waitinglistMaxPersons: options.waitlistMaxPersons ?? null, // null = unlimited
+
+        // Co-registration settings - at root level
+        allowSpouseRegistration: allowSpouseRegistration,
+        allowOtherRegistration: false, // Not needed if using partner preference field
+
+        // Capacity - at root level
+        maxMembers: options.maxMembers,
+        inStatistic: true,
+
+        // Only 'information' can be nested
         information: {
           note: options.description,
           meetingTime: options.date,
           groupCategoryId: null,
           campusId: null,
-        },
-        settings: {
-          // Registration control - CT-native lifecycle management
-          isOpenForMembers: options.signUpOpeningDate ? false : true, // If opening date set, start closed; otherwise open immediately
-          signUpOpeningDate: options.signUpOpeningDate ?? null, // Auto-open registration at this date
-          signUpClosingDate: options.signUpClosingDate ?? null, // Auto-close registration at this date
-
-          // Visibility - 'intern' for MVP (church members only)
-          isPublic: false, // Not public (use 'intern' visibility)
-          isHidden: false, // Visible to church members
-
-          // Waitlist settings - CT-native waitlist management
-          allowWaitinglist: allowWaitinglist,
-          automaticMoveUp: automaticMoveUp, // Auto-promote from waitlist when spots open
-          waitinglistMaxPersons: options.waitlistMaxPersons ?? null, // null = unlimited
-
-          // Co-registration settings
-          allowSpouseRegistration: allowSpouseRegistration,
-          allowOtherRegistration: false, // Not needed if using partner preference field
-
-          // Capacity
-          maxMembers: options.maxMembers,
-          inStatistic: true,
         },
       });
 
