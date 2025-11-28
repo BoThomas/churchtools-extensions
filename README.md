@@ -1,189 +1,208 @@
-# ChurchTools Extensions Monorepo
+# ChurchTools Extensions
 
-This is a monorepo for building ChurchTools extensions using pnpm workspaces and Turborepo.
+A collection of extensions for [ChurchTools](https://church.tools/) – the church management software used by thousands of churches across Germany and beyond.
 
-## Structure
+## What are ChurchTools Extensions?
+
+ChurchTools is a comprehensive platform for managing church operations: member databases, group management, event planning, service scheduling, and more. While ChurchTools covers the essentials, every church has unique needs.
+
+**Extensions** fill those gaps. They are web applications that integrate seamlessly with ChurchTools, appearing as additional modules within the interface. Extensions can:
+
+- Access ChurchTools data (people, groups, events) through the official API
+- Store extension-specific data using ChurchTools' Custom Module storage
+- Match the ChurchTools look and feel for a seamless user experience
+- Add completely new functionality tailored to your church's needs
+
+This repository is a monorepo containing multiple extensions, each designed to solve a specific problem.
+
+> [!NOTE]
+> ChurchTools is working on allowing even more integration points for extensions in the future, like deeper UI embedding (widgets) and event hooks. I will update the extensions as those features become available.
+
+---
+
+## Available Extensions
+
+### 🎤 [Translator](./extensions/translator/)
+
+Real-time speech-to-text translation for multilingual services.
+
+Perfect for churches with international members who need live translation during services. Uses Microsoft Azure's Speech Services to convert spoken words into translated text displayed on screen/projector or stream. Maybe I will add broadcasting to attendee devices in the future as well as speech-to-speech translation and multi-language-output.
+
+**Features**: Real-time transcription • Lots of customization options • Presentation mode • Session logging
+
+→ [Read more](./extensions/translator/README.md)
+
+---
+
+### 🍽️ [Running Dinner](./extensions/running-dinner/)
+
+Organize progressive dinner events where participants travel between homes for each course.
+
+A Running Dinner is a social event where groups host one course (starter, main, or dessert) at their home while visiting other homes for the remaining courses. Great for building community connections!
+
+**Features**: Event management • Participant registration • Smart group creation • Route optimization • Communication tools
+
+→ [Read more](./extensions/running-dinner/README.md)
+
+> [!WARNING]
+> Not yet production-ready and may be replaced by the Running Dinner Groups extension which uses ChurchTools' native group management.
+
+---
+
+### 🍽️ [Running Dinner Groups](./extensions/running-dinner-groups/)
+
+Running Dinner with deep ChurchTools group integration.
+
+An alternative version of Running Dinner that uses ChurchTools' native group management. Participants register by joining ChurchTools groups, and all data lives within the ChurchTools ecosystem.
+
+**Features**: ChurchTools group integration • Custom field-based registration • Email notifications • Same powerful grouping and routing algorithms
+
+→ [Read more](./extensions/running-dinner-groups/README.md)
+
+> [!WARNING]
+> Not yet production-ready and under active development.
+
+---
+
+### 🎮 [Community Games](./extensions/community-games/)
+
+Team-based casual games for community events.
+
+Bring your community together with interactive games! Teams vote on moves together, making it perfect for youth groups, church festivals, or online events.
+
+**Games**: TicTacToe • Connect Four • More to come...
+**Features**: Team voting • Multiple simultaneous games • Live updates • Works on mobile
+
+→ [Read more](./extensions/community-games/README.md)
+
+---
+
+## For Developers
+
+This is a **pnpm monorepo** using **Turborepo** for build orchestration. Extensions are built with **Vue 3**, **TypeScript**, and **Vite**.
+
+### Repository Structure
 
 ```
 churchtools-extensions/
-├── extensions/          # Extension applications
-│   └── running-dinner/  # Running Dinner extension
-├── packages/            # Shared packages
-│   ├── ct-utils/        # ChurchTools utilities (KV store, API types)
-│   ├── persistance/     # Data persistence layer
-│   └── prime-volt/      # Themed PrimeVue components
-└── certs/              # SSL certificates for local HTTPS
+├── extensions/              # Extension applications
+│   ├── translator/          # Speech-to-text translation
+│   ├── running-dinner/      # Running Dinner (standalone)
+│   ├── running-dinner-groups/ # Running Dinner (CT groups)
+│   └── community-games/     # Interactive games
+├── packages/                # Shared internal packages
+│   ├── ct-utils/            # ChurchTools API utilities
+│   ├── persistance/         # Data persistence layer
+│   ├── prime-volt/          # Themed UI components
+│   ├── build-tools/         # Build and packaging tools
+│   └── shared-styles/       # Common CSS styles
+├── certs/                   # Local HTTPS certificates
+├── docs/                    # Documentation
+└── releases/                # Built extension packages
 ```
 
-## Getting Started
+### Shared Packages
 
-### Prerequisites
+| Package                                 | Description                                                   |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `@churchtools-extensions/ct-utils`      | ChurchTools API utilities, KV store wrapper, type definitions |
+| `@churchtools-extensions/persistance`   | High-level data persistence with CRUD operations              |
+| `@churchtools-extensions/prime-volt`    | Themed PrimeVue components matching ChurchTools design        |
+| `@churchtools-extensions/build-tools`   | Packaging scripts and version info Vite plugin                |
+| `@churchtools-extensions/shared-styles` | Common CSS styles                                             |
+
+### Getting Started
+
+#### Prerequisites
 
 - Node.js
-- pnpm
+- pnpm (`npm install -g pnpm`)
 
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-
-## Shared Packages
-
-### @churchtools-extensions/ct-utils
-
-ChurchTools-specific utilities including:
-
-- KV store API wrapper for Custom Module data storage
-- TypeScript type definitions for ChurchTools API
-
-### @churchtools-extensions/persistance
-
-High-level data persistence layer built on top of ct-utils, providing a class-based API for CRUD operations.
-
-### @churchtools-extensions/prime-volt
-
-Themed PrimeVue components styled with Tailwind CSS for consistent UI across extensions.
-
-## Development
-
-### Working on an Extension
-
-Navigate to an extension directory and start the dev server:
+#### Installation
 
 ```bash
-cd extensions/running-dinner
+# Clone the repository
+git clone https://github.com/BoThomas/churchtools-extensions.git
+cd churchtools-extensions
+
+# Install dependencies
+pnpm install
+```
+
+#### Development
+
+```bash
+# Start a specific extension
+pnpm dev --filter=churchtools-translator
+
+# Or run all extensions from root
 pnpm dev
 ```
 
-Or use Turborepo from the root to run dev for all extensions:
+#### Local HTTPS Setup
+
+Extensions require HTTPS for local development. We use [mkcert](https://github.com/FiloSottile/mkcert) for locally-trusted certificates.
+
+**Install mkcert:**
 
 ```bash
-pnpm dev
-```
-
-### Configuration
-
-Each extension has its own configuration. For the running-dinner extension:
-
-1. Navigate to `extensions/running-dinner`
-2. Copy `.env-example` to `.env` and fill in your data
-
-The `.env` file is included in `.gitignore` to prevent sensitive data from being committed to version control.
-
-> **Note:** For local development, make sure to configure CORS in your ChurchTools
-> instance to allow requests from your local development server
-> (typically `https://localhost:5173`).
-> This can be done in the ChurchTools admin settings under
-> "API Settings" > "Integration" > "Cross-Origin Resource Sharing"
-
-### Local HTTPS Setup
-
-The dev server requires HTTPS with local certificates. We use [mkcert](https://github.com/FiloSottile/mkcert) to generate locally-trusted certificates.
-
-#### Install mkcert
-
-**macOS:**
-
-```bash
+# macOS
 brew install mkcert
-```
 
-**Linux (Debian/Ubuntu):**
-
-```bash
+# Linux (Debian/Ubuntu)
 sudo apt install libnss3-tools
 curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
 chmod +x mkcert-v*-linux-amd64
 sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
-```
 
-**Windows (Chocolatey):**
-
-```bash
+# Windows (Chocolatey)
 choco install mkcert
-```
 
-**Windows (Scoop):**
-
-```bash
+# Windows (Scoop)
 scoop install mkcert
 ```
 
-#### Generate Certificates
-
-1. Install the local CA (run once per machine):
-
-   ```bash
-   mkcert -install
-   ```
-
-2. Create and generate certificates in the `certs` folder:
-
-   ```bash
-   mkdir certs
-   cd certs
-   mkcert localhost 127.0.0.1 ::1
-   ```
-
-3. Rename the generated files:
-   ```bash
-   mv localhost+2-key.pem localhost-key.pem
-   mv localhost+2.pem localhost.pem
-   ```
-
-The `certs/` folder is gitignored, so each developer needs to generate their own certificates.
-
-### Building
-
-Build all extensions and packages:
+**Generate certificates:**
 
 ```bash
+# Install local CA (once per machine)
+mkcert -install
+
+# Generate certificates
+mkdir certs && cd certs
+mkcert localhost 127.0.0.1 ::1
+mv localhost+2-key.pem localhost-key.pem
+mv localhost+2.pem localhost.pem
+```
+
+The `certs/` folder is gitignored – each developer generates their own certificates.
+
+#### ChurchTools CORS Configuration
+
+For local development, configure CORS in your ChurchTools instance:
+
+1. Go to **Admin → API Settings → Integration → Cross-Origin Resource Sharing**
+2. Add e.g. `https://localhost:5173` to allowed origins
+
+#### Building & Deployment
+
+```bash
+# Build all
 pnpm build
-```
 
-Build a specific extension:
+# Build specific extension
+turbo build --filter=churchtools-translator
 
-```bash
-turbo build --filter=churchtools-running-dinner
-```
-
-### Preview Production Build
-
-To preview the production build locally:
-
-```bash
-pnpm preview
-```
-
-### Deployment
-
-To build and package an extension for deployment:
-
-```bash
-cd extensions/running-dinner
+# Package for deployment
 pnpm deploy
 ```
 
-Or from the root using Turborepo:
+Packaged extensions are placed in the `releases/` directory.
 
-```bash
-turbo deploy --filter=churchtools-running-dinner
-```
-
-This command will:
-
-1. Build the extension
-2. Package it using the extension's `scripts/package.js` script
-
-You can find the package in the extension's `releases` directory.
-
-## Adding a New Extension
+### Adding a New Extension
 
 1. Create a new directory in `extensions/`
-2. Set up package.json with workspace package dependencies:
+2. Set up `package.json` with workspace package dependencies:
    ```json
    {
      "dependencies": {
@@ -199,24 +218,6 @@ You can find the package in the extension's `releases` directory.
    import Button from '@churchtools-extensions/prime-volt/Button.vue';
    ```
 
-## ChurchTools API
-
-Following endpoints are available. Permissions are possible per route. Types are documented in `ct-types.d.ts` (CustomModuleCreate, CustomModuleDataCategoryCreate, CustomModuleDataValueCreate)
-
-GET `/custommodules` get all extensions
-GET `/custommodules/{extensionkey}` get an extension by its key
-GET `/custommodules/{moduleId}` get an extension by its ID
-
-GET `/custommodules/{moduleId}/customdatacategories`
-POST `/custommodules/{moduleId}/customdatacategories`
-PUT `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}`
-DELETE `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}`
-
-GET `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues`
-POST `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues`
-PUT `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues/{valueId}`
-DELETE `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues/{valueId}`
-
 ## Support
 
-For questions about the ChurchTools API, visit the [Forum](https://forum.church.tools).
+For questions about the ChurchTools API, visit the [ChurchTools Forum](https://forum.church.tools).
