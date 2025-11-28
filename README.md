@@ -2,6 +2,21 @@
 
 A collection of extensions for [ChurchTools](https://church.tools/) – the church management software used by thousands of churches across Germany and beyond.
 
+## Table of Contents
+
+- [What are ChurchTools Extensions?](#what-are-churchtools-extensions)
+- [Available Extensions](#available-extensions)
+  - [🎤 Translator](#-translator)
+  - [🍽️ Running Dinner](#️-running-dinner)
+  - [🍽️ Running Dinner Groups](#️-running-dinner-groups)
+  - [🎮 Community Games](#-community-games)
+- [For Developers](#for-developers)
+  - [Repository Structure](#repository-structure)
+  - [Shared Packages](#shared-packages)
+  - [Getting Started](#getting-started)
+  - [Adding a New Extension](#adding-a-new-extension)
+- [Support](#support)
+
 ## What are ChurchTools Extensions?
 
 ChurchTools is a comprehensive platform for managing church operations: member databases, group management, event planning, service scheduling, and more. While ChurchTools covers the essentials, every church has unique needs.
@@ -85,20 +100,20 @@ This is a **pnpm monorepo** using **Turborepo** for build orchestration. Extensi
 
 ```
 churchtools-extensions/
-├── extensions/              # Extension applications
-│   ├── translator/          # Speech-to-text translation
-│   ├── running-dinner/      # Running Dinner (standalone)
+├── extensions/                # Extension applications
+│   ├── translator/            # Speech-to-text translation
+│   ├── running-dinner/        # Running Dinner (standalone)
 │   ├── running-dinner-groups/ # Running Dinner (CT groups)
-│   └── community-games/     # Interactive games
-├── packages/                # Shared internal packages
-│   ├── ct-utils/            # ChurchTools API utilities
-│   ├── persistance/         # Data persistence layer
-│   ├── prime-volt/          # Themed UI components
-│   ├── build-tools/         # Build and packaging tools
-│   └── shared-styles/       # Common CSS styles
-├── certs/                   # Local HTTPS certificates
-├── docs/                    # Documentation
-└── releases/                # Built extension packages
+│   └── community-games/       # Interactive games
+├── packages/                  # Shared internal packages
+│   ├── ct-utils/              # ChurchTools API utilities
+│   ├── persistance/           # Data persistence layer
+│   ├── prime-volt/            # Themed UI components
+│   ├── build-tools/           # Build and packaging tools
+│   └── shared-styles/         # Common CSS styles
+├── certs/                     # Local HTTPS certificates
+├── docs/                      # Documentation
+└── releases/                  # Built extension packages
 ```
 
 ### Shared Packages
@@ -220,4 +235,4 @@ Packaged extensions are placed in the `releases/` directory.
 
 ## Support
 
-For questions about the ChurchTools API, visit the [ChurchTools Forum](https://forum.church.tools).
+For questions about the ChurchTools API, visit the [ChurchTools Forum](https://forum.church.tools). My username is [bothomas](https://forum.church.tools/user/bothomas).
