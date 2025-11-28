@@ -28,7 +28,7 @@ ChurchTools is a comprehensive platform for managing church operations: member d
 - Match the ChurchTools look and feel for a seamless user experience
 - Add completely new functionality tailored to your church's needs
 
-This repository is a monorepo containing multiple extensions, each designed to solve a specific problem.
+This repository is a monorepo containing multiple extensions, each designed to solve a specific problem. Its based on the [extension-boilerplate](https://github.com/churchtools/extension-boilerplate) repository which provides the basic structure and tooling for building ChurchTools extensions.
 
 > [!NOTE]
 > ChurchTools is working on allowing even more integration points for extensions in the future, like deeper UI embedding (widgets) and event hooks. I will update the extensions as those features become available.
