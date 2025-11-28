@@ -445,7 +445,7 @@ async function main() {
       // Run deploy (build + package)
       console.log(c('cyan', '\n   Building and packaging...'));
       try {
-        execSync(`pnpm deploy --filter=${ext.name}`, {
+        execSync(`pnpm turbo deploy --filter=${ext.name}`, {
           cwd: monorepoRoot,
           stdio: 'inherit',
         });
