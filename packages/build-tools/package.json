@@ -7,10 +7,12 @@
   },
   "exports": {
     "./package": "./package.js",
+    "./release": "./release.js",
     "./version-info-plugin": "./version-info-plugin.js",
     "./extension-info": "./extension-info.d.ts"
   },
   "bin": {
-    "ct-package": "./package.js"
+    "ct-package": "./package.js",
+    "ct-release": "./release.js"
   }
 }

@@ -199,7 +199,7 @@ For local development, configure CORS in your ChurchTools instance:
 1. Go to **Admin → API Settings → Integration → Cross-Origin Resource Sharing**
 2. Add e.g. `https://localhost:5173` to allowed origins
 
-#### Building & Deployment
+#### Local packaging (optional)
 
 ```bash
 # build and package all extensions
@@ -210,6 +210,42 @@ pnpm deploy --filter=ct-translator
 ```
 
 Packaged extensions are placed in the `releases/` directory.
+
+#### Building & Releasing Extensions
+
+The release tool provides an interactive workflow for creating releases with proper versioning, changelogs, and GitHub releases.
+
+**Prerequisites:**
+
+- [GitHub CLI](https://cli.github.com/) (`gh`) for creating GitHub releases (optional, but recommended)
+
+  ```bash
+  # macOS
+  brew install gh
+
+  # Then authenticate
+  gh auth login
+  ```
+
+**Usage:**
+
+```bash
+# Run the interactive release tool
+pnpm release
+```
+
+The release tool will:
+
+1. Let you select one or more extensions to release
+2. Show commits since the last release for each extension
+3. Prompt for semver bump (patch/minor/major)
+4. Prompt for a release summary
+5. Update `package.json` version
+6. Create a git commit and annotated tag (`<pkg-name>@<version>`)
+7. Build and package the extension
+8. Generate/update `CHANGELOG.md`
+9. Optionally create a GitHub release with the ZIP attached
+10. Optionally push commits and tags
 
 ### Adding a New Extension
 
