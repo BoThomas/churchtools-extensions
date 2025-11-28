@@ -1,5 +1,5 @@
 {
-  "name": "churchtools-translator",
+  "name": "ct-translator",
   "private": true,
   "version": "1.0.1",
   "description": "Real-time speech-to-text translation extension for ChurchTools",

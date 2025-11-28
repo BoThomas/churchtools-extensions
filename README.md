@@ -148,7 +148,7 @@ pnpm install
 
 ```bash
 # Start a specific extension
-pnpm dev --filter=churchtools-translator
+pnpm dev --filter=ct-translator
 
 # Or run all extensions from root
 pnpm dev
@@ -202,14 +202,11 @@ For local development, configure CORS in your ChurchTools instance:
 #### Building & Deployment
 
 ```bash
-# Build all
-pnpm build
-
-# Build specific extension
-turbo build --filter=churchtools-translator
-
-# Package for deployment
+# build and package all extensions
 pnpm deploy
+
+# build and package a specific extension
+pnpm deploy --filter=ct-translator
 ```
 
 Packaged extensions are placed in the `releases/` directory.
