@@ -2,6 +2,9 @@
 
 A collection of extensions for [ChurchTools](https://church.tools/) – the church management software used by thousands of churches across Germany and beyond.
 
+> [!IMPORTANT]
+> AI is heavily involved in creating and maintaining these extensions. While I strive for accuracy, please test thoroughly before deploying in a production environment.
+
 ## Table of Contents
 
 - [What are ChurchTools Extensions?](#what-are-churchtools-extensions)
