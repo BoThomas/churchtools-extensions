@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
-import type { Group, GroupMember, Person } from '@/types/models';
+import type {
+  Group,
+  GroupMember,
+  Person,
+  GroupUpdatePayload,
+} from '@/types/models';
 
 /**
  * ChurchTools API wrapper store
@@ -107,7 +112,7 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
    */
   async function updateGroup(
     groupId: number,
-    data: Partial<Group>,
+    data: GroupUpdatePayload,
   ): Promise<void> {
     loading.value = true;
     error.value = null;

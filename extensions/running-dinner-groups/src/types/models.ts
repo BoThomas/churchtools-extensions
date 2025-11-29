@@ -191,7 +191,22 @@ export interface Group {
     allowWaitinglist?: boolean;
     maxMembers?: number | null;
     inStatistic?: boolean;
+    signUpOpeningDate?: string | null;
+    signUpClosingDate?: string | null;
   };
+}
+
+/**
+ * Payload for updating a group via PATCH /groups/{groupId}
+ * Note: signUpOpeningDate/signUpClosingDate are sent at root level for PATCH
+ */
+export interface GroupUpdatePayload {
+  name?: string;
+  information?: Partial<Group['information']>;
+  settings?: Partial<Group['settings']>;
+  // These control registration open/close status
+  signUpOpeningDate?: string | null;
+  signUpClosingDate?: string | null;
 }
 
 /**

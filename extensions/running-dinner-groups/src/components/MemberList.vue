@@ -241,7 +241,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { GroupMember } from '@/types/models';
-import DataTable from 'primevue/datatable';
+import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
 import Column from 'primevue/column';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';

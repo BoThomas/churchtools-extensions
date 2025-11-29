@@ -148,21 +148,26 @@ async function handleEventCreated(_groupId: number) {
  */
 async function loadEventGroups() {
   try {
-    groupCache.value.clear();
-    memberCache.value.clear();
-
     // Get all group IDs from event metadata
     const groupIds = eventMetadataStore.events.map((e) => e.value.groupId);
+
+    // Build new caches first, then swap them in to avoid flickering
+    const newGroupCache = new Map<number, Group>();
+    const newMemberCache = new Map<number, GroupMember[]>();
 
     // Load each group and its members
     for (const groupId of groupIds) {
       const group = await churchtoolsStore.getGroup(groupId);
       if (group) {
-        groupCache.value.set(groupId, group);
+        newGroupCache.set(groupId, group);
         const members = await churchtoolsStore.getGroupMembers(groupId);
-        memberCache.value.set(groupId, members);
+        newMemberCache.set(groupId, members);
       }
     }
+
+    // Swap in the new caches atomically
+    groupCache.value = newGroupCache;
+    memberCache.value = newMemberCache;
   } catch (error) {
     console.error('Failed to load event groups:', error);
   }
@@ -276,12 +281,22 @@ async function handleToggleRegistration(event: CategoryValue<EventMetadata>) {
   const isCurrentlyOpen = group?.settings?.isOpenForMembers ?? false;
 
   try {
-    await churchtoolsStore.updateGroup(event.value.groupId, {
-      settings: {
-        ...group?.settings,
-        isOpenForMembers: !isCurrentlyOpen,
-      },
-    } as any);
+    // CT API controls registration via signUpOpeningDate/signUpClosingDate at root level
+    // To close: set both to null
+    // To open: set signUpOpeningDate to a past/current date, signUpClosingDate to null
+    if (isCurrentlyOpen) {
+      // Close registration
+      await churchtoolsStore.updateGroup(event.value.groupId, {
+        signUpOpeningDate: null,
+        signUpClosingDate: null,
+      });
+    } else {
+      // Open registration - set opening date to now
+      await churchtoolsStore.updateGroup(event.value.groupId, {
+        signUpOpeningDate: new Date().toISOString(),
+        signUpClosingDate: null,
+      });
+    }
 
     toast.add({
       severity: 'success',
@@ -292,6 +307,7 @@ async function handleToggleRegistration(event: CategoryValue<EventMetadata>) {
 
     await loadEventGroups();
   } catch (error) {
+    console.error('Failed to toggle registration:', error);
     toast.add({
       severity: 'error',
       summary: 'Error',

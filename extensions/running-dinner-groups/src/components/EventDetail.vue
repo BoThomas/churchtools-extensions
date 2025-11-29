@@ -4,7 +4,8 @@
     :header="eventName"
     :style="{ width: '95vw', maxWidth: '1200px', height: '90vh' }"
     :modal="true"
-    :maximizable="true"
+    pt:root:class="flex flex-col"
+    pt:content:class="flex-1 overflow-y-auto"
     @hide="handleClose"
   >
     <template #header>
@@ -267,9 +268,7 @@
     </Tabs>
 
     <template #footer>
-      <div class="flex justify-end">
-        <Button label="Close" @click="handleClose" />
-      </div>
+      <Button label="Close" @click="handleClose" />
     </template>
   </Dialog>
 </template>
