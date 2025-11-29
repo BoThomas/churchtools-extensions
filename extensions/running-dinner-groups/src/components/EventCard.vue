@@ -3,20 +3,13 @@
     <template #title>
       <div class="flex items-start justify-between gap-2">
         <span class="truncate">{{ eventName }}</span>
-        <div class="flex items-center gap-1 shrink-0">
-          <!-- CT Group Status Badge -->
-          <Badge
-            :value="ctStatusLabel"
-            :severity="ctStatusSeverity"
-            size="small"
-          />
-          <!-- Extension Status Badge -->
-          <Badge
-            :value="workflowStatusLabel"
-            :severity="workflowStatusSeverity"
-            size="small"
-          />
-        </div>
+        <!-- Only show badge for archived/ended events -->
+        <Badge
+          v-if="isArchived"
+          value="Archived"
+          severity="secondary"
+          size="small"
+        />
       </div>
     </template>
 
@@ -56,12 +49,13 @@
           </span>
         </div>
 
-        <!-- Group Size -->
+        <!-- Next Step / Progress Indicator -->
         <div
-          class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400"
+          class="flex items-center gap-2 text-sm rounded-md p-2 -mx-2"
+          :class="nextStepStyle.bgClass"
         >
-          <i class="pi pi-sitemap text-xs"></i>
-          <span>Group size: {{ event.value.preferredGroupSize }}</span>
+          <i class="pi text-xs" :class="nextStepStyle.iconClass"></i>
+          <span :class="nextStepStyle.textClass">{{ nextStepText }}</span>
         </div>
       </div>
     </template>
@@ -179,68 +173,80 @@ const isOpenForMembers = computed(
   () => props.group?.settings?.isOpenForMembers ?? false,
 );
 
-// CT Group Status (from information.groupStatusId)
-const ctStatusLabel = computed(() => {
-  const statusId = props.group?.information?.groupStatusId;
-  switch (statusId) {
-    case 1:
-      return 'Active';
-    case 2:
-      return 'Archived';
-    case 3:
-      return 'Ended';
-    default:
-      return 'Unknown';
-  }
-});
-
-const ctStatusSeverity = computed(
-  (): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' => {
-    const statusId = props.group?.information?.groupStatusId;
-    switch (statusId) {
-      case 1:
-        return 'success'; // Active - green
-      case 2:
-        return 'secondary'; // Archived - gray
-      case 3:
-        return 'info'; // Ended - blue
-      default:
-        return 'secondary';
-    }
-  },
-);
-
 const isArchived = computed(
   () => props.group?.information?.groupStatusId === 2,
 );
 
-// Extension Workflow Status
-const workflowStatusLabel = computed(() => {
-  const statusMap: Record<string, string> = {
-    active: 'Pending',
-    'groups-created': 'Groups',
-    'routes-assigned': 'Routes',
-    'notifications-sent': 'Notified',
-    completed: 'Done',
-  };
-  return statusMap[props.event.value.status] || props.event.value.status;
+// Next step indicator - clear action-oriented messaging
+const nextStepText = computed(() => {
+  if (isArchived.value) {
+    return 'Event archived';
+  }
+
+  const status = props.event.value.status;
+  switch (status) {
+    case 'active':
+      return isOpenForMembers.value
+        ? 'Waiting for registrations'
+        : 'Next: Create dinner groups';
+    case 'groups-created':
+      return 'Next: Assign routes';
+    case 'routes-assigned':
+      return 'Next: Send notifications';
+    case 'notifications-sent':
+      return 'Participants notified ✓';
+    case 'completed':
+      return 'Event completed ✓';
+    default:
+      return 'Unknown status';
+  }
 });
 
-const workflowStatusSeverity = computed(
-  (): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' => {
-    const severityMap: Record<
-      string,
-      'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast'
-    > = {
-      active: 'info',
-      'groups-created': 'warn',
-      'routes-assigned': 'warn',
-      'notifications-sent': 'success',
-      completed: 'secondary',
+const nextStepStyle = computed(() => {
+  if (isArchived.value) {
+    return {
+      bgClass: 'bg-surface-100 dark:bg-surface-700',
+      iconClass: 'pi-inbox text-surface-500',
+      textClass: 'text-surface-500',
     };
-    return severityMap[props.event.value.status] || 'info';
-  },
-);
+  }
+
+  const status = props.event.value.status;
+  switch (status) {
+    case 'active':
+      return isOpenForMembers.value
+        ? {
+            bgClass: 'bg-blue-50 dark:bg-blue-900/20',
+            iconClass: 'pi-clock text-blue-500',
+            textClass: 'text-blue-700 dark:text-blue-300',
+          }
+        : {
+            bgClass: 'bg-amber-50 dark:bg-amber-900/20',
+            iconClass: 'pi-arrow-right text-amber-500',
+            textClass: 'text-amber-700 dark:text-amber-300',
+          };
+    case 'groups-created':
+    case 'routes-assigned':
+      return {
+        bgClass: 'bg-amber-50 dark:bg-amber-900/20',
+        iconClass: 'pi-arrow-right text-amber-500',
+        textClass: 'text-amber-700 dark:text-amber-300',
+      };
+    case 'notifications-sent':
+    case 'completed':
+      return {
+        bgClass: 'bg-green-50 dark:bg-green-900/20',
+        iconClass: 'pi-check-circle text-green-500',
+        textClass: 'text-green-700 dark:text-green-300',
+      };
+    default:
+      return {
+        bgClass: 'bg-surface-100 dark:bg-surface-700',
+        iconClass: 'pi-question-circle text-surface-500',
+        textClass: 'text-surface-500',
+      };
+  }
+});
 
 function handleOpenInCT() {
   const baseUrl = import.meta.env.DEV
