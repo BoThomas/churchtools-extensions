@@ -168,6 +168,54 @@ export interface GroupMember {
 }
 
 /**
+ * Raw API response for group member from /groups/{id}/members
+ * The person data is nested in domainAttributes
+ */
+export interface RawGroupMemberResponse {
+  id: number;
+  personId: number;
+  groupMemberStatus:
+    | 'active'
+    | 'waiting'
+    | 'inactive'
+    | 'requested'
+    | 'to_delete';
+  groupTypeRoleId?: number;
+  memberStartDate?: string;
+  memberEndDate?: string | null;
+  waitinglistPosition?: number | null;
+  comment?: string | null;
+  fields?: GroupMemberFields | [];
+  person: {
+    title: string;
+    domainType: string;
+    domainIdentifier: string;
+    domainAttributes?: {
+      firstName?: string;
+      lastName?: string;
+      guid?: string;
+      isArchived?: boolean;
+      dateOfDeath?: string | null;
+    };
+  };
+}
+
+/**
+ * Raw person details from /persons/{personId}
+ */
+export interface RawPersonDetails {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  mobile?: string;
+  phonePrivate?: string;
+  street?: string;
+  zip?: string;
+  city?: string;
+}
+
+/**
  * Simplified ChurchTools Group
  * (actual type comes from @churchtools/churchtools-client)
  */

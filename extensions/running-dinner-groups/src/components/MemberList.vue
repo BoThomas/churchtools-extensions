@@ -59,7 +59,6 @@
       :rows="10"
       :rowsPerPageOptions="[10, 25, 50]"
       dataKey="personId"
-      filterDisplay="row"
       :globalFilterFields="[
         'person.firstName',
         'person.lastName',

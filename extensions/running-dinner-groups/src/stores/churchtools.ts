@@ -6,6 +6,8 @@ import type {
   GroupMember,
   Person,
   GroupUpdatePayload,
+  RawGroupMemberResponse,
+  RawPersonDetails,
 } from '@/types/models';
 
 /**
@@ -147,13 +149,95 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
   // ===== MEMBERS =====
 
   /**
+   * Fetch full person details from /persons/{personId}
+   */
+  async function getPersonDetails(
+    personId: number,
+  ): Promise<RawPersonDetails | null> {
+    try {
+      const response = await churchtoolsClient.get(`/persons/${personId}`);
+      // Handle both direct object and { data: ... } formats
+      if (response && typeof response === 'object') {
+        return 'data' in response
+          ? (response.data as RawPersonDetails)
+          : (response as RawPersonDetails);
+      }
+      return null;
+    } catch (err) {
+      console.warn(`Failed to fetch person details for ID ${personId}:`, err);
+      return null;
+    }
+  }
+
+  /**
+   * Transform raw API member response to our GroupMember interface.
+   * Merges basic member data with full person details.
+   */
+  function transformMember(
+    rawMember: RawGroupMemberResponse,
+    personDetails: RawPersonDetails | null,
+  ): GroupMember {
+    const person = rawMember.person;
+    const domainAttributes = person.domainAttributes;
+
+    // Prefer full person details if available, fallback to domainAttributes
+    const firstName =
+      personDetails?.firstName || domainAttributes?.firstName || '';
+    const lastName =
+      personDetails?.lastName || domainAttributes?.lastName || '';
+    const email = personDetails?.email;
+
+    // Build phone numbers array from person details
+    let phoneNumbers: { phoneNumber: string }[] | undefined;
+    if (personDetails?.mobile) {
+      phoneNumbers = [{ phoneNumber: personDetails.mobile }];
+    } else if (personDetails?.phonePrivate) {
+      phoneNumbers = [{ phoneNumber: personDetails.phonePrivate }];
+    }
+
+    // Normalize fields - API returns empty array when no fields
+    const fields = Array.isArray(rawMember.fields)
+      ? undefined
+      : rawMember.fields;
+
+    return {
+      personId: rawMember.personId,
+      person: {
+        id: rawMember.personId,
+        firstName,
+        lastName,
+        email,
+        phoneNumbers,
+        addresses: personDetails?.street
+          ? [
+              {
+                street: personDetails.street,
+                zip: personDetails.zip,
+                city: personDetails.city,
+              },
+            ]
+          : undefined,
+      },
+      groupMemberStatus: rawMember.groupMemberStatus as
+        | 'active'
+        | 'waiting'
+        | 'inactive',
+      groupTypeRoleId: rawMember.groupTypeRoleId,
+      fields,
+      memberStartDate: rawMember.memberStartDate,
+      waitinglistPosition: rawMember.waitinglistPosition ?? undefined,
+    };
+  }
+
+  /**
    * Get all members of a group (with pagination handled automatically)
+   * Also fetches full person details for email/phone information.
    */
   async function getGroupMembers(groupId: number): Promise<GroupMember[]> {
     loading.value = true;
     error.value = null;
     try {
-      let allMembers: GroupMember[] = [];
+      let allMembers: RawGroupMemberResponse[] = [];
       let page = 1;
       let hasMorePages = true;
 
@@ -162,7 +246,7 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
         const response = await churchtoolsClient.get(
           `/groups/${groupId}/members?page=${page}`,
         );
-        const members = normalizeResponse<GroupMember>(response);
+        const members = normalizeResponse<RawGroupMemberResponse>(response);
 
         if (members.length === 0) {
           hasMorePages = false;
@@ -176,7 +260,21 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
         }
       }
 
-      return allMembers;
+      // Fetch full person details for each member (in parallel)
+      const personDetailsMap = new Map<number, RawPersonDetails>();
+      await Promise.all(
+        allMembers.map(async (member) => {
+          const details = await getPersonDetails(member.personId);
+          if (details) {
+            personDetailsMap.set(member.personId, details);
+          }
+        }),
+      );
+
+      // Transform raw API response to our GroupMember interface
+      return allMembers.map((member) =>
+        transformMember(member, personDetailsMap.get(member.personId) ?? null),
+      );
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getGroupMembers error:', err);
