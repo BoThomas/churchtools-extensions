@@ -84,6 +84,9 @@
       v-model:visible="showDetailDialog"
       :event="selectedEvent"
       :group="selectedEvent ? getGroup(selectedEvent.value.groupId) : null"
+      :initial-members="
+        selectedEvent ? getMembers(selectedEvent.value.groupId) : []
+      "
       :action-loading="actionLoading"
       @toggle-registration="handleToggleRegistration(selectedEvent!)"
       @status-changed="handleStatusChanged"
@@ -181,6 +184,10 @@ function getGroup(groupId: number): Group | null {
   return groupCache.value.get(groupId) || null;
 }
 
+function getMembers(groupId: number): GroupMember[] {
+  return memberCache.value.get(groupId) || [];
+}
+
 function getMemberCount(groupId: number): number {
   const members = memberCache.value.get(groupId) || [];
   return members.filter((m) => m.groupMemberStatus === 'active').length;
@@ -198,9 +205,28 @@ function getGroupUrl(groupId: number): string {
   return `${baseUrl}/groups/${groupId}/dashboard`;
 }
 
-function handleViewEvent(event: CategoryValue<EventMetadata>) {
-  selectedEvent.value = event;
-  showDetailDialog.value = true;
+async function handleViewEvent(event: CategoryValue<EventMetadata>) {
+  // Show loading state on the Manage button
+  actionLoading.value = `manage-${event.id}`;
+
+  try {
+    // Pre-load event data before opening the dialog
+    selectedEvent.value = event;
+
+    // Ensure group and member data is fresh
+    const groupId = event.value.groupId;
+    const group = await churchtoolsStore.getGroup(groupId);
+    if (group) {
+      groupCache.value.set(groupId, group);
+      const members = await churchtoolsStore.getGroupMembers(groupId);
+      memberCache.value.set(groupId, members);
+    }
+
+    // Open the dialog after data is loaded
+    showDetailDialog.value = true;
+  } finally {
+    actionLoading.value = null;
+  }
 }
 
 async function handleArchiveEvent(event: CategoryValue<EventMetadata>) {

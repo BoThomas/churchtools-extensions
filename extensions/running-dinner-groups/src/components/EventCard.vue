@@ -59,7 +59,14 @@
 
     <template #footer>
       <div class="flex items-center justify-between gap-2">
-        <Button label="Manage" size="small" @click="$emit('view', event)" />
+        <Button
+          label="Manage"
+          size="small"
+          :icon="isManageLoading ? 'pi pi-spin pi-spinner' : undefined"
+          :loading="isManageLoading"
+          :disabled="isManageLoading"
+          @click="$emit('view', event)"
+        />
 
         <!-- Actions Menu -->
         <Button
@@ -133,6 +140,10 @@ const isArchived = computed(
 
 const isRegistrationLoading = computed(
   () => props.actionLoading === `registration-${props.event.id}`,
+);
+
+const isManageLoading = computed(
+  () => props.actionLoading === `manage-${props.event.id}`,
 );
 
 const emit = defineEmits<{

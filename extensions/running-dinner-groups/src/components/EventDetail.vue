@@ -316,6 +316,7 @@ const props = defineProps<{
   visible: boolean;
   event: CategoryValue<EventMetadata>;
   group?: Group | null;
+  initialMembers?: GroupMember[];
   actionLoading?: string | null;
 }>();
 
@@ -531,7 +532,14 @@ watch(
   () => props.visible,
   async (newVal) => {
     if (newVal) {
-      await loadAllData();
+      // Use pre-loaded members if provided, otherwise fetch them
+      if (props.initialMembers && props.initialMembers.length > 0) {
+        members.value = props.initialMembers;
+        // Only load dinner groups and routes (members already loaded)
+        await Promise.all([loadDinnerGroups(), loadRoutes()]);
+      } else {
+        await loadAllData();
+      }
     }
   },
 );
