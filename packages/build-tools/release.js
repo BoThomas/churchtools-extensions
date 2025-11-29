@@ -256,14 +256,21 @@ function updateChangelog(extensionPath, entry) {
   if (fs.existsSync(changelogPath)) {
     content = fs.readFileSync(changelogPath, 'utf8');
   } else {
-    content = '# Changelog\n\nAll notable changes to this extension will be documented in this file.\n\n';
+    content =
+      '# Changelog\n\nAll notable changes to this extension will be documented in this file.\n\n';
   }
 
   // Insert new entry after the header
-  const headerEndIndex = content.indexOf('\n\n', content.indexOf('# Changelog'));
+  const headerEndIndex = content.indexOf(
+    '\n\n',
+    content.indexOf('# Changelog'),
+  );
   if (headerEndIndex !== -1) {
     const insertPosition = content.indexOf('\n\n', headerEndIndex + 2);
-    if (insertPosition !== -1 && content.substring(insertPosition + 2, insertPosition + 5) === '## ') {
+    if (
+      insertPosition !== -1 &&
+      content.substring(insertPosition + 2, insertPosition + 5) === '## '
+    ) {
       // There are existing entries, insert before them
       content =
         content.substring(0, insertPosition + 2) +
@@ -364,8 +371,10 @@ async function main() {
 
   try {
     // Multi-select extensions
-    const selectedExtensions = await multiSelect(rl, extensions, (ext) =>
-      `${ext.name} ${c('dim', `(v${ext.version})`)}`,
+    const selectedExtensions = await multiSelect(
+      rl,
+      extensions,
+      (ext) => `${ext.name} ${c('dim', `(v${ext.version})`)}`,
     );
 
     if (selectedExtensions.length === 0) {
@@ -394,7 +403,9 @@ async function main() {
 
       // Show commits
       if (commits.length > 0) {
-        console.log(c('green', `\n   ${commits.length} commit(s) since last release:`));
+        console.log(
+          c('green', `\n   ${commits.length} commit(s) since last release:`),
+        );
         commits.slice(0, 10).forEach((commit) => {
           console.log(c('dim', `      • ${commit}`));
         });
@@ -492,15 +503,17 @@ async function main() {
 
     if (!ghAvailable) {
       console.log(
-        c('yellow', '\n⚠️  GitHub CLI (gh) not found. Skipping GitHub releases.'),
+        c(
+          'yellow',
+          '\n⚠️  GitHub CLI (gh) not found. Skipping GitHub releases.',
+        ),
       );
       console.log(c('dim', '   Install it with: brew install gh'));
     } else {
-      const releaseChoice = await selectOption(
-        rl,
-        'Create GitHub releases?',
-        ['Yes, create GitHub releases', 'No, local-only'],
-      );
+      const releaseChoice = await selectOption(rl, 'Create GitHub releases?', [
+        'Yes, create GitHub releases',
+        'No, local-only',
+      ]);
 
       if (releaseChoice.startsWith('Yes')) {
         for (const released of releasedPackages) {
@@ -517,7 +530,9 @@ async function main() {
           );
 
           if (success) {
-            console.log(c('green', `   ✓ GitHub release created: ${released.tag}`));
+            console.log(
+              c('green', `   ✓ GitHub release created: ${released.tag}`),
+            );
           } else {
             console.log(c('red', `   ✗ Failed to create GitHub release`));
           }
@@ -527,10 +542,11 @@ async function main() {
 
     // Ask about pushing
     console.log('');
-    const pushChoice = await selectOption(rl, 'Push commits and tags to remote?', [
-      'Yes, push now',
-      'No, I\'ll push later',
-    ]);
+    const pushChoice = await selectOption(
+      rl,
+      'Push commits and tags to remote?',
+      ['Yes, push now', "No, I'll push later"],
+    );
 
     if (pushChoice.startsWith('Yes')) {
       console.log(c('cyan', '\n   Pushing commits and tags...'));
