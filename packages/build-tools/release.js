@@ -516,6 +516,7 @@ async function main() {
     console.log(c('bold', `\n${'─'.repeat(60)}`));
 
     const ghAvailable = isGhAvailable();
+    let wantsGitHubRelease = false;
 
     if (!ghAvailable) {
       console.log(
@@ -530,8 +531,40 @@ async function main() {
         'Yes, create GitHub releases',
         'No, local-only',
       ]);
+      wantsGitHubRelease = releaseChoice.startsWith('Yes');
+    }
 
-      if (releaseChoice.startsWith('Yes')) {
+    // Ask about pushing (required for GitHub releases)
+    console.log('');
+    let pushed = false;
+
+    if (wantsGitHubRelease) {
+      console.log(
+        c('dim', '   (Pushing is required to create GitHub releases)'),
+      );
+    }
+
+    const pushChoice = await selectOption(
+      rl,
+      'Push commits and tags to remote?',
+      ['Yes, push now', "No, I'll push later"],
+    );
+
+    if (pushChoice.startsWith('Yes')) {
+      console.log(c('cyan', '\n   Pushing commits and tags...'));
+      try {
+        execSync('git push', { cwd: monorepoRoot, stdio: 'inherit' });
+        execSync('git push --tags', { cwd: monorepoRoot, stdio: 'inherit' });
+        console.log(c('green', '   ✓ Pushed successfully'));
+        pushed = true;
+      } catch (error) {
+        console.log(c('red', '   ✗ Push failed'));
+      }
+    }
+
+    // Create GitHub releases (after pushing)
+    if (wantsGitHubRelease) {
+      if (pushed) {
         for (const released of releasedPackages) {
           console.log(
             c('cyan', `\n   Creating GitHub release for ${released.tag}...`),
@@ -553,25 +586,21 @@ async function main() {
             console.log(c('red', `   ✗ Failed to create GitHub release`));
           }
         }
-      }
-    }
-
-    // Ask about pushing
-    console.log('');
-    const pushChoice = await selectOption(
-      rl,
-      'Push commits and tags to remote?',
-      ['Yes, push now', "No, I'll push later"],
-    );
-
-    if (pushChoice.startsWith('Yes')) {
-      console.log(c('cyan', '\n   Pushing commits and tags...'));
-      try {
-        execSync('git push', { cwd: monorepoRoot, stdio: 'inherit' });
-        execSync('git push --tags', { cwd: monorepoRoot, stdio: 'inherit' });
-        console.log(c('green', '   ✓ Pushed successfully'));
-      } catch (error) {
-        console.log(c('red', '   ✗ Push failed'));
+      } else {
+        console.log(
+          c('yellow', '\n   ⚠️  Skipping GitHub releases (tags not pushed)'),
+        );
+        console.log(
+          c('dim', '   You can create releases manually after pushing:'),
+        );
+        releasedPackages.forEach((r) => {
+          console.log(
+            c(
+              'dim',
+              `      gh release create ${r.tag} --title "${r.ext.name} v${r.newVersion}"`,
+            ),
+          );
+        });
       }
     }
 
