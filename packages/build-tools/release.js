@@ -146,6 +146,8 @@ function bumpVersion(version, bump) {
       return `${major}.${minor + 1}.0`;
     case 'patch':
       return `${major}.${minor}.${patch + 1}`;
+    case 'none':
+      return version;
     default:
       throw new Error(`Invalid bump type: ${bump}`);
   }
@@ -420,10 +422,13 @@ async function main() {
       const bumpType = await selectOption(
         rl,
         `Version bump for ${ext.name} (current: v${ext.version}):`,
-        ['patch', 'minor', 'major'],
+        ['patch', 'minor', 'major', 'none (keep current)'],
       );
 
-      const newVersion = bumpVersion(ext.version, bumpType);
+      // Extract just the bump type if user selected 'none (keep current)'
+      const bump = bumpType.startsWith('none') ? 'none' : bumpType;
+
+      const newVersion = bumpVersion(ext.version, bump);
       console.log(c('green', `\n   New version: v${newVersion}`));
 
       // Prompt for summary
