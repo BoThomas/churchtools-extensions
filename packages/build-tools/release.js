@@ -438,25 +438,26 @@ async function main() {
         c('cyan', '   Release summary (one line, or empty): '),
       );
 
-      // Update package.json version
+      // Update package.json version (only if changed)
       const pkgPath = path.join(ext.path, 'package.json');
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      pkg.version = newVersion;
-      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-      console.log(c('green', '\n   ✓ Updated package.json version'));
+      const versionChanged = newVersion !== ext.version;
 
-      // Git commit
-      const commitMessage = `chore(${ext.dirName}): release v${newVersion}`;
-      execSync(`git add "${pkgPath}"`, { cwd: monorepoRoot });
-      execSync(`git commit -m "${commitMessage}"`, { cwd: monorepoRoot });
-      console.log(c('green', `   ✓ Committed: ${commitMessage}`));
+      if (versionChanged) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        pkg.version = newVersion;
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+        console.log(c('green', '\n   ✓ Updated package.json version'));
 
-      // Create annotated tag
-      const tag = `${ext.name}@${newVersion}`;
-      execSync(`git tag -a "${tag}" -m "Release ${ext.name} v${newVersion}"`, {
-        cwd: monorepoRoot,
-      });
-      console.log(c('green', `   ✓ Created tag: ${tag}`));
+        // Git commit
+        const commitMessage = `chore(${ext.dirName}): release v${newVersion}`;
+        execSync(`git add "${pkgPath}"`, { cwd: monorepoRoot });
+        execSync(`git commit -m "${commitMessage}"`, { cwd: monorepoRoot });
+        console.log(c('green', `   ✓ Committed: ${commitMessage}`));
+      } else {
+        console.log(
+          c('dim', '\n   ℹ Version unchanged, skipping package.json update'),
+        );
+      }
 
       // Run deploy (build + package)
       console.log(c('cyan', '\n   Building and packaging...'));
@@ -484,13 +485,23 @@ async function main() {
       // Update changelog
       const changelogPath = updateChangelog(ext.path, changelogEntry);
       execSync(`git add "${changelogPath}"`, { cwd: monorepoRoot });
-      execSync(`git commit --amend --no-edit`, { cwd: monorepoRoot });
-      // Update the tag to point to the amended commit
-      execSync(`git tag -d "${tag}"`, { cwd: monorepoRoot, stdio: 'ignore' });
+
+      if (versionChanged) {
+        // Amend the version bump commit to include changelog
+        execSync(`git commit --amend --no-edit`, { cwd: monorepoRoot });
+      } else {
+        // Create a new commit for the changelog
+        const commitMessage = `chore(${ext.dirName}): release v${newVersion}`;
+        execSync(`git commit -m "${commitMessage}"`, { cwd: monorepoRoot });
+      }
+      console.log(c('green', `   ✓ Updated CHANGELOG.md`));
+
+      // Create annotated tag
+      const tag = `${ext.name}@${newVersion}`;
       execSync(`git tag -a "${tag}" -m "Release ${ext.name} v${newVersion}"`, {
         cwd: monorepoRoot,
       });
-      console.log(c('green', `   ✓ Updated CHANGELOG.md`));
+      console.log(c('green', `   ✓ Created tag: ${tag}`));
 
       releasedPackages.push({
         ext,
