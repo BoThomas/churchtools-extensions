@@ -10,6 +10,7 @@ A collection of extensions for [ChurchTools](https://church.tools/) – the chur
   - [🍽️ Running Dinner](#️-running-dinner)
   - [🍽️ Running Dinner Groups](#️-running-dinner-groups)
   - [🎮 Community Games](#-community-games)
+- [Releases](#releases)
 - [For Developers](#for-developers)
   - [Repository Structure](#repository-structure)
   - [Shared Packages](#shared-packages)
@@ -45,7 +46,7 @@ Perfect for churches with international members who need live translation during
 
 **Features**: Real-time transcription • Lots of customization options • Presentation mode • Session logging
 
-→ [Read more](./extensions/translator/README.md)
+→ [Read more](./extensions/translator/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-translator)
 
 ---
 
@@ -60,7 +61,7 @@ A Running Dinner is a social event where groups host one course (starter, main, 
 
 **Features**: Event management • Participant registration • Smart group creation • Route optimization • Communication tools
 
-→ [Read more](./extensions/running-dinner/README.md)
+→ [Read more](./extensions/running-dinner/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner)
 
 ---
 
@@ -75,7 +76,7 @@ An alternative version of Running Dinner that uses ChurchTools' native group man
 
 **Features**: ChurchTools group integration • Custom field-based registration • Email notifications • Same powerful grouping and routing algorithms
 
-→ [Read more](./extensions/running-dinner-groups/README.md)
+→ [Read more](./extensions/running-dinner-groups/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner-groups)
 
 ---
 
@@ -88,7 +89,22 @@ Bring your community together with interactive games! Teams vote on moves togeth
 **Games**: TicTacToe • Connect Four • More to come...
 **Features**: Team voting • Multiple simultaneous games • Live updates • Works on mobile
 
-→ [Read more](./extensions/community-games/README.md)
+→ [Read more](./extensions/community-games/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-community-games)
+
+---
+
+## Releases
+
+Download ready-to-install extension packages from the [GitHub Releases](https://github.com/BoThomas/churchtools-extensions/releases) page.
+
+**Filter by extension:**
+
+| Extension             | Releases                                                                                                                    |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Translator            | [ct-translator releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-translator)                       |
+| Running Dinner        | [ct-running-dinner releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner)               |
+| Running Dinner Groups | [ct-running-dinner-groups releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner-groups) |
+| Community Games       | [ct-community-games releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-community-games)             |
 
 ---
 
