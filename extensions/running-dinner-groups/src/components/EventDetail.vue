@@ -10,11 +10,7 @@
     <template #header>
       <div class="flex items-center gap-3">
         <span class="font-bold text-lg">{{ eventName }}</span>
-        <Badge :value="ctStatusLabel" :severity="ctStatusSeverity" />
-        <Badge
-          :value="workflowStatusLabel"
-          :severity="workflowStatusSeverity"
-        />
+        <Badge v-if="isArchived" value="Archived" severity="secondary" />
       </div>
     </template>
 
@@ -41,6 +37,34 @@
       <TabPanels class="mt-4">
         <!-- Overview Tab -->
         <TabPanel value="overview">
+          <!-- Next Step Banner -->
+          <div
+            class="mb-6 p-4 rounded-lg flex items-center gap-4"
+            :class="nextStepStyle.bgClass"
+          >
+            <div
+              class="w-10 h-10 rounded-full flex items-center justify-center"
+              :class="nextStepStyle.iconBgClass"
+            >
+              <i class="pi text-lg" :class="nextStepStyle.iconClass"></i>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold" :class="nextStepStyle.textClass">
+                {{ nextStepTitle }}
+              </div>
+              <div class="text-sm" :class="nextStepStyle.subtextClass">
+                {{ nextStepDescription }}
+              </div>
+            </div>
+            <Button
+              v-if="nextStepAction"
+              :label="nextStepAction.label"
+              :icon="nextStepAction.icon"
+              size="small"
+              @click="nextStepAction.action"
+            />
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Event Info Card -->
             <Card>
@@ -263,7 +287,7 @@ import type {
 import { useChurchtoolsStore } from '@/stores/churchtools';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';
 import { useRouteStore } from '@/stores/route';
-import Dialog from 'primevue/dialog';
+import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
 import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
 import Tab from '@churchtools-extensions/prime-volt/Tab.vue';
@@ -331,66 +355,149 @@ const isArchived = computed(
   () => props.group?.information?.groupStatusId === 2,
 );
 
-const ctStatusLabel = computed(() => {
-  const statusId = props.group?.information?.groupStatusId;
-  switch (statusId) {
-    case 1:
-      return 'Active';
-    case 2:
-      return 'Archived';
-    case 3:
-      return 'Ended';
-    default:
-      return 'Unknown';
-  }
-});
-
-const ctStatusSeverity = computed(
-  (): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' => {
-    const statusId = props.group?.information?.groupStatusId;
-    switch (statusId) {
-      case 1:
-        return 'success'; // Active
-      case 2:
-        return 'secondary'; // Archived
-      case 3:
-        return 'info'; // Ended
-      default:
-        return 'secondary';
-    }
-  },
-);
-
-const workflowStatusLabel = computed(() => {
-  const statusMap: Record<string, string> = {
-    active: 'Pending',
-    'groups-created': 'Groups Created',
-    'routes-assigned': 'Routes Assigned',
-    'notifications-sent': 'Notified',
-    completed: 'Completed',
-  };
-  return statusMap[props.event.value.status] || props.event.value.status;
-});
-
-const workflowStatusSeverity = computed(
-  (): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' => {
-    const severityMap: Record<
-      string,
-      'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast'
-    > = {
-      active: 'info',
-      'groups-created': 'warn',
-      'routes-assigned': 'warn',
-      'notifications-sent': 'success',
-      completed: 'secondary',
-    };
-    return severityMap[props.event.value.status] || 'info';
-  },
-);
-
 const activeMembers = computed(() =>
   members.value.filter((m) => m.groupMemberStatus === 'active'),
 );
+
+// Next step indicator for overview banner
+const nextStepTitle = computed(() => {
+  if (isArchived.value) return 'Event Archived';
+
+  const status = props.event.value.status;
+  switch (status) {
+    case 'active':
+      return isOpenForMembers.value
+        ? 'Waiting for Registrations'
+        : 'Ready to Create Groups';
+    case 'groups-created':
+      return 'Groups Created';
+    case 'routes-assigned':
+      return 'Routes Assigned';
+    case 'notifications-sent':
+      return 'Participants Notified';
+    case 'completed':
+      return 'Event Completed';
+    default:
+      return 'Unknown Status';
+  }
+});
+
+const nextStepDescription = computed(() => {
+  if (isArchived.value) return 'This event has been archived and is read-only.';
+
+  const status = props.event.value.status;
+  const memberCount = activeMembers.value.length;
+
+  switch (status) {
+    case 'active':
+      return isOpenForMembers.value
+        ? `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered so far. Close registration when ready.`
+        : `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered. Go to "Dinner Groups" tab to create groups.`;
+    case 'groups-created':
+      return `${dinnerGroups.value.length} dinner groups created. Go to "Routes" tab to assign routes.`;
+    case 'routes-assigned':
+      return 'Routes are ready. Send notifications to participants.';
+    case 'notifications-sent':
+      return 'All participants have been notified with their routes.';
+    case 'completed':
+      return 'This running dinner event has been completed.';
+    default:
+      return '';
+  }
+});
+
+const nextStepStyle = computed(() => {
+  if (isArchived.value) {
+    return {
+      bgClass: 'bg-surface-100 dark:bg-surface-800',
+      iconBgClass: 'bg-surface-200 dark:bg-surface-700',
+      iconClass: 'pi-inbox text-surface-500',
+      textClass: 'text-surface-700 dark:text-surface-300',
+      subtextClass: 'text-surface-500 dark:text-surface-400',
+    };
+  }
+
+  const status = props.event.value.status;
+  switch (status) {
+    case 'active':
+      return isOpenForMembers.value
+        ? {
+            bgClass: 'bg-blue-50 dark:bg-blue-900/20',
+            iconBgClass: 'bg-blue-100 dark:bg-blue-800/40',
+            iconClass: 'pi-clock text-blue-600 dark:text-blue-400',
+            textClass: 'text-blue-800 dark:text-blue-200',
+            subtextClass: 'text-blue-600 dark:text-blue-300',
+          }
+        : {
+            bgClass: 'bg-amber-50 dark:bg-amber-900/20',
+            iconBgClass: 'bg-amber-100 dark:bg-amber-800/40',
+            iconClass: 'pi-arrow-right text-amber-600 dark:text-amber-400',
+            textClass: 'text-amber-800 dark:text-amber-200',
+            subtextClass: 'text-amber-600 dark:text-amber-300',
+          };
+    case 'groups-created':
+    case 'routes-assigned':
+      return {
+        bgClass: 'bg-amber-50 dark:bg-amber-900/20',
+        iconBgClass: 'bg-amber-100 dark:bg-amber-800/40',
+        iconClass: 'pi-arrow-right text-amber-600 dark:text-amber-400',
+        textClass: 'text-amber-800 dark:text-amber-200',
+        subtextClass: 'text-amber-600 dark:text-amber-300',
+      };
+    case 'notifications-sent':
+    case 'completed':
+      return {
+        bgClass: 'bg-green-50 dark:bg-green-900/20',
+        iconBgClass: 'bg-green-100 dark:bg-green-800/40',
+        iconClass: 'pi-check-circle text-green-600 dark:text-green-400',
+        textClass: 'text-green-800 dark:text-green-200',
+        subtextClass: 'text-green-600 dark:text-green-300',
+      };
+    default:
+      return {
+        bgClass: 'bg-surface-100 dark:bg-surface-800',
+        iconBgClass: 'bg-surface-200 dark:bg-surface-700',
+        iconClass: 'pi-question-circle text-surface-500',
+        textClass: 'text-surface-700 dark:text-surface-300',
+        subtextClass: 'text-surface-500 dark:text-surface-400',
+      };
+  }
+});
+
+const nextStepAction = computed(() => {
+  if (isArchived.value) return null;
+
+  const status = props.event.value.status;
+  switch (status) {
+    case 'active':
+      if (isOpenForMembers.value) {
+        return {
+          label: 'Close Registration',
+          icon: 'pi pi-lock',
+          action: () => emit('toggle-registration'),
+        };
+      }
+      return {
+        label: 'Create Groups',
+        icon: 'pi pi-sitemap',
+        action: () => (activeTab.value = 'groups'),
+      };
+    case 'groups-created':
+      return {
+        label: 'Assign Routes',
+        icon: 'pi pi-map',
+        action: () => (activeTab.value = 'routes'),
+      };
+    case 'routes-assigned':
+      return {
+        label: 'Go to Routes',
+        icon: 'pi pi-send',
+        action: () => (activeTab.value = 'routes'),
+      };
+    default:
+      return null;
+  }
+});
 
 // Watchers
 watch(
