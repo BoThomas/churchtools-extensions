@@ -23,6 +23,7 @@
     "./InputNumber.vue": "./volt/InputNumber.vue",
     "./InputText.vue": "./volt/InputText.vue",
     "./Listbox.vue": "./volt/Listbox.vue",
+    "./Menu.vue": "./volt/Menu.vue",
     "./Message.vue": "./volt/Message.vue",
     "./Multiselect.vue": "./volt/Multiselect.vue",
     "./Password.vue": "./volt/Password.vue",

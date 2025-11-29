@@ -60,6 +60,7 @@
             :group="getGroup(event.value.groupId)"
             :member-count="getMemberCount(event.value.groupId)"
             :waitlist-count="getWaitlistCount(event.value.groupId)"
+            :action-loading="actionLoading"
             @view="handleViewEvent"
             @archive="handleArchiveEvent"
             @delete="handleDeleteEvent"
@@ -83,6 +84,7 @@
       v-model:visible="showDetailDialog"
       :event="selectedEvent"
       :group="selectedEvent ? getGroup(selectedEvent.value.groupId) : null"
+      :action-loading="actionLoading"
       @toggle-registration="handleToggleRegistration(selectedEvent!)"
       @status-changed="handleStatusChanged"
     />
@@ -118,6 +120,8 @@ const showDetailDialog = ref(false);
 const selectedEvent = ref<CategoryValue<EventMetadata> | null>(null);
 const groupCache = ref<Map<number, Group>>(new Map());
 const memberCache = ref<Map<number, GroupMember[]>>(new Map());
+// Track loading state for actions: 'registration-{eventId}' | 'archive-{eventId}' | 'delete-{eventId}'
+const actionLoading = ref<string | null>(null);
 
 onMounted(async () => {
   await loadAllData();
@@ -280,6 +284,7 @@ async function handleToggleRegistration(event: CategoryValue<EventMetadata>) {
   const group = getGroup(event.value.groupId);
   const isCurrentlyOpen = group?.settings?.isOpenForMembers ?? false;
 
+  actionLoading.value = `registration-${event.id}`;
   try {
     // CT API controls registration via signUpOpeningDate/signUpClosingDate at root level
     // To close: set both to null
@@ -314,6 +319,8 @@ async function handleToggleRegistration(event: CategoryValue<EventMetadata>) {
       detail: 'Failed to update registration status',
       life: 5000,
     });
+  } finally {
+    actionLoading.value = null;
   }
 }
 

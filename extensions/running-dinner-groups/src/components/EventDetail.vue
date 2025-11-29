@@ -60,8 +60,14 @@
             <Button
               v-if="nextStepAction"
               :label="nextStepAction.label"
-              :icon="nextStepAction.icon"
+              :icon="
+                nextStepActionLoading
+                  ? 'pi pi-spin pi-spinner'
+                  : nextStepAction.icon
+              "
               size="small"
+              :loading="nextStepActionLoading"
+              :disabled="nextStepActionLoading"
               @click="nextStepAction.action"
             />
           </div>
@@ -215,10 +221,17 @@
                         ? 'Close Registration'
                         : 'Open Registration'
                     "
-                    :icon="isOpenForMembers ? 'pi pi-lock' : 'pi pi-lock-open'"
+                    :icon="
+                      isRegistrationLoading
+                        ? 'pi pi-spin pi-spinner'
+                        : isOpenForMembers
+                          ? 'pi pi-lock'
+                          : 'pi pi-lock-open'
+                    "
                     size="small"
                     outlined
-                    :disabled="isArchived"
+                    :disabled="isArchived || isRegistrationLoading"
+                    :loading="isRegistrationLoading"
                     @click="$emit('toggle-registration')"
                   />
                 </div>
@@ -303,6 +316,7 @@ const props = defineProps<{
   visible: boolean;
   event: CategoryValue<EventMetadata>;
   group?: Group | null;
+  actionLoading?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -353,6 +367,20 @@ const isOpenForMembers = computed(
 const isArchived = computed(
   () => props.group?.information?.groupStatusId === 2,
 );
+const isRegistrationLoading = computed(
+  () => props.actionLoading === `registration-${props.event.id}`,
+);
+
+// Check if the next step action button should show loading
+// (only for registration-related actions)
+const nextStepActionLoading = computed(() => {
+  if (!nextStepAction.value) return false;
+  // The "Close Registration" action in the banner
+  if (nextStepAction.value.label === 'Close Registration') {
+    return isRegistrationLoading.value;
+  }
+  return false;
+});
 
 const activeMembers = computed(() =>
   members.value.filter((m) => m.groupMemberStatus === 'active'),

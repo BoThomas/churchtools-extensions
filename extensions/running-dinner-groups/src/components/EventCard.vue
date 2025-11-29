@@ -50,10 +50,7 @@
         </div>
 
         <!-- Next Step / Progress Indicator -->
-        <div
-          class="flex items-center gap-2 text-sm rounded-md p-2 -mx-2"
-          :class="nextStepStyle.bgClass"
-        >
+        <div class="flex items-center gap-2 text-sm">
           <i class="pi text-xs" :class="nextStepStyle.iconClass"></i>
           <span :class="nextStepStyle.textClass">{{ nextStepText }}</span>
         </div>
@@ -62,60 +59,22 @@
 
     <template #footer>
       <div class="flex items-center justify-between gap-2">
-        <Button
-          label="View Details"
-          icon="pi pi-eye"
-          size="small"
-          @click="$emit('view', event)"
-        />
+        <Button label="Manage" size="small" @click="$emit('view', event)" />
 
         <!-- Actions Menu -->
         <Button
-          icon="pi pi-ellipsis-v"
+          :icon="
+            isRegistrationLoading ? 'pi pi-spin pi-spinner' : 'pi pi-ellipsis-v'
+          "
           size="small"
           text
           severity="secondary"
+          :disabled="isRegistrationLoading"
           @click="toggleMenu"
           aria-haspopup="true"
           aria-controls="event-actions-menu"
         />
-        <Popover ref="menuRef">
-          <div class="flex flex-col min-w-40">
-            <button
-              class="p-2 text-left hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2"
-              @click="handleOpenInCT"
-            >
-              <i class="pi pi-external-link text-xs"></i>
-              Open in ChurchTools
-            </button>
-            <button
-              v-if="!isArchived"
-              class="p-2 text-left hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2"
-              @click="$emit('toggle-registration', event)"
-            >
-              <i
-                class="pi text-xs"
-                :class="isOpenForMembers ? 'pi-lock' : 'pi-lock-open'"
-              ></i>
-              {{ isOpenForMembers ? 'Close' : 'Open' }} Registration
-            </button>
-            <button
-              v-if="!isArchived"
-              class="p-2 text-left hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2 text-orange-600"
-              @click="$emit('archive', event)"
-            >
-              <i class="pi pi-inbox text-xs"></i>
-              Archive Event
-            </button>
-            <button
-              class="p-2 text-left hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2 text-red-600"
-              @click="$emit('delete', event)"
-            >
-              <i class="pi pi-trash text-xs"></i>
-              Delete Event
-            </button>
-          </div>
-        </Popover>
+        <Menu ref="menuRef" :model="menuItems" popup />
       </div>
     </template>
   </Card>
@@ -125,23 +84,18 @@
 import { ref, computed } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import type { EventMetadata, Group } from '@/types/models';
+import type { MenuItem } from 'primevue/menuitem';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
+import Menu from '@churchtools-extensions/prime-volt/Menu.vue';
 
 const props = defineProps<{
   event: CategoryValue<EventMetadata>;
   group?: Group | null;
   memberCount?: number;
   waitlistCount?: number;
-}>();
-
-defineEmits<{
-  view: [event: CategoryValue<EventMetadata>];
-  archive: [event: CategoryValue<EventMetadata>];
-  delete: [event: CategoryValue<EventMetadata>];
-  'toggle-registration': [event: CategoryValue<EventMetadata>];
+  actionLoading?: string | null;
 }>();
 
 const menuRef = ref();
@@ -176,6 +130,59 @@ const isOpenForMembers = computed(
 const isArchived = computed(
   () => props.group?.information?.groupStatusId === 2,
 );
+
+const isRegistrationLoading = computed(
+  () => props.actionLoading === `registration-${props.event.id}`,
+);
+
+const emit = defineEmits<{
+  view: [event: CategoryValue<EventMetadata>];
+  archive: [event: CategoryValue<EventMetadata>];
+  delete: [event: CategoryValue<EventMetadata>];
+  'toggle-registration': [event: CategoryValue<EventMetadata>];
+}>();
+
+function openInCT() {
+  const baseUrl = import.meta.env.DEV
+    ? import.meta.env.VITE_EXTERNAL_API_URL?.replace(/\/$/, '')
+    : window.location.origin;
+  const url = `${baseUrl}/groups/${props.event.value.groupId}/dashboard`;
+  window.open(url, '_blank');
+}
+
+const menuItems = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = [
+    {
+      label: 'Open in ChurchTools',
+      icon: 'pi pi-external-link',
+      command: openInCT,
+    },
+  ];
+
+  if (!isArchived.value) {
+    items.push({
+      label: isOpenForMembers.value
+        ? 'Close Registration'
+        : 'Open Registration',
+      icon: isOpenForMembers.value ? 'pi pi-lock' : 'pi pi-lock-open',
+      disabled: isRegistrationLoading.value,
+      command: () => emit('toggle-registration', props.event),
+    });
+    items.push({
+      label: 'Archive Event',
+      icon: 'pi pi-inbox',
+      command: () => emit('archive', props.event),
+    });
+  }
+
+  items.push({
+    label: 'Delete Event',
+    icon: 'pi pi-trash',
+    command: () => emit('delete', props.event),
+  });
+
+  return items;
+});
 
 // Next step indicator - clear action-oriented messaging
 const nextStepText = computed(() => {
@@ -247,13 +254,4 @@ const nextStepStyle = computed(() => {
       };
   }
 });
-
-function handleOpenInCT() {
-  const baseUrl = import.meta.env.DEV
-    ? import.meta.env.VITE_EXTERNAL_API_URL?.replace(/\/$/, '')
-    : window.location.origin;
-  const url = `${baseUrl}/groups/${props.event.value.groupId}/dashboard`;
-  window.open(url, '_blank');
-  menuRef.value?.hide();
-}
 </script>
