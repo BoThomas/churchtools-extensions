@@ -174,14 +174,15 @@ export interface GroupMember {
 export interface Group {
   id: number;
   name: string;
-  groupTypeId: number;
-  groupStatusId: number;
   information?: {
+    groupTypeId?: number;
+    groupStatusId?: number;
     note?: string;
     meetingTime?: string;
     groupCategoryId?: number | null;
     campusId?: number | null;
     endDate?: string;
+    targetGroupId?: number | null; // Parent group ID for child groups
   };
   settings?: {
     isOpenForMembers?: boolean;
@@ -191,7 +192,6 @@ export interface Group {
     maxMembers?: number | null;
     inStatistic?: boolean;
   };
-  targetGroupId?: number | null; // Parent group ID
 }
 
 /**

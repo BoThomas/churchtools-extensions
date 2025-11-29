@@ -327,19 +327,19 @@ const formatEventDate = computed(() => {
 const isOpenForMembers = computed(
   () => props.group?.settings?.isOpenForMembers ?? false,
 );
-const isArchived = computed(() => props.group?.groupStatusId === 3);
+const isArchived = computed(
+  () => props.group?.information?.groupStatusId === 2,
+);
 
 const ctStatusLabel = computed(() => {
-  const statusId = props.group?.groupStatusId;
+  const statusId = props.group?.information?.groupStatusId;
   switch (statusId) {
     case 1:
-      return 'Draft';
-    case 2:
       return 'Active';
-    case 3:
+    case 2:
       return 'Archived';
-    case 4:
-      return 'Finished';
+    case 3:
+      return 'Ended';
     default:
       return 'Unknown';
   }
@@ -347,16 +347,14 @@ const ctStatusLabel = computed(() => {
 
 const ctStatusSeverity = computed(
   (): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' => {
-    const statusId = props.group?.groupStatusId;
+    const statusId = props.group?.information?.groupStatusId;
     switch (statusId) {
       case 1:
-        return 'warn';
+        return 'success'; // Active
       case 2:
-        return 'success';
+        return 'secondary'; // Archived
       case 3:
-        return 'secondary';
-      case 4:
-        return 'info';
+        return 'info'; // Ended
       default:
         return 'secondary';
     }

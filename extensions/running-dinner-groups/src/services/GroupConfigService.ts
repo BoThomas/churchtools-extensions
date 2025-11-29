@@ -104,7 +104,8 @@ export class GroupConfigService {
       }
 
       // 3. Create the parent group
-      // Note: groupStatusId 1 = 'active', 2 = 'pending', 3 = 'archived', 4 = 'finished'
+      // Note: groupStatusId 1 = 'active', 2 = 'archived', 3 = 'ended'
+      // POST /groups uses flat structure (groupStatusId at root)
       const groupData = {
         name: GroupConfigService.PARENT_GROUP_NAME,
         groupTypeId: dienstType.id,
@@ -638,8 +639,12 @@ export class GroupConfigService {
       const parentGroup = (await churchtoolsClient.get(
         `/groups/${options.parentGroupId}`,
       )) as Group;
+      const groupTypeId = parentGroup.information?.groupTypeId;
+      if (!groupTypeId) {
+        throw new Error('Parent group type ID not found');
+      }
       const rolesResponse = await churchtoolsClient.get(
-        `/grouptypes/${parentGroup.groupTypeId}/roles`,
+        `/grouptypes/${groupTypeId}/roles`,
       );
       const roles = Array.isArray(rolesResponse)
         ? rolesResponse

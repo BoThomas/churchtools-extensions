@@ -179,18 +179,16 @@ const isOpenForMembers = computed(
   () => props.group?.settings?.isOpenForMembers ?? false,
 );
 
-// CT Group Status (from groupStatusId)
+// CT Group Status (from information.groupStatusId)
 const ctStatusLabel = computed(() => {
-  const statusId = props.group?.groupStatusId;
+  const statusId = props.group?.information?.groupStatusId;
   switch (statusId) {
     case 1:
-      return 'Draft';
-    case 2:
       return 'Active';
-    case 3:
+    case 2:
       return 'Archived';
-    case 4:
-      return 'Finished';
+    case 3:
+      return 'Ended';
     default:
       return 'Unknown';
   }
@@ -198,23 +196,23 @@ const ctStatusLabel = computed(() => {
 
 const ctStatusSeverity = computed(
   (): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' => {
-    const statusId = props.group?.groupStatusId;
+    const statusId = props.group?.information?.groupStatusId;
     switch (statusId) {
       case 1:
-        return 'warn'; // Draft - yellow
-      case 2:
         return 'success'; // Active - green
-      case 3:
+      case 2:
         return 'secondary'; // Archived - gray
-      case 4:
-        return 'info'; // Finished - blue
+      case 3:
+        return 'info'; // Ended - blue
       default:
         return 'secondary';
     }
   },
 );
 
-const isArchived = computed(() => props.group?.groupStatusId === 3);
+const isArchived = computed(
+  () => props.group?.information?.groupStatusId === 2,
+);
 
 // Extension Workflow Status
 const workflowStatusLabel = computed(() => {

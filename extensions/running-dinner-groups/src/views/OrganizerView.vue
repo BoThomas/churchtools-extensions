@@ -124,39 +124,47 @@ onMounted(async () => {
 });
 
 async function loadAllData() {
+  // First load event metadata to know which groups to fetch
+  await eventMetadataStore.fetchAll();
+
   await Promise.all([
-    loadChildGroups(),
+    loadEventGroups(),
     dinnerGroupStore.fetchAll(),
     routeStore.fetchAll(),
   ]);
 }
 
 async function handleParentGroupCreated() {
-  await loadChildGroups();
+  await loadEventGroups();
 }
 
 async function handleEventCreated(_groupId: number) {
   await loadAllData();
 }
 
-async function loadChildGroups() {
+/**
+ * Load groups based on event metadata groupIds.
+ * This is more reliable than relying on targetGroupId parent-child relationship.
+ */
+async function loadEventGroups() {
   try {
-    const parentGroup = await churchtoolsStore.getParentGroup();
-    if (parentGroup) {
-      const childGroups = await churchtoolsStore.getChildGroups(parentGroup.id);
-      groupCache.value.clear();
-      childGroups.forEach((group) => {
-        groupCache.value.set(group.id, group);
-      });
+    groupCache.value.clear();
+    memberCache.value.clear();
 
-      // Load members for each group
-      for (const group of childGroups) {
-        const members = await churchtoolsStore.getGroupMembers(group.id);
-        memberCache.value.set(group.id, members);
+    // Get all group IDs from event metadata
+    const groupIds = eventMetadataStore.events.map((e) => e.value.groupId);
+
+    // Load each group and its members
+    for (const groupId of groupIds) {
+      const group = await churchtoolsStore.getGroup(groupId);
+      if (group) {
+        groupCache.value.set(groupId, group);
+        const members = await churchtoolsStore.getGroupMembers(groupId);
+        memberCache.value.set(groupId, members);
       }
     }
   } catch (error) {
-    console.error('Failed to load child groups:', error);
+    console.error('Failed to load event groups:', error);
   }
 }
 
@@ -194,9 +202,12 @@ async function handleArchiveEvent(event: CategoryValue<EventMetadata>) {
     icon: 'pi pi-inbox',
     accept: async () => {
       try {
-        // Update CT group status to archived (3)
+        // Update CT group status to archived (2)
+        // groupStatusId is nested inside 'information' in the CT API
         await churchtoolsStore.updateGroup(event.value.groupId, {
-          groupStatusId: 3,
+          information: {
+            groupStatusId: 2,
+          },
         } as any);
 
         toast.add({
@@ -206,7 +217,7 @@ async function handleArchiveEvent(event: CategoryValue<EventMetadata>) {
           life: 3000,
         });
 
-        await loadChildGroups();
+        await loadEventGroups();
       } catch (error) {
         toast.add({
           severity: 'error',
@@ -279,7 +290,7 @@ async function handleToggleRegistration(event: CategoryValue<EventMetadata>) {
       life: 3000,
     });
 
-    await loadChildGroups();
+    await loadEventGroups();
   } catch (error) {
     toast.add({
       severity: 'error',

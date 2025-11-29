@@ -202,9 +202,11 @@ export class SyncService {
       throw new Error('Event not found');
     }
 
-    // Set CT group status to archived (groupStatusId = 3)
+    // Set CT group status to archived (information.groupStatusId = 2)
     await this.churchtoolsStore.updateGroup(event.value.groupId, {
-      groupStatusId: 3, // archived
+      information: {
+        groupStatusId: 2, // archived
+      },
     });
 
     // Update event metadata status to completed
@@ -226,9 +228,11 @@ export class SyncService {
       throw new Error('Event not found');
     }
 
-    // Set CT group status back to active (groupStatusId = 1)
+    // Set CT group status back to active (information.groupStatusId = 1)
     await this.churchtoolsStore.updateGroup(event.value.groupId, {
-      groupStatusId: 1, // active
+      information: {
+        groupStatusId: 1, // active
+      },
     });
 
     // Restore event metadata status based on current state
@@ -293,14 +297,14 @@ export class SyncService {
     // Map status ID to name
     const statusNames: Record<number, string> = {
       1: 'active',
-      2: 'pending',
-      3: 'archived',
-      4: 'finished',
+      2: 'archived',
+      3: 'ended',
     };
 
+    const statusId = group.information?.groupStatusId ?? 1;
     return {
-      statusId: group.groupStatusId,
-      statusName: statusNames[group.groupStatusId] || 'unknown',
+      statusId,
+      statusName: statusNames[statusId] || 'unknown',
     };
   }
 }

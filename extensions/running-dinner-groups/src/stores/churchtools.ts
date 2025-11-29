@@ -46,6 +46,7 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
 
   /**
    * Get all child groups of a parent group
+   * Note: Uses information.targetGroupId as that's where CT stores the parent reference
    */
   async function getChildGroups(parentId: number): Promise<Group[]> {
     loading.value = true;
@@ -53,7 +54,7 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
     try {
       const response = await churchtoolsClient.get('/groups');
       const groups = normalizeResponse<Group>(response);
-      return groups.filter((g) => g.targetGroupId === parentId);
+      return groups.filter((g) => g.information?.targetGroupId === parentId);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';
       console.error('getChildGroups error:', err);
