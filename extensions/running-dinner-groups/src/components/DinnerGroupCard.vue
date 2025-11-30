@@ -1,5 +1,10 @@
 <template>
-  <Card class="h-full">
+  <Card
+    class="h-full"
+    pt:root:class="flex flex-col"
+    pt:body:class="flex-1 flex flex-col"
+    pt:content:class="flex-1"
+  >
     <template #title>
       <div class="flex items-center justify-between">
         <span>Group {{ group.groupNumber }}</span>
@@ -91,6 +96,11 @@
               v-for="(restriction, idx) in dietaryRestrictions"
               :key="idx"
               class="text-sm"
+              :class="
+                restriction.isAllergy
+                  ? 'text-orange-600 dark:text-orange-400'
+                  : ''
+              "
             >
               <span class="font-medium">{{ restriction.name }}:</span>
               {{ restriction.restriction }}
@@ -108,30 +118,29 @@
           >
             Meal Preferences:
           </div>
-          <div class="flex flex-wrap gap-1">
-            <Chip
+          <div class="space-y-1">
+            <div
               v-for="(pref, idx) in mealPreferences"
               :key="idx"
-              :label="`${pref.name}: ${getMealLabel(pref.meal)}`"
-              class="text-xs"
-            />
+              class="text-sm"
+            >
+              <span class="font-medium">{{ pref.name }}:</span>
+              {{ getMealLabel(pref.meal) }}
+            </div>
           </div>
         </div>
-
-        <!-- Actions -->
-        <div
-          v-if="editable"
-          class="pt-2 border-t border-surface-200 dark:border-surface-700"
-        >
-          <Button
-            label="Delete Group"
-            icon="pi pi-trash"
-            size="small"
-            severity="danger"
-            text
-            @click="$emit('delete')"
-          />
-        </div>
+      </div>
+    </template>
+    <template v-if="editable" #footer>
+      <div class="flex justify-end">
+        <Button
+          label="Delete Group"
+          icon="pi pi-trash"
+          size="small"
+          severity="danger"
+          text
+          @click="$emit('delete')"
+        />
       </div>
     </template>
   </Card>
@@ -140,10 +149,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { DinnerGroup, GroupMember } from '@/types/models';
+import { getMealLabel, getMealSeverity } from '@/types/models';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 
 const props = defineProps<{
   group: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>;
@@ -175,18 +184,24 @@ const hostAddress = computed(() => {
 });
 
 const dietaryRestrictions = computed(() => {
-  const restrictions: { name: string; restriction: string }[] = [];
+  const restrictions: {
+    name: string;
+    restriction: string;
+    isAllergy: boolean;
+  }[] = [];
   groupMembers.value.forEach((m) => {
     if (m.fields?.dietaryRestrictions) {
       restrictions.push({
         name: m.person.firstName,
         restriction: m.fields.dietaryRestrictions,
+        isAllergy: false,
       });
     }
     if (m.fields?.allergyInfo) {
       restrictions.push({
-        name: `${m.person.firstName} ⚠️`,
+        name: m.person.firstName,
         restriction: m.fields.allergyInfo,
+        isAllergy: true,
       });
     }
   });
@@ -205,28 +220,4 @@ const mealPreferences = computed(() => {
   });
   return prefs;
 });
-
-// Helpers
-function getMealLabel(meal: string): string {
-  const labels: Record<string, string> = {
-    starter: 'Starter',
-    mainCourse: 'Main Course',
-    dessert: 'Dessert',
-  };
-  return labels[meal] || meal;
-}
-
-function getMealSeverity(
-  meal: string,
-): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-  const severities: Record<
-    string,
-    'success' | 'info' | 'warn' | 'danger' | 'secondary'
-  > = {
-    starter: 'info',
-    mainCourse: 'success',
-    dessert: 'warn',
-  };
-  return severities[meal] || 'secondary';
-}
 </script>

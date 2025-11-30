@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-4">
+  <div class="space-y-3">
     <!-- Status and Actions Card -->
     <Card>
       <template #content>
-        <div class="space-y-4">
+        <div class="space-y-3">
           <!-- Status Info -->
           <div class="grid grid-cols-3 gap-4">
             <div class="text-center">
@@ -91,7 +91,7 @@
 
     <!-- Groups Display -->
     <div v-if="localDinnerGroups.length > 0">
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         <DinnerGroupCard
           v-for="group in localDinnerGroups"
           :key="group.groupNumber"
@@ -107,7 +107,7 @@
       </div>
 
       <!-- Unassigned Members -->
-      <Card v-if="unassignedMembers.length > 0" class="mt-4">
+      <Card v-if="unassignedMembers.length > 0" class="mt-3">
         <template #title>
           <i class="pi pi-user-minus mr-2"></i>
           Unassigned Members ({{ unassignedMembers.length }})
@@ -119,15 +119,43 @@
               :key="member.personId"
               class="flex items-center justify-between p-2 rounded bg-surface-50 dark:bg-surface-800"
             >
-              <div>
+              <div class="flex-1 min-w-0">
                 <div class="font-medium">
                   {{ member.person.firstName }} {{ member.person.lastName }}
                 </div>
-                <div class="text-sm text-surface-600 dark:text-surface-400">
-                  {{ member.person.email }}
+                <div
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-600 dark:text-surface-400"
+                >
+                  <span v-if="member.person.email" class="truncate">
+                    {{ member.person.email }}
+                  </span>
+                  <span v-if="member.fields?.mealPreference">
+                    {{ getMealLabel(member.fields.mealPreference) }}
+                  </span>
+                  <span
+                    v-if="member.fields?.dietaryRestrictions"
+                    class="truncate"
+                    :title="member.fields.dietaryRestrictions"
+                  >
+                    🍽️ {{ member.fields.dietaryRestrictions }}
+                  </span>
+                  <span
+                    v-if="member.fields?.allergyInfo"
+                    class="text-red-600 dark:text-red-400 truncate"
+                    :title="member.fields.allergyInfo"
+                  >
+                    ⚠️ {{ member.fields.allergyInfo }}
+                  </span>
+                  <span
+                    v-if="member.fields?.partnerPreference"
+                    class="truncate"
+                    :title="member.fields.partnerPreference"
+                  >
+                    👥 {{ member.fields.partnerPreference }}
+                  </span>
                 </div>
               </div>
-              <div class="flex gap-2">
+              <div class="flex gap-2 ml-2">
                 <Button
                   label="Add to Group"
                   icon="pi pi-plus"
@@ -187,12 +215,27 @@
           />
         </div>
 
+        <!-- Meal selection for new group -->
+        <div v-if="selectedGroupNumber === -1" class="flex flex-col gap-2">
+          <label class="font-medium text-sm">Assign Meal:</label>
+          <Select
+            v-model="selectedNewGroupMeal"
+            :options="MEAL_OPTIONS"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choose a meal"
+          />
+        </div>
+
         <div class="flex justify-end gap-2">
           <SecondaryButton label="Cancel" @click="showAddDialog = false" />
           <Button
             label="Add"
             @click="addMemberToGroup"
-            :disabled="!selectedGroupNumber"
+            :disabled="
+              !selectedGroupNumber ||
+              (selectedGroupNumber === -1 && !selectedNewGroupMeal)
+            "
           />
         </div>
       </div>
@@ -204,6 +247,7 @@
 import { ref, computed, watch } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import type { EventMetadata, DinnerGroup, GroupMember } from '@/types/models';
+import { MEAL_OPTIONS, getMealLabel } from '@/types/models';
 import { groupingService } from '@/services/GroupingService';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
@@ -214,7 +258,7 @@ import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
-import Dialog from 'primevue/dialog';
+import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import DinnerGroupCard from './DinnerGroupCard.vue';
 
@@ -268,11 +312,16 @@ const unassignedMembers = computed(() =>
   activeMembers.value.filter((m) => !assignedPersonIds.value.has(m.personId)),
 );
 
-const groupOptions = computed(() =>
-  localDinnerGroups.value.map((g) => ({
+const groupOptions = computed(() => [
+  { label: '+ Create New Group', value: -1 },
+  ...localDinnerGroups.value.map((g) => ({
     label: `Group ${g.groupNumber} (${g.memberPersonIds.length} members) - ${getMealLabel(g.assignedMeal)}`,
     value: g.groupNumber,
   })),
+]);
+
+const selectedNewGroupMeal = ref<'starter' | 'mainCourse' | 'dessert' | null>(
+  null,
 );
 
 // Watch for existing dinner groups
@@ -286,16 +335,6 @@ watch(
   },
   { immediate: true },
 );
-
-// Methods
-function getMealLabel(meal: string): string {
-  const labels: Record<string, string> = {
-    starter: '🥗 Starter',
-    mainCourse: '🍽️ Main',
-    dessert: '🍰 Dessert',
-  };
-  return labels[meal] || meal;
-}
 
 async function handleCreateGroups() {
   creating.value = true;
@@ -436,21 +475,42 @@ function deleteGroup(groupNumber: number) {
 function showAddToGroupDialog(member: GroupMember) {
   selectedMember.value = member;
   selectedGroupNumber.value = null;
+  selectedNewGroupMeal.value = null;
   showAddDialog.value = true;
 }
 
 function addMemberToGroup() {
-  if (!selectedMember.value || !selectedGroupNumber.value) return;
+  if (!selectedMember.value || selectedGroupNumber.value === null) return;
 
-  const group = localDinnerGroups.value.find(
-    (g) => g.groupNumber === selectedGroupNumber.value,
-  );
-  if (group && !group.memberPersonIds.includes(selectedMember.value.personId)) {
-    group.memberPersonIds.push(selectedMember.value.personId);
+  if (selectedGroupNumber.value === -1) {
+    // Create new group
+    if (!selectedNewGroupMeal.value) return;
+
+    const newGroupNumber = localDinnerGroups.value.length + 1;
+    localDinnerGroups.value.push({
+      eventMetadataId: props.event.id,
+      ctGroupId: props.event.value.groupId,
+      groupNumber: newGroupNumber,
+      assignedMeal: selectedNewGroupMeal.value,
+      memberPersonIds: [selectedMember.value.personId],
+      hostPersonId: selectedMember.value.personId,
+    });
+  } else {
+    // Add to existing group
+    const group = localDinnerGroups.value.find(
+      (g) => g.groupNumber === selectedGroupNumber.value,
+    );
+    if (
+      group &&
+      !group.memberPersonIds.includes(selectedMember.value.personId)
+    ) {
+      group.memberPersonIds.push(selectedMember.value.personId);
+    }
   }
 
   showAddDialog.value = false;
   selectedMember.value = null;
   selectedGroupNumber.value = null;
+  selectedNewGroupMeal.value = null;
 }
 </script>

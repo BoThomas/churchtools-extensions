@@ -5,6 +5,38 @@ import { z } from 'zod';
 export const MealType = z.enum(['starter', 'mainCourse', 'dessert']);
 export type MealType = z.infer<typeof MealType>;
 
+// Meal display options for dropdowns/selects
+export const MEAL_OPTIONS: { label: string; value: MealType }[] = [
+  { label: '🥗 Starter', value: 'starter' },
+  { label: '🍽️ Main Course', value: 'mainCourse' },
+  { label: '🍰 Dessert', value: 'dessert' },
+];
+
+// Helper to get meal label with emoji
+export function getMealLabel(meal: string): string {
+  const labels: Record<string, string> = {
+    starter: '🥗 Starter',
+    mainCourse: '🍽️ Main Course',
+    dessert: '🍰 Dessert',
+  };
+  return labels[meal] || meal;
+}
+
+// Helper to get meal severity for badges
+export function getMealSeverity(
+  meal: string,
+): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+  const severities: Record<
+    string,
+    'success' | 'info' | 'warn' | 'danger' | 'secondary'
+  > = {
+    starter: 'info',
+    mainCourse: 'success',
+    dessert: 'warn',
+  };
+  return severities[meal] || 'secondary';
+}
+
 export const EventStatus = z.enum([
   'active', // Event active, no dinner groups yet
   'groups-created', // Meal groups assigned

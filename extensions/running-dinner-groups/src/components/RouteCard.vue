@@ -96,6 +96,7 @@ import type {
   RouteStop,
   GroupMember,
 } from '@/types/models';
+import { getMealLabel } from '@/types/models';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 
@@ -118,15 +119,6 @@ const memberCount = computed(
 );
 
 // Methods
-function getMealLabel(meal: string): string {
-  const labels: Record<string, string> = {
-    starter: '🥗 Starter',
-    mainCourse: '🍽️ Main Course',
-    dessert: '🍰 Dessert',
-  };
-  return labels[meal] || meal;
-}
-
 function getMealColor(meal: string): string {
   const colors: Record<string, string> = {
     starter: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',

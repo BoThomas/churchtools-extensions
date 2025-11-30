@@ -244,6 +244,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { GroupMember } from '@/types/models';
+import { getMealLabel } from '@/types/models';
 import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
 import Column from 'primevue/column';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -325,16 +326,6 @@ function getStatusSeverity(
     inactive: 'secondary',
   };
   return severities[status] || 'secondary';
-}
-
-function getMealLabel(meal: string): string {
-  const labels: Record<string, string> = {
-    starter: 'Starter',
-    mainCourse: 'Main',
-    dessert: 'Dessert',
-    none: 'None',
-  };
-  return labels[meal] || meal;
 }
 
 function getMealIcon(meal: string): string {
