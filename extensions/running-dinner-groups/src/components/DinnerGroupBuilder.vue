@@ -1,190 +1,283 @@
 <template>
-  <div class="space-y-3">
-    <!-- Status and Actions Card -->
-    <Card>
-      <template #content>
-        <div class="space-y-3">
-          <!-- Status Info -->
-          <div class="grid grid-cols-3 gap-4">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-primary">
-                {{ activeMembers.length }}
-              </div>
-              <div class="text-sm text-surface-600 dark:text-surface-400">
-                Active Members
-              </div>
-            </div>
-            <div class="text-center">
-              <div class="text-2xl font-bold text-success">
-                {{ localDinnerGroups.length }}
-              </div>
-              <div class="text-sm text-surface-600 dark:text-surface-400">
-                Groups Created
-              </div>
-            </div>
-            <div class="text-center">
-              <div class="text-2xl font-bold text-warn">
-                {{ unassignedMembers.length }}
-              </div>
-              <div class="text-sm text-surface-600 dark:text-surface-400">
-                Unassigned
-              </div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex gap-2 flex-wrap">
-            <Button
-              label="Create Groups"
-              icon="pi pi-users"
-              @click="handleCreateGroups"
-              :loading="creating"
-              :disabled="
-                creating ||
-                localDinnerGroups.length > 0 ||
-                activeMembers.length < minMembersNeeded
-              "
-            />
-            <Button
-              v-if="localDinnerGroups.length > 0 && !isSaved"
-              label="Save Groups"
-              icon="pi pi-save"
-              @click="handleSaveGroups"
-              :loading="saving"
-              severity="success"
-            />
-            <DangerButton
-              v-if="localDinnerGroups.length > 0"
-              label="Reset"
-              icon="pi pi-refresh"
-              outlined
-              @click="handleReset"
-              :disabled="creating || saving"
-            />
-          </div>
-
-          <!-- Min members warning -->
-          <Message
-            v-if="activeMembers.length < minMembersNeeded"
-            severity="warn"
-            :closable="false"
+  <div class="space-y-4">
+    <!-- Overview Stats & Actions -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap gap-3">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-100 dark:bg-surface-800"
+        >
+          <i class="pi pi-users text-primary text-sm"></i>
+          <span class="font-semibold">{{ activeMembers.length }}</span>
+          <span class="text-sm text-surface-600 dark:text-surface-400"
+            >Members</span
           >
-            Need at least {{ minMembersNeeded }} active members (3 meals ×
-            {{ event.value.preferredGroupSize }} per group). Currently have
-            {{ activeMembers.length }}.
-          </Message>
-
-          <!-- Warnings -->
-          <div v-if="warnings.length > 0" class="space-y-2">
-            <Message
-              v-for="(warning, idx) in warnings"
-              :key="idx"
-              severity="warn"
-              :closable="false"
-            >
-              {{ warning }}
-            </Message>
-          </div>
         </div>
-      </template>
-    </Card>
-
-    <!-- Groups Display -->
-    <div v-if="localDinnerGroups.length > 0">
-      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        <DinnerGroupCard
-          v-for="group in localDinnerGroups"
-          :key="group.groupNumber"
-          :group="group"
-          :members="members"
-          :editable="!isSaved"
-          @set-host="(personId: number) => setHost(group.groupNumber, personId)"
-          @remove-member="
-            (personId: number) => removeMember(group.groupNumber, personId)
-          "
-          @delete="deleteGroup(group.groupNumber)"
-        />
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-100 dark:bg-surface-800"
+        >
+          <i class="pi pi-sitemap text-green-500 text-sm"></i>
+          <span class="font-semibold">{{ localDinnerGroups.length }}</span>
+          <span class="text-sm text-surface-600 dark:text-surface-400"
+            >Groups</span
+          >
+        </div>
+        <div
+          v-if="unassignedMembers.length > 0"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-900/30"
+        >
+          <i class="pi pi-exclamation-circle text-orange-500 text-sm"></i>
+          <span class="font-semibold text-orange-700 dark:text-orange-300">{{
+            unassignedMembers.length
+          }}</span>
+          <span class="text-sm text-orange-700 dark:text-orange-300"
+            >Unassigned</span
+          >
+        </div>
       </div>
 
-      <!-- Unassigned Members -->
-      <Card v-if="unassignedMembers.length > 0" class="mt-3">
-        <template #title>
-          <i class="pi pi-user-minus mr-2"></i>
-          Unassigned Members ({{ unassignedMembers.length }})
+      <div class="flex gap-2 flex-wrap">
+        <Button
+          label="Create Groups"
+          icon="pi pi-users"
+          size="small"
+          @click="handleCreateGroups"
+          :loading="creating"
+          :disabled="
+            creating ||
+            localDinnerGroups.length > 0 ||
+            activeMembers.length < minMembersNeeded
+          "
+        />
+        <Button
+          v-if="localDinnerGroups.length > 0 && hasUnsavedChanges"
+          label="Save Changes"
+          icon="pi pi-save"
+          size="small"
+          @click="handleSaveGroups"
+          :loading="saving"
+          severity="success"
+        />
+        <DangerButton
+          v-if="localDinnerGroups.length > 0"
+          label="Reset"
+          icon="pi pi-refresh"
+          size="small"
+          outlined
+          @click="handleReset"
+          :disabled="creating || saving"
+        />
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <Message
+      v-if="activeMembers.length < minMembersNeeded"
+      severity="warn"
+      :closable="false"
+    >
+      Need at least {{ minMembersNeeded }} active members (3 meals ×
+      {{ event.value.preferredGroupSize }} per group). Currently have
+      {{ activeMembers.length }}.
+    </Message>
+    <Message
+      v-for="(warning, idx) in warnings"
+      :key="idx"
+      severity="warn"
+      :closable="false"
+    >
+      {{ warning }}
+    </Message>
+
+    <!-- Groups Table -->
+    <DataTable
+      v-if="localDinnerGroups.length > 0"
+      :value="localDinnerGroups"
+      v-model:expandedRows="expandedRows"
+      dataKey="groupNumber"
+      size="small"
+      stripedRows
+    >
+      <Column expander style="width: 3rem" />
+      <Column header="Group" style="width: 80px">
+        <template #body="{ data }">
+          <span class="font-semibold">#{{ data.groupNumber }}</span>
         </template>
-        <template #content>
-          <div class="space-y-2">
+      </Column>
+      <Column header="Meal">
+        <template #body="{ data }">
+          <Badge
+            :value="getMealLabel(data.assignedMeal)"
+            :severity="getMealSeverity(data.assignedMeal)"
+          />
+        </template>
+      </Column>
+      <Column header="Host">
+        <template #body="{ data }">
+          <span class="text-sm">{{ getHostName(data) || 'Not set' }}</span>
+        </template>
+      </Column>
+      <Column header="Others">
+        <template #body="{ data }">
+          <span class="text-sm">{{ getMemberNames(data) }}</span>
+        </template>
+      </Column>
+      <Column header="Location" class="hidden md:table-cell">
+        <template #body="{ data }">
+          <span class="text-sm text-surface-600 dark:text-surface-400">
+            {{ getHostAddress(data) || '-' }}
+          </span>
+        </template>
+      </Column>
+      <Column v-if="!isLocked" style="width: 50px">
+        <template #body="{ data }">
+          <Button
+            icon="pi pi-trash"
+            size="small"
+            text
+            severity="danger"
+            @click="deleteGroup(data.groupNumber)"
+            v-tooltip="'Delete group'"
+          />
+        </template>
+      </Column>
+
+      <!-- Expanded Row Content -->
+      <template #expansion="{ data }">
+        <div class="p-3">
+          <div class="font-medium text-sm mb-2">Group Members</div>
+          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <div
-              v-for="member in unassignedMembers"
+              v-for="member in getGroupMembers(data)"
               :key="member.personId"
-              class="flex items-center justify-between p-2 rounded bg-surface-50 dark:bg-surface-800"
+              class="flex items-center justify-between gap-2 p-2 rounded-lg border border-surface-200 dark:border-surface-700"
+              :class="
+                member.personId === data.hostPersonId
+                  ? 'bg-primary/10 border-primary/30'
+                  : 'bg-surface-0 dark:bg-surface-900'
+              "
             >
               <div class="flex-1 min-w-0">
-                <div class="font-medium">
-                  {{ member.person.firstName }} {{ member.person.lastName }}
+                <div class="flex items-center gap-1.5">
+                  <i
+                    v-if="member.personId === data.hostPersonId"
+                    class="pi pi-home text-primary text-sm"
+                  ></i>
+                  <span class="font-medium text-sm truncate">
+                    {{ member.person.firstName }} {{ member.person.lastName }}
+                  </span>
                 </div>
                 <div
-                  class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-600 dark:text-surface-400"
+                  v-if="
+                    member.fields?.dietaryRestrictions ||
+                    member.fields?.allergyInfo
+                  "
+                  class="flex flex-wrap gap-1 mt-1"
                 >
-                  <span v-if="member.person.email" class="truncate">
-                    {{ member.person.email }}
-                  </span>
-                  <span v-if="member.fields?.mealPreference">
-                    {{ getMealLabel(member.fields.mealPreference) }}
-                  </span>
                   <span
                     v-if="member.fields?.dietaryRestrictions"
-                    class="truncate"
-                    :title="member.fields.dietaryRestrictions"
+                    class="text-xs px-1.5 py-0.5 rounded bg-surface-200 dark:bg-surface-700"
                   >
-                    🍽️ {{ member.fields.dietaryRestrictions }}
+                    {{ member.fields.dietaryRestrictions }}
                   </span>
                   <span
                     v-if="member.fields?.allergyInfo"
-                    class="text-red-600 dark:text-red-400 truncate"
-                    :title="member.fields.allergyInfo"
+                    class="text-xs px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300"
                   >
                     ⚠️ {{ member.fields.allergyInfo }}
                   </span>
-                  <span
-                    v-if="member.fields?.partnerPreference"
-                    class="truncate"
-                    :title="member.fields.partnerPreference"
-                  >
-                    👥 {{ member.fields.partnerPreference }}
-                  </span>
                 </div>
               </div>
-              <div class="flex gap-2 ml-2">
+              <div v-if="!isLocked" class="flex gap-1">
                 <Button
-                  label="Add to Group"
-                  icon="pi pi-plus"
+                  v-if="member.personId !== data.hostPersonId"
+                  label="Make Host"
                   size="small"
-                  @click="showAddToGroupDialog(member)"
-                  :disabled="isSaved"
+                  text
+                  @click="setHost(data.groupNumber, member.personId)"
+                />
+                <Button
+                  icon="pi pi-times"
+                  size="small"
+                  text
+                  severity="danger"
+                  @click="removeMember(data.groupNumber, member.personId)"
+                  v-tooltip="'Remove from group'"
                 />
               </div>
             </div>
           </div>
-        </template>
-      </Card>
-    </div>
-
-    <!-- Empty State -->
-    <Card v-else>
-      <template #content>
-        <div class="text-center py-12">
-          <i class="pi pi-sitemap text-6xl text-surface-400 mb-4"></i>
-          <p class="text-lg text-surface-600 dark:text-surface-400 mb-2">
-            No dinner groups created yet
-          </p>
-          <p class="text-sm text-surface-500">
-            Click "Create Groups" to automatically generate groups based on
-            member preferences.
-          </p>
         </div>
       </template>
-    </Card>
+    </DataTable>
+
+    <!-- Empty State -->
+    <div
+      v-if="localDinnerGroups.length === 0"
+      class="text-center py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
+    >
+      <i class="pi pi-sitemap text-5xl text-surface-400 mb-4"></i>
+      <p class="text-lg text-surface-600 dark:text-surface-400 mb-2">
+        No dinner groups created yet
+      </p>
+      <p class="text-sm text-surface-500">
+        Click "Create Groups" to automatically generate groups based on member
+        preferences.
+      </p>
+    </div>
+
+    <!-- Unassigned Members -->
+    <div
+      v-if="unassignedMembers.length > 0"
+      class="border border-orange-200 dark:border-orange-800 rounded-lg overflow-hidden"
+    >
+      <div
+        class="flex items-center gap-2 px-4 py-2 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800"
+      >
+        <i class="pi pi-user-minus text-orange-500"></i>
+        <span class="font-semibold text-orange-700 dark:text-orange-300"
+          >Unassigned Members</span
+        >
+        <Badge :value="unassignedMembers.length" severity="warn" />
+      </div>
+      <DataTable :value="unassignedMembers" size="small">
+        <Column header="Name">
+          <template #body="{ data }">
+            <span class="text-sm"
+              >{{ data.person.firstName }} {{ data.person.lastName }}</span
+            >
+          </template>
+        </Column>
+        <Column header="Preferences" class="hidden sm:table-cell">
+          <template #body="{ data }">
+            <div class="flex flex-wrap gap-1">
+              <Badge
+                v-if="data.fields?.mealPreference"
+                :value="getMealLabel(data.fields.mealPreference)"
+                :severity="getMealSeverity(data.fields.mealPreference)"
+                class="text-xs"
+              />
+              <span
+                v-if="data.fields?.partnerPreference"
+                class="text-xs px-1.5 py-0.5 rounded bg-surface-200 dark:bg-surface-700"
+              >
+                👥 {{ data.fields.partnerPreference }}
+              </span>
+            </div>
+          </template>
+        </Column>
+        <Column header="" style="width: 100px">
+          <template #body="{ data }">
+            <Button
+              label="Add"
+              icon="pi pi-plus"
+              size="small"
+              @click="showAddToGroupDialog(data)"
+              :disabled="isLocked"
+            />
+          </template>
+        </Column>
+      </DataTable>
+    </div>
 
     <!-- Add to Group Dialog -->
     <Dialog
@@ -247,20 +340,21 @@
 import { ref, computed, watch } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import type { EventMetadata, DinnerGroup, GroupMember } from '@/types/models';
-import { MEAL_OPTIONS, getMealLabel } from '@/types/models';
+import { MEAL_OPTIONS, getMealLabel, getMealSeverity } from '@/types/models';
 import { groupingService } from '@/services/GroupingService';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
-import DinnerGroupCard from './DinnerGroupCard.vue';
+import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import Column from 'primevue/column';
 
 const props = defineProps<{
   event: CategoryValue<EventMetadata>;
@@ -286,15 +380,25 @@ const localDinnerGroups = ref<
 const warnings = ref<string[]>([]);
 const creating = ref(false);
 const saving = ref(false);
-const isSaved = ref(false);
+const hasUnsavedChanges = ref(false);
 const showAddDialog = ref(false);
 const selectedMember = ref<GroupMember | null>(null);
 const selectedGroupNumber = ref<number | null>(null);
+const expandedRows = ref<Record<number, boolean>>({});
 
 // Computed
 const activeMembers = computed(() =>
   props.members.filter((m) => m.groupMemberStatus === 'active'),
 );
+
+// Editing is locked only after notifications have been sent
+const isLocked = computed(() => {
+  const lockedStatuses = ['notifications-sent', 'completed'];
+  return lockedStatuses.includes(props.event.value.status);
+});
+
+// Groups exist in the store (not just locally created)
+const hasSavedGroups = computed(() => props.dinnerGroups.length > 0);
 
 const minMembersNeeded = computed(
   () => 3 * props.event.value.preferredGroupSize,
@@ -324,13 +428,52 @@ const selectedNewGroupMeal = ref<'starter' | 'mainCourse' | 'dessert' | null>(
   null,
 );
 
+// Helper functions for template
+function getGroupMembers(
+  group: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>,
+) {
+  return props.members.filter((m) =>
+    group.memberPersonIds.includes(m.personId),
+  );
+}
+
+function getMemberNames(
+  group: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>,
+): string {
+  const members = getGroupMembers(group).filter(
+    (m) => m.personId !== group.hostPersonId,
+  );
+  if (members.length === 0) return '-';
+  return members
+    .map((m) => `${m.person.firstName} ${m.person.lastName}`)
+    .join(', ');
+}
+
+function getHostName(
+  group: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>,
+): string | null {
+  if (!group.hostPersonId) return null;
+  const host = props.members.find((m) => m.personId === group.hostPersonId);
+  return host ? `${host.person.firstName} ${host.person.lastName}` : null;
+}
+
+function getHostAddress(
+  group: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>,
+): string | null {
+  if (!group.hostPersonId) return null;
+  const host = props.members.find((m) => m.personId === group.hostPersonId);
+  if (!host?.person.addresses?.[0]) return null;
+  const addr = host.person.addresses[0];
+  return [addr.street, addr.zip, addr.city].filter(Boolean).join(', ');
+}
+
 // Watch for existing dinner groups
 watch(
   () => props.dinnerGroups,
   (newGroups) => {
     if (newGroups.length > 0 && localDinnerGroups.value.length === 0) {
       localDinnerGroups.value = newGroups.map((g) => ({ ...g.value }));
-      isSaved.value = true;
+      hasUnsavedChanges.value = false;
     }
   },
   { immediate: true },
@@ -348,7 +491,7 @@ async function handleCreateGroups() {
 
     localDinnerGroups.value = result.dinnerGroups;
     warnings.value = result.warnings;
-    isSaved.value = false;
+    hasUnsavedChanges.value = true;
 
     toast.add({
       severity: 'success',
@@ -387,7 +530,7 @@ async function handleSaveGroups() {
       status: 'groups-created',
     });
 
-    isSaved.value = true;
+    hasUnsavedChanges.value = false;
 
     toast.add({
       severity: 'success',
@@ -418,14 +561,14 @@ function handleReset() {
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
-      if (isSaved.value) {
+      if (hasSavedGroups.value) {
         // Delete from store
         await dinnerGroupStore.deleteByEventId(props.event.id);
         await eventMetadataStore.update(props.event.id, { status: 'active' });
       }
       localDinnerGroups.value = [];
       warnings.value = [];
-      isSaved.value = false;
+      hasUnsavedChanges.value = false;
       emit('refresh');
     },
   });
@@ -437,6 +580,7 @@ function setHost(groupNumber: number, personId: number) {
   );
   if (group) {
     group.hostPersonId = personId;
+    hasUnsavedChanges.value = true;
   }
 }
 
@@ -451,6 +595,7 @@ function removeMember(groupNumber: number, personId: number) {
     if (group.hostPersonId === personId) {
       group.hostPersonId = group.memberPersonIds[0];
     }
+    hasUnsavedChanges.value = true;
   }
 }
 
@@ -468,6 +613,7 @@ function deleteGroup(groupNumber: number) {
       localDinnerGroups.value.forEach((g, idx) => {
         g.groupNumber = idx + 1;
       });
+      hasUnsavedChanges.value = true;
     },
   });
 }
@@ -512,5 +658,6 @@ function addMemberToGroup() {
   selectedMember.value = null;
   selectedGroupNumber.value = null;
   selectedNewGroupMeal.value = null;
+  hasUnsavedChanges.value = true;
 }
 </script>
