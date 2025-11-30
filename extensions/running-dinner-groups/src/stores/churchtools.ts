@@ -4,6 +4,7 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type {
   Group,
   GroupMember,
+  GroupMemberFields,
   Person,
   GroupUpdatePayload,
   RawGroupMemberResponse,
@@ -195,10 +196,45 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
       phoneNumbers = [{ phoneNumber: personDetails.phonePrivate }];
     }
 
-    // Normalize fields - API returns empty array when no fields
-    const fields = Array.isArray(rawMember.fields)
-      ? undefined
-      : rawMember.fields;
+    // Transform fields from array format to object format
+    // API returns: [{ id, name, value, sortKey }, ...]
+    // We need: { mealPreference: "starter", dietaryRestrictions: "vegetarian", ... }
+    let fields: GroupMemberFields | undefined;
+    if (Array.isArray(rawMember.fields) && rawMember.fields.length > 0) {
+      fields = {};
+      for (const field of rawMember.fields as Array<{
+        id: number;
+        name: string;
+        value: string;
+        sortKey: number;
+      }>) {
+        if (field.name === 'mealPreference') {
+          // Map display value back to internal value if needed
+          const valueMap: Record<string, GroupMemberFields['mealPreference']> =
+            {
+              Starter: 'starter',
+              starter: 'starter',
+              'Main Course': 'mainCourse',
+              mainCourse: 'mainCourse',
+              Dessert: 'dessert',
+              dessert: 'dessert',
+              'No Preference': 'none',
+              none: 'none',
+            };
+          fields.mealPreference = valueMap[field.value] || 'none';
+        } else if (field.name === 'dietaryRestrictions') {
+          fields.dietaryRestrictions = field.value;
+        } else if (field.name === 'allergyInfo') {
+          fields.allergyInfo = field.value;
+        } else if (field.name === 'partnerPreference') {
+          fields.partnerPreference = field.value;
+        }
+      }
+      // If no fields were populated, set to undefined
+      if (Object.keys(fields).length === 0) {
+        fields = undefined;
+      }
+    }
 
     return {
       personId: rawMember.personId,

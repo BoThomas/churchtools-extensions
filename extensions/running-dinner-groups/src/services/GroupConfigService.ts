@@ -520,7 +520,7 @@ export class GroupConfigService {
       const requiredFields = [
         {
           name: 'mealPreference',
-          label: 'Meal Preference',
+          nameInSignupForm: 'Meal Preference',
           fieldTypeCode: 'select',
           options: [
             { id: 'starter', name: 'Starter' },
@@ -534,7 +534,7 @@ export class GroupConfigService {
         },
         {
           name: 'dietaryRestrictions',
-          label: 'Dietary Restrictions',
+          nameInSignupForm: 'Dietary Restrictions',
           fieldTypeCode: 'textarea',
           isRequired: false,
           helpText:
@@ -542,7 +542,7 @@ export class GroupConfigService {
         },
         {
           name: 'allergyInfo',
-          label: 'Allergy Information',
+          nameInSignupForm: 'Allergy Information',
           fieldTypeCode: 'textarea',
           isRequired: false,
           helpText:
@@ -554,7 +554,7 @@ export class GroupConfigService {
       if (allowPartnerPreferences) {
         requiredFields.push({
           name: 'partnerPreference',
-          label: 'Partner Preference',
+          nameInSignupForm: 'Partner Preference',
           fieldTypeCode: 'text',
           isRequired: false,
           helpText:
@@ -567,10 +567,8 @@ export class GroupConfigService {
         if (!fieldNames.includes(field.name)) {
           const fieldData: any = {
             name: field.name,
-            label: field.label,
+            nameInSignupForm: field.nameInSignupForm,
             fieldTypeCode: field.fieldTypeCode,
-            isRequired: field.isRequired,
-            helpText: field.helpText,
             securityLevel: 1, // Security level for field visibility
             useInRegistrationForm: true, // Always show in registration form
             requiredInRegistrationForm: field.isRequired, // Only required if field is required

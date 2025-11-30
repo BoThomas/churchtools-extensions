@@ -163,18 +163,22 @@
         <template #body="{ data }">
           <div
             v-if="data.fields?.dietaryRestrictions || data.fields?.allergyInfo"
-            class="space-y-1"
+            class="text-xs space-y-0.5"
           >
-            <Chip
+            <div
               v-if="data.fields?.dietaryRestrictions"
-              :label="data.fields.dietaryRestrictions"
-              class="text-xs"
-            />
-            <Chip
+              class="text-surface-600 dark:text-surface-400 truncate"
+              :title="data.fields.dietaryRestrictions"
+            >
+              🍽️ {{ data.fields.dietaryRestrictions }}
+            </div>
+            <div
               v-if="data.fields?.allergyInfo"
-              :label="'⚠️ ' + data.fields.allergyInfo"
-              class="text-xs bg-red-100 text-red-800"
-            />
+              class="text-red-600 dark:text-red-400 truncate"
+              :title="data.fields.allergyInfo"
+            >
+              ⚠️ {{ data.fields.allergyInfo }}
+            </div>
           </div>
           <span v-else class="text-surface-400 text-sm">—</span>
         </template>
@@ -244,7 +248,6 @@ import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
 import Column from 'primevue/column';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
-import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import { useToast } from 'primevue/usetoast';
