@@ -8,18 +8,28 @@ export type MealType = z.infer<typeof MealType>;
 // Meal display options for dropdowns/selects
 export const MEAL_OPTIONS: { label: string; value: MealType }[] = [
   { label: '🥗 Starter', value: 'starter' },
-  { label: '🍽️ Main Course', value: 'mainCourse' },
-  { label: '🍰 Dessert', value: 'dessert' },
+  { label: '🥘 Main Course', value: 'mainCourse' },
+  { label: '🍮 Dessert', value: 'dessert' },
 ];
 
 // Helper to get meal label with emoji
 export function getMealLabel(meal: string): string {
   const labels: Record<string, string> = {
     starter: '🥗 Starter',
-    mainCourse: '🍽️ Main Course',
-    dessert: '🍰 Dessert',
+    mainCourse: '🥘 Main Course',
+    dessert: '🍮 Dessert',
   };
   return labels[meal] || meal;
+}
+
+// Helper to get just the meal emoji
+export function getMealEmoji(meal: string): string {
+  const emojis: Record<string, string> = {
+    starter: '🥗',
+    mainCourse: '🥘',
+    dessert: '🍮',
+  };
+  return emojis[meal] || '🍴';
 }
 
 // Helper to get meal severity for badges

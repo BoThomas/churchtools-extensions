@@ -5,7 +5,7 @@
     :style="{ width: '95vw', maxWidth: '1200px', height: '90vh' }"
     :modal="true"
     pt:root:class="flex flex-col"
-    pt:content:class="flex-1 overflow-y-auto"
+    pt:content:class="flex-1 flex flex-col overflow-hidden"
     @hide="handleClose"
   >
     <template #header>
@@ -15,8 +15,8 @@
       </div>
     </template>
 
-    <Tabs v-model:value="activeTab">
-      <TabList>
+    <Tabs v-model:value="activeTab" class="flex flex-col h-full">
+      <TabList class="flex-shrink-0">
         <Tab value="overview">
           <i class="pi pi-info-circle mr-2"></i>
           Overview
@@ -35,7 +35,7 @@
         </Tab>
       </TabList>
 
-      <TabPanels class="mt-2">
+      <TabPanels class="mt-2 flex-1 overflow-y-auto">
         <!-- Overview Tab -->
         <TabPanel value="overview">
           <!-- Next Step Banner -->
@@ -129,7 +129,7 @@
                   <div
                     class="flex items-center gap-3 p-2 bg-surface-50 dark:bg-surface-800 rounded"
                   >
-                    <i class="pi pi-star text-yellow-500"></i>
+                    <span class="text-xl">{{ getMealEmoji('starter') }}</span>
                     <div class="flex-1">
                       <div class="font-medium">Starter</div>
                       <div class="text-sm text-surface-500">
@@ -141,7 +141,9 @@
                   <div
                     class="flex items-center gap-3 p-2 bg-surface-50 dark:bg-surface-800 rounded"
                   >
-                    <i class="pi pi-circle-fill text-blue-500"></i>
+                    <span class="text-xl">{{
+                      getMealEmoji('mainCourse')
+                    }}</span>
                     <div class="flex-1">
                       <div class="font-medium">Main Course</div>
                       <div class="text-sm text-surface-500">
@@ -153,7 +155,7 @@
                   <div
                     class="flex items-center gap-3 p-2 bg-surface-50 dark:bg-surface-800 rounded"
                   >
-                    <i class="pi pi-heart-fill text-pink-500"></i>
+                    <span class="text-xl">{{ getMealEmoji('dessert') }}</span>
                     <div class="flex-1">
                       <div class="font-medium">Dessert</div>
                       <div class="text-sm text-surface-500">
@@ -304,12 +306,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
-import type {
-  EventMetadata,
-  Group,
-  GroupMember,
-  DinnerGroup,
-  Route,
+import {
+  getMealEmoji,
+  type EventMetadata,
+  type Group,
+  type GroupMember,
+  type DinnerGroup,
+  type Route,
 } from '@/types/models';
 import { useChurchtoolsStore } from '@/stores/churchtools';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';

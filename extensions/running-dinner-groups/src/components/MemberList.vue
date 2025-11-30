@@ -142,19 +142,13 @@
       <!-- Meal Preference Column -->
       <Column header="Meal Pref." style="width: 130px">
         <template #body="{ data }">
-          <div
+          <span
             v-if="data.fields?.mealPreference"
-            class="flex items-center gap-1"
+            class="text-lg"
+            :title="getMealLabel(data.fields.mealPreference)"
+            >{{ getMealEmoji(data.fields.mealPreference) }}</span
           >
-            <i
-              :class="getMealIcon(data.fields.mealPreference)"
-              class="text-xs"
-            ></i>
-            <span class="text-sm">{{
-              getMealLabel(data.fields.mealPreference)
-            }}</span>
-          </div>
-          <span v-else class="text-surface-400 text-sm">None</span>
+          <span v-else class="text-surface-400 text-sm">—</span>
         </template>
       </Column>
 
@@ -244,7 +238,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { GroupMember } from '@/types/models';
-import { getMealLabel } from '@/types/models';
+import { getMealLabel, getMealEmoji } from '@/types/models';
 import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
 import Column from 'primevue/column';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -326,16 +320,6 @@ function getStatusSeverity(
     inactive: 'secondary',
   };
   return severities[status] || 'secondary';
-}
-
-function getMealIcon(meal: string): string {
-  const icons: Record<string, string> = {
-    starter: 'pi pi-star',
-    mainCourse: 'pi pi-circle-fill',
-    dessert: 'pi pi-heart-fill',
-    none: 'pi pi-minus',
-  };
-  return icons[meal] || 'pi pi-question';
 }
 
 function getPhone(member: GroupMember): string | null {
