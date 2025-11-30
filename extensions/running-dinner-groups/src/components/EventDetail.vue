@@ -110,8 +110,8 @@
                       >Registration</span
                     >
                     <Badge
-                      :value="isRegistrationOpen ? 'Open' : 'Closed'"
-                      :severity="isRegistrationOpen ? 'success' : 'danger'"
+                      :value="registrationStatusText"
+                      :severity="registrationStatusSeverity"
                     />
                   </div>
                 </div>
@@ -179,7 +179,7 @@
                       >Time</span
                     >
                     <span class="font-medium">{{
-                      event.value.afterParty.time
+                      formatTime(event.value.afterParty.time)
                     }}</span>
                   </div>
                   <div class="flex justify-between">
@@ -395,6 +395,43 @@ const isRegistrationLoading = computed(
   () => props.actionLoading === `registration-${props.event.id}`,
 );
 
+// Check if registration is scheduled to open in the future
+const signUpOpeningDate = computed(() => {
+  const dateStr = props.group?.settings?.signUpOpeningDate;
+  if (!dateStr) return null;
+  return new Date(dateStr);
+});
+
+const isRegistrationScheduledFuture = computed(() => {
+  if (!signUpOpeningDate.value) return false;
+  return signUpOpeningDate.value > new Date();
+});
+
+const formattedOpeningDate = computed(() => {
+  if (!signUpOpeningDate.value) return '';
+  return signUpOpeningDate.value.toLocaleDateString('de-DE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+});
+
+// Registration status text for the info card
+const registrationStatusText = computed(() => {
+  if (isRegistrationOpen.value) return 'Open';
+  if (isRegistrationScheduledFuture.value)
+    return `Opens ${formattedOpeningDate.value}`;
+  return 'Closed';
+});
+
+const registrationStatusSeverity = computed(() => {
+  if (isRegistrationOpen.value) return 'success';
+  if (isRegistrationScheduledFuture.value) return 'info';
+  return 'danger';
+});
+
 // Check if the next step action button should show loading
 // (only for registration-related actions)
 const nextStepActionLoading = computed(() => {
@@ -417,9 +454,13 @@ const nextStepTitle = computed(() => {
   const status = props.event.value.status;
   switch (status) {
     case 'active':
-      return isRegistrationOpen.value
-        ? 'Waiting for Registrations'
-        : 'Ready to Create Groups';
+      if (isRegistrationOpen.value) {
+        return 'Waiting for Registrations';
+      }
+      if (isRegistrationScheduledFuture.value) {
+        return 'Registration Scheduled';
+      }
+      return 'Ready to Create Groups';
     case 'groups-created':
       return 'Groups Created';
     case 'routes-assigned':
@@ -441,9 +482,13 @@ const nextStepDescription = computed(() => {
 
   switch (status) {
     case 'active':
-      return isRegistrationOpen.value
-        ? `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered so far. Close registration when ready.`
-        : `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered. Go to "Dinner Groups" tab to create groups.`;
+      if (isRegistrationOpen.value) {
+        return `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered so far. Close registration when ready.`;
+      }
+      if (isRegistrationScheduledFuture.value) {
+        return `Registration opens on ${formattedOpeningDate.value}. ${memberCount} participant${memberCount !== 1 ? 's' : ''} pre-registered.`;
+      }
+      return `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered. Go to "Dinner Groups" tab to create groups.`;
     case 'groups-created':
       return `${dinnerGroups.value.length} dinner groups created. Go to "Routes" tab to assign routes.`;
     case 'routes-assigned':
@@ -471,21 +516,31 @@ const nextStepStyle = computed(() => {
   const status = props.event.value.status;
   switch (status) {
     case 'active':
-      return isRegistrationOpen.value
-        ? {
-            bgClass: 'bg-blue-50 dark:bg-blue-900/20',
-            iconBgClass: 'bg-blue-100 dark:bg-blue-800/40',
-            iconClass: 'pi-clock text-blue-600 dark:text-blue-400',
-            textClass: 'text-blue-800 dark:text-blue-200',
-            subtextClass: 'text-blue-600 dark:text-blue-300',
-          }
-        : {
-            bgClass: 'bg-amber-50 dark:bg-amber-900/20',
-            iconBgClass: 'bg-amber-100 dark:bg-amber-800/40',
-            iconClass: 'pi-arrow-right text-amber-600 dark:text-amber-400',
-            textClass: 'text-amber-800 dark:text-amber-200',
-            subtextClass: 'text-amber-600 dark:text-amber-300',
-          };
+      if (isRegistrationOpen.value) {
+        return {
+          bgClass: 'bg-blue-50 dark:bg-blue-900/20',
+          iconBgClass: 'bg-blue-100 dark:bg-blue-800/40',
+          iconClass: 'pi-clock text-blue-600 dark:text-blue-400',
+          textClass: 'text-blue-800 dark:text-blue-200',
+          subtextClass: 'text-blue-600 dark:text-blue-300',
+        };
+      }
+      if (isRegistrationScheduledFuture.value) {
+        return {
+          bgClass: 'bg-purple-50 dark:bg-purple-900/20',
+          iconBgClass: 'bg-purple-100 dark:bg-purple-800/40',
+          iconClass: 'pi-calendar-clock text-purple-600 dark:text-purple-400',
+          textClass: 'text-purple-800 dark:text-purple-200',
+          subtextClass: 'text-purple-600 dark:text-purple-300',
+        };
+      }
+      return {
+        bgClass: 'bg-amber-50 dark:bg-amber-900/20',
+        iconBgClass: 'bg-amber-100 dark:bg-amber-800/40',
+        iconClass: 'pi-arrow-right text-amber-600 dark:text-amber-400',
+        textClass: 'text-amber-800 dark:text-amber-200',
+        subtextClass: 'text-amber-600 dark:text-amber-300',
+      };
     case 'groups-created':
     case 'routes-assigned':
       return {
@@ -525,6 +580,14 @@ const nextStepAction = computed(() => {
         return {
           label: 'Close Registration',
           icon: 'pi pi-lock',
+          action: () => emit('toggle-registration'),
+        };
+      }
+      // If registration is scheduled for the future, offer to open it now
+      if (isRegistrationScheduledFuture.value) {
+        return {
+          label: 'Open Registration Now',
+          icon: 'pi pi-lock-open',
           action: () => emit('toggle-registration'),
         };
       }

@@ -143,6 +143,29 @@ const isRegistrationOpen = computed(
   () => !isArchived.value && isOpenForMembers.value,
 );
 
+// Check if registration is scheduled to open in the future
+const signUpOpeningDate = computed(() => {
+  const dateStr = props.group?.settings?.signUpOpeningDate;
+  if (!dateStr) return null;
+  return new Date(dateStr);
+});
+
+const isRegistrationScheduledFuture = computed(() => {
+  if (!signUpOpeningDate.value) return false;
+  return signUpOpeningDate.value > new Date();
+});
+
+const formattedOpeningDate = computed(() => {
+  if (!signUpOpeningDate.value) return '';
+  return signUpOpeningDate.value.toLocaleDateString('de-DE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+});
+
 const isRegistrationLoading = computed(
   () => props.actionLoading === `registration-${props.event.id}`,
 );
@@ -209,9 +232,14 @@ const nextStepText = computed(() => {
   const status = props.event.value.status;
   switch (status) {
     case 'active':
-      return isOpenForMembers.value
-        ? 'Waiting for registrations'
-        : 'Next: Create dinner groups';
+      if (isOpenForMembers.value) {
+        return 'Waiting for registrations';
+      }
+      // Registration is closed - check if scheduled to open in the future
+      if (isRegistrationScheduledFuture.value) {
+        return `Registration opens ${formattedOpeningDate.value}`;
+      }
+      return 'Next: Create dinner groups';
     case 'groups-created':
       return 'Next: Assign routes';
     case 'routes-assigned':
@@ -237,17 +265,26 @@ const nextStepStyle = computed(() => {
   const status = props.event.value.status;
   switch (status) {
     case 'active':
-      return isOpenForMembers.value
-        ? {
-            bgClass: 'bg-blue-50 dark:bg-blue-900/20',
-            iconClass: 'pi-clock text-blue-500',
-            textClass: 'text-blue-700 dark:text-blue-300',
-          }
-        : {
-            bgClass: 'bg-amber-50 dark:bg-amber-900/20',
-            iconClass: 'pi-arrow-right text-amber-500',
-            textClass: 'text-amber-700 dark:text-amber-300',
-          };
+      if (isOpenForMembers.value) {
+        return {
+          bgClass: 'bg-blue-50 dark:bg-blue-900/20',
+          iconClass: 'pi-clock text-blue-500',
+          textClass: 'text-blue-700 dark:text-blue-300',
+        };
+      }
+      // Registration is closed - check if scheduled to open in the future
+      if (isRegistrationScheduledFuture.value) {
+        return {
+          bgClass: 'bg-purple-50 dark:bg-purple-900/20',
+          iconClass: 'pi-calendar-clock text-purple-500',
+          textClass: 'text-purple-700 dark:text-purple-300',
+        };
+      }
+      return {
+        bgClass: 'bg-amber-50 dark:bg-amber-900/20',
+        iconClass: 'pi-arrow-right text-amber-500',
+        textClass: 'text-amber-700 dark:text-amber-300',
+      };
     case 'groups-created':
     case 'routes-assigned':
       return {
