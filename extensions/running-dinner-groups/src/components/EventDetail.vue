@@ -35,12 +35,12 @@
         </Tab>
       </TabList>
 
-      <TabPanels class="mt-4">
+      <TabPanels class="mt-2">
         <!-- Overview Tab -->
         <TabPanel value="overview">
           <!-- Next Step Banner -->
           <div
-            class="mb-6 p-4 rounded-lg flex items-center gap-4"
+            class="mb-3 p-4 rounded-lg flex items-center gap-4"
             :class="nextStepStyle.bgClass"
           >
             <div
@@ -72,7 +72,7 @@
             />
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- Event Info Card -->
             <Card>
               <template #title>
@@ -201,7 +201,7 @@
             </Card>
 
             <!-- Quick Actions Card -->
-            <Card>
+            <Card class="md:col-span-2">
               <template #title>
                 <i class="pi pi-bolt mr-2"></i>
                 Quick Actions
@@ -233,6 +233,21 @@
                     :disabled="isArchived || isRegistrationLoading"
                     :loading="isRegistrationLoading"
                     @click="$emit('toggle-registration')"
+                  />
+                  <SecondaryButton
+                    v-if="!isArchived"
+                    label="Archive"
+                    icon="pi pi-inbox"
+                    size="small"
+                    outlined
+                    @click="$emit('archive')"
+                  />
+                  <DangerButton
+                    label="Delete"
+                    icon="pi pi-trash"
+                    size="small"
+                    outlined
+                    @click="$emit('delete')"
                   />
                 </div>
               </template>
@@ -308,9 +323,11 @@ import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import MemberList from './MemberList.vue';
 import DinnerGroupBuilder from './DinnerGroupBuilder.vue';
 import RouteAssignment from './RouteAssignment.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -323,6 +340,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:visible': [value: boolean];
   'toggle-registration': [];
+  archive: [];
+  delete: [];
   'status-changed': [];
 }>();
 

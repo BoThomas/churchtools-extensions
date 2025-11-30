@@ -85,6 +85,8 @@
       "
       :action-loading="actionLoading"
       @toggle-registration="handleToggleRegistration(selectedEvent!)"
+      @archive="handleArchiveEvent(selectedEvent!)"
+      @delete="handleDeleteEvent(selectedEvent!)"
       @status-changed="handleStatusChanged"
     />
   </div>
@@ -255,6 +257,9 @@ async function handleArchiveEvent(event: CategoryValue<EventMetadata>) {
           life: 3000,
         });
 
+        // Close detail dialog and refresh data
+        showDetailDialog.value = false;
+        selectedEvent.value = null;
         await loadEventGroups();
       } catch (error) {
         toast.add({
@@ -296,6 +301,9 @@ async function handleDeleteEvent(event: CategoryValue<EventMetadata>) {
           life: 3000,
         });
 
+        // Close detail dialog and refresh data
+        showDetailDialog.value = false;
+        selectedEvent.value = null;
         await loadAllData();
       } catch (error) {
         toast.add({

@@ -58,11 +58,11 @@
     </template>
 
     <template #footer>
-      <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center justify-between gap-2 mt-2">
         <Button
+          icon="pi pi-cog"
           label="Manage"
           size="small"
-          :icon="isManageLoading ? 'pi pi-spin pi-spinner' : undefined"
           :loading="isManageLoading"
           :disabled="isManageLoading"
           @click="$emit('view', event)"
