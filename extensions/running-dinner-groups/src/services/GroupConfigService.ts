@@ -287,6 +287,9 @@ export class GroupConfigService {
         );
       }
 
+      // 4c. Deactivate unneeded roles (Coach, Organisator)
+      await this.deactivateUnneededRoles(createdGroup.id);
+
       // 5. Create custom group-member fields
       await this.ensureCustomFields(
         createdGroup.id,
@@ -703,6 +706,56 @@ export class GroupConfigService {
     } catch (error) {
       console.error('Failed to update parent group leaders:', error);
       throw new Error('Failed to update parent group leaders');
+    }
+  }
+
+  /**
+   * Deactivate unneeded roles (Coach, Organisator) for a group
+   * These roles are not needed for Running Dinner events and clutter the UI
+   * @param groupId - The ChurchTools group ID
+   */
+  async deactivateUnneededRoles(groupId: number): Promise<void> {
+    const rolesToDeactivate = ['Coach', 'Organisator'];
+
+    try {
+      // Fetch group with roles included
+      const response = await churchtoolsClient.get(
+        `/groups?include[]=roles&ids[]=${groupId}&limit=1`,
+      );
+      const groups = Array.isArray(response)
+        ? response
+        : (response as { data: any[] }).data;
+
+      const group = groups[0];
+      if (!group || !group.roles) {
+        console.warn('Could not fetch group roles for deactivation');
+        return;
+      }
+
+      // Find and deactivate the unwanted roles
+      for (const roleName of rolesToDeactivate) {
+        const role = group.roles.find((r: any) => r.name === roleName);
+        if (role && role.isActive) {
+          try {
+            await churchtoolsClient.patch(
+              `/groups/${groupId}/roles/${role.id}`,
+              {
+                isActive: false,
+                countsTowardsSeats: false,
+              },
+            );
+            console.log(
+              `Deactivated role "${roleName}" (ID: ${role.id}) for group ${groupId}`,
+            );
+          } catch (roleError) {
+            // Log but don't fail the entire operation for role deactivation
+            console.warn(`Failed to deactivate role "${roleName}":`, roleError);
+          }
+        }
+      }
+    } catch (error) {
+      // Log but don't fail the entire operation for role deactivation
+      console.warn('Failed to deactivate unneeded roles:', error);
     }
   }
 
