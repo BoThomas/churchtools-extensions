@@ -39,13 +39,13 @@
           <i
             class="pi text-xs"
             :class="
-              isOpenForMembers
+              isRegistrationOpen
                 ? 'pi-lock-open text-green-500'
                 : 'pi-lock text-red-500'
             "
           ></i>
-          <span :class="isOpenForMembers ? 'text-green-600' : 'text-red-600'">
-            Registration {{ isOpenForMembers ? 'Open' : 'Closed' }}
+          <span :class="isRegistrationOpen ? 'text-green-600' : 'text-red-600'">
+            Registration {{ isRegistrationOpen ? 'Open' : 'Closed' }}
           </span>
         </div>
 
@@ -135,7 +135,12 @@ const isOpenForMembers = computed(
 );
 
 const isArchived = computed(
-  () => props.group?.information?.groupStatusId === 2,
+  () => props.group?.information?.groupStatusId === 3,
+);
+
+// Registration is effectively closed if archived, regardless of isOpenForMembers setting
+const isRegistrationOpen = computed(
+  () => !isArchived.value && isOpenForMembers.value,
 );
 
 const isRegistrationLoading = computed(

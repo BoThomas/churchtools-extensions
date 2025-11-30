@@ -242,13 +242,11 @@ async function handleArchiveEvent(event: CategoryValue<EventMetadata>) {
     icon: 'pi pi-inbox',
     accept: async () => {
       try {
-        // Update CT group status to archived (2)
-        // groupStatusId is nested inside 'information' in the CT API
+        // Update CT group status to archived (3)
+        // CT Status IDs: 1 = active, 2 = draft/entwurf, 3 = archived
         await churchtoolsStore.updateGroup(event.value.groupId, {
-          information: {
-            groupStatusId: 2,
-          },
-        } as any);
+          groupStatusId: 3,
+        });
 
         toast.add({
           severity: 'success',

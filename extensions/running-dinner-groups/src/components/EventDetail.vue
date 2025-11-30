@@ -110,8 +110,8 @@
                       >Registration</span
                     >
                     <Badge
-                      :value="isOpenForMembers ? 'Open' : 'Closed'"
-                      :severity="isOpenForMembers ? 'success' : 'danger'"
+                      :value="isRegistrationOpen ? 'Open' : 'Closed'"
+                      :severity="isRegistrationOpen ? 'success' : 'danger'"
                     />
                   </div>
                 </div>
@@ -385,7 +385,11 @@ const isOpenForMembers = computed(
   () => props.group?.settings?.isOpenForMembers ?? false,
 );
 const isArchived = computed(
-  () => props.group?.information?.groupStatusId === 2,
+  () => props.group?.information?.groupStatusId === 3,
+);
+// Registration is effectively closed if archived, regardless of isOpenForMembers setting
+const isRegistrationOpen = computed(
+  () => !isArchived.value && isOpenForMembers.value,
 );
 const isRegistrationLoading = computed(
   () => props.actionLoading === `registration-${props.event.id}`,
@@ -413,7 +417,7 @@ const nextStepTitle = computed(() => {
   const status = props.event.value.status;
   switch (status) {
     case 'active':
-      return isOpenForMembers.value
+      return isRegistrationOpen.value
         ? 'Waiting for Registrations'
         : 'Ready to Create Groups';
     case 'groups-created':
@@ -437,7 +441,7 @@ const nextStepDescription = computed(() => {
 
   switch (status) {
     case 'active':
-      return isOpenForMembers.value
+      return isRegistrationOpen.value
         ? `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered so far. Close registration when ready.`
         : `${memberCount} participant${memberCount !== 1 ? 's' : ''} registered. Go to "Dinner Groups" tab to create groups.`;
     case 'groups-created':
@@ -467,7 +471,7 @@ const nextStepStyle = computed(() => {
   const status = props.event.value.status;
   switch (status) {
     case 'active':
-      return isOpenForMembers.value
+      return isRegistrationOpen.value
         ? {
             bgClass: 'bg-blue-50 dark:bg-blue-900/20',
             iconBgClass: 'bg-blue-100 dark:bg-blue-800/40',
@@ -517,7 +521,7 @@ const nextStepAction = computed(() => {
   const status = props.event.value.status;
   switch (status) {
     case 'active':
-      if (isOpenForMembers.value) {
+      if (isRegistrationOpen.value) {
         return {
           label: 'Close Registration',
           icon: 'pi pi-lock',

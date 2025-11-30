@@ -246,7 +246,6 @@ export interface Group {
 
 /**
  * Payload for updating a group via PATCH /groups/{groupId}
- * Note: signUpOpeningDate/signUpClosingDate are sent at root level for PATCH
  */
 export interface GroupUpdatePayload {
   name?: string;
@@ -255,6 +254,8 @@ export interface GroupUpdatePayload {
   // These control registration open/close status
   signUpOpeningDate?: string | null;
   signUpClosingDate?: string | null;
+  // Group status (1 = active, 2 = draft/entwurf, 3 = archived)
+  groupStatusId?: number;
 }
 
 /**
