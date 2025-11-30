@@ -2,7 +2,20 @@
 
 ## Implementation Status
 
-**Last Updated**: November 28, 2025
+**Last Updated**: November 30, 2025
+
+### Quick Summary
+
+| Category                  | Status                                                                     |
+| ------------------------- | -------------------------------------------------------------------------- |
+| Core Infrastructure       | ✅ Complete                                                                |
+| Pinia Stores              | ✅ Complete (4/4)                                                          |
+| Core Services             | ✅ Complete (7/7)                                                          |
+| Vue Components            | ✅ Complete (9/9 core components)                                          |
+| Main Views                | ✅ Complete (2/2)                                                          |
+| **Service Integration**   | ⚠️ Pending (RoutineService, AddressService, SyncService not wired into UI) |
+| **Additional Components** | ⚠️ Pending (EmailPreview.vue)                                              |
+| **Testing**               | ⚠️ Pending                                                                 |
 
 ### ✅ Completed Components
 
@@ -119,43 +132,72 @@
   - Archive/delete/toggle registration handlers
   - EventDetail dialog integration
   - Full data loading with member cache
+- [x] `SettingsView.vue` - Extension info and how-it-works guide
+  - Extension version/build info display
+  - How it works documentation
+  - Key features list
+
+#### Additional Services (Implemented, Pending Integration)
+
+- [x] `RoutineService.ts` - ChurchTools Routines management
+  - Create routines for waitlist notifications (`createWaitlistPromotionRoutine`)
+  - Welcome email automation (`createWelcomeRoutine`)
+  - Late cancellation alerts (`createLateWithdrawalRoutine`)
+  - API: POST/PATCH/GET `/api/routines`
+  - Routine management (list, delete, enable/disable)
+  - Email placeholder fetching
+  - **⚠️ Not yet integrated into EventCreator or EventDetail**
+- [x] `AddressService.ts` - Group address management
+  - After-party location storage via `/api/addresses/group/{groupId}`
+  - Replaces deprecated places API
+  - Address parsing and formatting utilities
+  - **⚠️ Not yet integrated into EventCreator for after-party address**
+- [x] `SyncService.ts` - CT/KV data synchronization
+  - Detect deleted CT groups on extension load (`syncOnLoad`)
+  - Clean up orphaned KV data (events, dinner groups, routes)
+  - Complete event deletion (`deleteEventComplete`)
+  - Archive/restore events (`archiveEvent`, `restoreEvent`)
+  - **⚠️ Not yet integrated into OrganizerView (syncOnLoad not called)**
 
 ### 🚧 In Progress / TODO
 
-#### New Services (from Lifecycle Research)
+#### Service Integration Tasks
 
-- [ ] `RoutineService.ts` - **NEW** ChurchTools Routines management
-  - Create routines for waitlist notifications
-  - Welcome email automation
-  - Late cancellation alerts
-  - API: POST/PATCH/GET `/api/routines`
-- [ ] `AddressService.ts` - **NEW** Group address management
-  - After-party location storage via `/api/addresses/group/{groupId}`
-  - Replaces deprecated places API
-- [ ] `SyncService.ts` - **NEW** CT/KV data synchronization
-  - Detect deleted CT groups on extension load
-  - Clean up orphaned KV data
-  - Bidirectional sync logic
+- [ ] **Integrate RoutineService into EventCreator.vue**
+  - Call `createWelcomeRoutine()` after child group creation
+  - Call `createWaitlistPromotionRoutine()` if waitlist enabled
+  - Handle errors gracefully (routine creation failure shouldn't block event creation)
+- [ ] **Integrate AddressService into EventCreator.vue**
+  - Call `setAfterPartyLocation()` when after-party address is provided
+- [ ] **Integrate SyncService into OrganizerView.vue**
+  - Call `syncOnLoad()` during initial data loading
+  - Display sync results (orphaned data cleaned up)
+  - Use `deleteEventComplete()` instead of manual deletion
+  - Use `archiveEvent()`/`restoreEvent()` for archive functionality
 
 #### Vue Components (Remaining)
 
-- [ ] `EmailPreview.vue` - Email preview and sending
-- [ ] `EventSettings.vue` - **NEW** Event settings management
-  - Edit registration dates
-  - Waitlist settings
-  - Routine configuration
+- [ ] `EmailPreview.vue` - Email preview and sending UI
+  - Preview generated emails before sending
+  - Batch sending with progress indicator
+  - Send/cancel actions
+- [ ] `EventSettings.vue` - **FUTURE** Event settings management
+  - Edit registration dates after creation
+  - Waitlist settings modification
+  - Routine configuration UI
 
 #### Testing & Integration
 
 - [ ] End-to-end workflow testing
-- [ ] Parent group creation flow
-- [ ] Event creation flow
+- [ ] Parent group creation flow testing
+- [ ] Event creation flow testing
 - [ ] Dinner group algorithm testing
 - [ ] Route assignment algorithm testing
 - [ ] Email generation testing
-- [ ] **NEW:** Routine creation testing
-- [ ] **NEW:** Archive/delete flow testing
-- [ ] **NEW:** KV sync on load testing
+- [ ] Routine creation testing (service implemented, needs UI integration)
+- [ ] Archive/delete flow testing (service implemented, needs UI integration)
+- [ ] KV sync on load testing (service implemented, needs UI integration)
+- [ ] SyncService integration into OrganizerView (call syncOnLoad on mount)
 
 ---
 
