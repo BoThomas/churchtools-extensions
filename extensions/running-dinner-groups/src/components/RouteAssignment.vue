@@ -126,7 +126,7 @@
     </div>
 
     <!-- Empty State -->
-    <Card v-else-if="dinnerGroups.length > 0">
+    <Card v-else>
       <template #content>
         <div class="text-center py-12">
           <i class="pi pi-map text-6xl text-surface-400 mb-4"></i>

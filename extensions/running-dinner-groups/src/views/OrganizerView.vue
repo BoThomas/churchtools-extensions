@@ -3,11 +3,12 @@
     <!-- Organizer Group Setup Component -->
     <ParentGroupSetup
       ref="parentGroupSetupRef"
+      :external-loading="initialLoading"
       @created="handleParentGroupCreated"
     />
 
-    <!-- Main Content (only show if user has permission) -->
-    <template v-if="parentGroupSetupRef?.hasPermission">
+    <!-- Main Content (only show if user has permission and data is loaded) -->
+    <template v-if="parentGroupSetupRef?.hasPermission && !initialLoading">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
@@ -32,13 +33,8 @@
         />
       </div>
 
-      <!-- Loading State -->
-      <div v-if="eventMetadataStore.loading" class="flex justify-center py-12">
-        <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
-      </div>
-
       <!-- Events List -->
-      <div v-else class="space-y-4">
+      <div class="space-y-4">
         <div
           v-if="eventMetadataStore.events.length === 0"
           class="text-center py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
@@ -123,22 +119,29 @@ const showDetailDialog = ref(false);
 const selectedEvent = ref<CategoryValue<EventMetadata> | null>(null);
 const groupCache = ref<Map<number, Group>>(new Map());
 const memberCache = ref<Map<number, GroupMember[]>>(new Map());
-// Track loading state for actions: 'registration-{eventId}' | 'archive-{eventId}' | 'delete-{eventId}'
+// Track loading state for actions: 'registration-{eventId}' | 'archive-{eventId}' | 'delete-{eventId}' | 'manage-{eventId}'
 const actionLoading = ref<string | null>(null);
+// Track initial data loading (covers all data, not just eventMetadataStore)
+const initialLoading = ref(true);
 
 onMounted(async () => {
   await loadAllData();
 });
 
 async function loadAllData() {
-  // First load event metadata to know which groups to fetch
-  await eventMetadataStore.fetchAll();
+  initialLoading.value = true;
+  try {
+    // First load event metadata to know which groups to fetch
+    await eventMetadataStore.fetchAll();
 
-  await Promise.all([
-    loadEventGroups(),
-    dinnerGroupStore.fetchAll(),
-    routeStore.fetchAll(),
-  ]);
+    await Promise.all([
+      loadEventGroups(),
+      dinnerGroupStore.fetchAll(),
+      routeStore.fetchAll(),
+    ]);
+  } finally {
+    initialLoading.value = false;
+  }
 }
 
 async function handleParentGroupCreated() {

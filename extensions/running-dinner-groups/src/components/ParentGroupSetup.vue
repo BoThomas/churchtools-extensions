@@ -1,7 +1,10 @@
 <template>
   <div class="space-y-4">
-    <!-- Loading State -->
-    <div v-if="checking" class="flex justify-center py-8">
+    <!-- Loading State (internal check or external data loading) -->
+    <div
+      v-if="checking || (hasPermission && props.externalLoading)"
+      class="flex justify-center py-8"
+    >
       <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
     </div>
 
@@ -164,6 +167,10 @@ import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Multiselect from '@churchtools-extensions/prime-volt/Multiselect.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
+
+const props = defineProps<{
+  externalLoading?: boolean;
+}>();
 
 const emit = defineEmits<{
   created: [];

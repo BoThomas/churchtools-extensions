@@ -146,7 +146,7 @@
     <Card v-else>
       <template #content>
         <div class="text-center py-12">
-          <i class="pi pi-users text-6xl text-surface-400 mb-4"></i>
+          <i class="pi pi-sitemap text-6xl text-surface-400 mb-4"></i>
           <p class="text-lg text-surface-600 dark:text-surface-400 mb-2">
             No dinner groups created yet
           </p>
