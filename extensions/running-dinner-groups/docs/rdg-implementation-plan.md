@@ -174,6 +174,11 @@
   - Display sync results (orphaned data cleaned up)
   - Use `deleteEventComplete()` instead of manual deletion
   - Use `archiveEvent()`/`restoreEvent()` for archive functionality
+- [ ] **Implement Group & Route Change Management in DinnerGroupBuilder.vue**
+  - Block group creation/deletion when routes exist (prompt to reset routes first)
+  - On group reset, also delete routes and set status to `groups-created`
+  - Add post-notification confirmation dialog showing affected participants
+  - Compute affected hosts from route data for the confirmation dialog
 
 #### Vue Components (Remaining)
 
@@ -291,6 +296,62 @@ The extension supports several optional features that organizers can enable per 
 - **Deletion:** Allow from extension UI → deletes CT group + all KV data
 - **External deletion:** On extension load, detect missing CT groups and clean up orphaned KV data
 - **KV retention:** Keep forever until explicit deletion
+
+### Group & Route Change Management
+
+Managing changes to dinner groups at different workflow stages requires careful handling to maintain data consistency and ensure participants are properly informed.
+
+#### Key Principles
+
+1. **Routes reference groups, not individual members** - Routes are calculated based on dinner group IDs and host addresses. Member changes within a group don't invalidate the route structure.
+2. **Group count changes invalidate routes** - Adding or deleting groups fundamentally changes the routing matrix, requiring route recalculation.
+3. **Post-notification changes require manual follow-up** - Once participants are notified, any changes require the organizer to manually inform affected people.
+
+#### Change Rules by Workflow Stage
+
+| Action                     | Before Routes (`active`) | After Routes (`routes-assigned`)        | After Notifications (`notifications-sent`) |
+| -------------------------- | ------------------------ | --------------------------------------- | ------------------------------------------ |
+| Create new group           | ✅ Allow                 | ⛔ Block - prompt to reset routes first | ⛔ Block - prompt to reset routes first    |
+| Delete group               | ✅ Allow                 | ⛔ Block - prompt to reset routes first | ⛔ Block - prompt to reset routes first    |
+| Add member to group        | ✅ Allow                 | ✅ Allow                                | ⚠️ Confirm - show affected participants    |
+| Remove member from group   | ✅ Allow                 | ✅ Allow                                | ⚠️ Confirm - show affected participants    |
+| Change host (within group) | ✅ Allow                 | ✅ Allow (address updates in route)     | ⚠️ Confirm - show affected participants    |
+| Reset all groups           | ✅ Allow                 | ✅ Allow (also deletes routes)          | ⚠️ Confirm - show affected participants    |
+
+#### "Reset Routes" Action
+
+When routes need to be reset (either explicitly or due to group count changes):
+
+1. Delete all routes for the event from KV store
+2. Reset event status to `groups-created`
+3. User can then modify groups freely and re-run route assignment
+
+#### Post-Notification Confirmation Dialog
+
+When changes are made after notifications have been sent, show a confirmation dialog with two sections:
+
+**Section 1: Directly Affected (Group Members)**
+
+- List all members of the modified group
+- These people's group composition has changed
+
+**Section 2: Indirectly Affected (Hosts Visited by This Group)**
+
+- Based on current route, list the hosts of other groups that this group visits
+- These hosts need to know about dietary/allergy changes or group size changes
+- Example: "Group 3 visits: Anna (Starter), Max (Main Course), Lisa (Dessert)"
+
+**Dialog Actions:**
+
+- "Cancel" - Abort the change
+- "Confirm Change" - Proceed with the change, organizer acknowledges they will inform affected participants
+
+#### Implementation Notes
+
+- `DinnerGroupBuilder.vue`: Check route existence before allowing group creation/deletion
+- `DinnerGroupBuilder.vue`: On reset, also call `routeStore.deleteByEventId()` and update status
+- `DinnerGroupBuilder.vue`: For post-notification changes, compute affected participants from route data
+- Consider adding a "Copy affected emails" button in the confirmation dialog for convenience
 
 ## Technology Stack
 

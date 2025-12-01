@@ -339,10 +339,16 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
-import type { EventMetadata, DinnerGroup, GroupMember } from '@/types/models';
+import type {
+  EventMetadata,
+  DinnerGroup,
+  GroupMember,
+  Route,
+} from '@/types/models';
 import { MEAL_OPTIONS, getMealLabel, getMealSeverity } from '@/types/models';
 import { groupingService } from '@/services/GroupingService';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';
+import { useRouteStore } from '@/stores/route';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -360,6 +366,7 @@ const props = defineProps<{
   event: CategoryValue<EventMetadata>;
   members: GroupMember[];
   dinnerGroups: CategoryValue<DinnerGroup>[];
+  routes: CategoryValue<Route>[];
   loading?: boolean;
 }>();
 
@@ -370,6 +377,7 @@ const emit = defineEmits<{
 }>();
 
 const dinnerGroupStore = useDinnerGroupStore();
+const routeStore = useRouteStore();
 const eventMetadataStore = useEventMetadataStore();
 const confirm = useConfirm();
 const toast = useToast();
@@ -395,6 +403,15 @@ const activeMembers = computed(() =>
 const isLocked = computed(() => {
   const lockedStatuses = ['notifications-sent', 'completed'];
   return lockedStatuses.includes(props.event.value.status);
+});
+
+// Routes exist for this event
+const hasRoutes = computed(() => props.routes.length > 0);
+
+// Post-notification status - changes require extra confirmation
+const isPostNotification = computed(() => {
+  const postNotificationStatuses = ['notifications-sent', 'completed'];
+  return postNotificationStatuses.includes(props.event.value.status);
 });
 
 // Groups exist in the store (not just locally created)
@@ -467,6 +484,113 @@ function getHostAddress(
   return [addr.street, addr.zip, addr.city].filter(Boolean).join(', ');
 }
 
+/**
+ * Get information about participants affected by a change to a specific group.
+ * Returns the group members and the hosts of groups this group visits.
+ */
+interface AffectedParticipantsInfo {
+  groupMembers: { name: string; email?: string }[];
+  visitedHosts: { name: string; email?: string; meal: string }[];
+}
+
+function getAffectedParticipantsInfo(
+  groupNumber: number,
+): AffectedParticipantsInfo | null {
+  // Find the saved dinner group (we need its ID to look up routes)
+  const savedGroup = props.dinnerGroups.find(
+    (g) => g.value.groupNumber === groupNumber,
+  );
+  if (!savedGroup) return null;
+
+  // Get members of this group
+  const localGroup = localDinnerGroups.value.find(
+    (g) => g.groupNumber === groupNumber,
+  );
+  const groupMembers = localGroup
+    ? props.members
+        .filter((m) => localGroup.memberPersonIds.includes(m.personId))
+        .map((m) => ({
+          name: `${m.person.firstName} ${m.person.lastName}`,
+          email: m.person.email,
+        }))
+    : [];
+
+  // Find the route for this group
+  const route = props.routes.find(
+    (r) => r.value.dinnerGroupId === savedGroup.id,
+  );
+  if (!route) {
+    return { groupMembers, visitedHosts: [] };
+  }
+
+  // Get the hosts of groups this group visits (excluding their own hosting)
+  const visitedHosts: { name: string; email?: string; meal: string }[] = [];
+  const mealLabels = {
+    starter: 'Starter',
+    mainCourse: 'Main Course',
+    dessert: 'Dessert',
+  };
+
+  for (const stop of route.value.stops) {
+    // Skip if this group is hosting this meal
+    if (stop.hostDinnerGroupId === savedGroup.id) continue;
+
+    // Find the host dinner group
+    const hostDinnerGroup = props.dinnerGroups.find(
+      (g) => g.id === stop.hostDinnerGroupId,
+    );
+    if (!hostDinnerGroup?.value.hostPersonId) continue;
+
+    // Find the host person
+    const hostPerson = props.members.find(
+      (m) => m.personId === hostDinnerGroup.value.hostPersonId,
+    );
+    if (hostPerson) {
+      visitedHosts.push({
+        name: `${hostPerson.person.firstName} ${hostPerson.person.lastName}`,
+        email: hostPerson.person.email,
+        meal: mealLabels[stop.meal],
+      });
+    }
+  }
+
+  return { groupMembers, visitedHosts };
+}
+
+/**
+ * Build a user-friendly message for the confirmation dialog showing affected participants.
+ */
+function buildAffectedParticipantsMessage(
+  action: string,
+  affectedInfo: AffectedParticipantsInfo | null,
+): string {
+  let message = `You are ${action} after notifications have already been sent.\n\n`;
+  message +=
+    'You will need to manually inform the affected participants about this change.\n\n';
+
+  if (!affectedInfo) {
+    message += 'Unable to determine affected participants.';
+    return message;
+  }
+
+  if (affectedInfo.groupMembers.length > 0) {
+    message += '📋 DIRECTLY AFFECTED (Group Members):\n';
+    message += affectedInfo.groupMembers
+      .map((m) => `  • ${m.name}${m.email ? ` (${m.email})` : ''}`)
+      .join('\n');
+    message += '\n\n';
+  }
+
+  if (affectedInfo.visitedHosts.length > 0) {
+    message += '🏠 INDIRECTLY AFFECTED (Hosts this group visits):\n';
+    message += affectedInfo.visitedHosts
+      .map((h) => `  • ${h.name} - ${h.meal}${h.email ? ` (${h.email})` : ''}`)
+      .join('\n');
+  }
+
+  return message;
+}
+
 // Watch for existing dinner groups
 watch(
   () => props.dinnerGroups,
@@ -519,11 +643,24 @@ async function handleSaveGroups() {
   saving.value = true;
 
   try {
-    // Delete existing groups for this event
-    await dinnerGroupStore.deleteByEventId(props.event.id);
-
-    // Create new groups
-    await dinnerGroupStore.createMultiple(localDinnerGroups.value);
+    if (hasSavedGroups.value) {
+      // Groups already exist - UPDATE them to preserve database IDs
+      // (this is important because routes reference groups by their DB ID)
+      for (const localGroup of localDinnerGroups.value) {
+        const savedGroup = props.dinnerGroups.find(
+          (g) => g.value.groupNumber === localGroup.groupNumber,
+        );
+        if (savedGroup) {
+          await dinnerGroupStore.update(savedGroup.id, {
+            ...localGroup,
+            id: savedGroup.id, // Preserve the database ID in the value
+          });
+        }
+      }
+    } else {
+      // First save - create new groups
+      await dinnerGroupStore.createMultiple(localDinnerGroups.value);
+    }
 
     // Update event status
     await eventMetadataStore.update(props.event.id, {
@@ -555,14 +692,25 @@ async function handleSaveGroups() {
 }
 
 function handleReset() {
+  // Build a more detailed message if routes exist
+  let message = 'Are you sure you want to reset all dinner groups?';
+  if (hasRoutes.value) {
+    message +=
+      ' This will also delete all assigned routes and reset the workflow status.';
+  }
+
   confirm.require({
-    message: 'Are you sure you want to reset all dinner groups?',
+    message,
     header: 'Reset Groups',
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
       if (hasSavedGroups.value) {
-        // Delete from store
+        // Delete routes first if they exist
+        if (hasRoutes.value) {
+          await routeStore.deleteByEventId(props.event.id);
+        }
+        // Delete groups from store
         await dinnerGroupStore.deleteByEventId(props.event.id);
         await eventMetadataStore.update(props.event.id, { status: 'active' });
       }
@@ -578,17 +726,42 @@ function setHost(groupNumber: number, personId: number) {
   const group = localDinnerGroups.value.find(
     (g) => g.groupNumber === groupNumber,
   );
-  if (group) {
+  if (!group) return;
+
+  const performSetHost = () => {
     group.hostPersonId = personId;
     hasUnsavedChanges.value = true;
+  };
+
+  // Post-notification: require confirmation with affected participants
+  if (isPostNotification.value) {
+    const newHost = props.members.find((m) => m.personId === personId);
+    const affectedInfo = getAffectedParticipantsInfo(groupNumber);
+
+    confirm.require({
+      message: buildAffectedParticipantsMessage(
+        `changing the host of Group ${groupNumber} to ${newHost?.person.firstName} ${newHost?.person.lastName}`,
+        affectedInfo,
+      ),
+      header: 'Confirm Change After Notifications',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClass: 'p-button-warning',
+      acceptLabel: 'Confirm Change',
+      accept: performSetHost,
+    });
+    return;
   }
+
+  performSetHost();
 }
 
 function removeMember(groupNumber: number, personId: number) {
   const group = localDinnerGroups.value.find(
     (g) => g.groupNumber === groupNumber,
   );
-  if (group) {
+  if (!group) return;
+
+  const performRemove = () => {
     group.memberPersonIds = group.memberPersonIds.filter(
       (id) => id !== personId,
     );
@@ -596,10 +769,62 @@ function removeMember(groupNumber: number, personId: number) {
       group.hostPersonId = group.memberPersonIds[0];
     }
     hasUnsavedChanges.value = true;
+  };
+
+  // Post-notification: require confirmation with affected participants
+  if (isPostNotification.value) {
+    const removedMember = props.members.find((m) => m.personId === personId);
+    const affectedInfo = getAffectedParticipantsInfo(groupNumber);
+
+    confirm.require({
+      message: buildAffectedParticipantsMessage(
+        `removing ${removedMember?.person.firstName} ${removedMember?.person.lastName} from Group ${groupNumber}`,
+        affectedInfo,
+      ),
+      header: 'Confirm Change After Notifications',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClass: 'p-button-warning',
+      acceptLabel: 'Confirm Change',
+      accept: performRemove,
+    });
+    return;
   }
+
+  performRemove();
 }
 
 function deleteGroup(groupNumber: number) {
+  // If routes exist, offer to reset routes and delete the group in one action
+  if (hasRoutes.value) {
+    confirm.require({
+      message: `Routes have already been assigned. To delete Group ${groupNumber}, the routes must be reset first. Do you want to reset all routes and delete this group?`,
+      header: 'Reset Routes & Delete Group',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClass: 'p-button-danger',
+      acceptLabel: 'Reset Routes & Delete',
+      rejectLabel: 'Cancel',
+      accept: async () => {
+        // Reset routes first
+        await routeStore.deleteByEventId(props.event.id);
+        await eventMetadataStore.update(props.event.id, {
+          status: 'groups-created',
+        });
+
+        // Then delete the group
+        localDinnerGroups.value = localDinnerGroups.value.filter(
+          (g) => g.groupNumber !== groupNumber,
+        );
+        // Renumber groups
+        localDinnerGroups.value.forEach((g, idx) => {
+          g.groupNumber = idx + 1;
+        });
+        hasUnsavedChanges.value = true;
+        emit('refresh');
+      },
+    });
+    return;
+  }
+
   confirm.require({
     message: `Are you sure you want to delete Group ${groupNumber}?`,
     header: 'Delete Group',
@@ -628,36 +853,104 @@ function showAddToGroupDialog(member: GroupMember) {
 function addMemberToGroup() {
   if (!selectedMember.value || selectedGroupNumber.value === null) return;
 
-  if (selectedGroupNumber.value === -1) {
-    // Create new group
+  // If creating new group and routes exist, offer to reset routes and create in one action
+  if (selectedGroupNumber.value === -1 && hasRoutes.value) {
     if (!selectedNewGroupMeal.value) return;
 
-    const newGroupNumber = localDinnerGroups.value.length + 1;
-    localDinnerGroups.value.push({
-      eventMetadataId: props.event.id,
-      ctGroupId: props.event.value.groupId,
-      groupNumber: newGroupNumber,
-      assignedMeal: selectedNewGroupMeal.value,
-      memberPersonIds: [selectedMember.value.personId],
-      hostPersonId: selectedMember.value.personId,
+    confirm.require({
+      message:
+        'Routes have already been assigned. To create a new group, the routes must be reset first. Do you want to reset all routes and create this new group?',
+      header: 'Reset Routes & Create Group',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClass: 'p-button-danger',
+      acceptLabel: 'Reset Routes & Create',
+      rejectLabel: 'Cancel',
+      accept: async () => {
+        // Reset routes first
+        await routeStore.deleteByEventId(props.event.id);
+        await eventMetadataStore.update(props.event.id, {
+          status: 'groups-created',
+        });
+
+        // Then create the new group
+        const newGroupNumber = localDinnerGroups.value.length + 1;
+        localDinnerGroups.value.push({
+          eventMetadataId: props.event.id,
+          ctGroupId: props.event.value.groupId,
+          groupNumber: newGroupNumber,
+          assignedMeal: selectedNewGroupMeal.value!,
+          memberPersonIds: [selectedMember.value!.personId],
+          hostPersonId: selectedMember.value!.personId,
+        });
+
+        showAddDialog.value = false;
+        selectedMember.value = null;
+        selectedGroupNumber.value = null;
+        selectedNewGroupMeal.value = null;
+        hasUnsavedChanges.value = true;
+        emit('refresh');
+      },
     });
-  } else {
-    // Add to existing group
+    return;
+  }
+
+  const performAdd = () => {
+    if (selectedGroupNumber.value === -1) {
+      // Create new group
+      if (!selectedNewGroupMeal.value) return;
+
+      const newGroupNumber = localDinnerGroups.value.length + 1;
+      localDinnerGroups.value.push({
+        eventMetadataId: props.event.id,
+        ctGroupId: props.event.value.groupId,
+        groupNumber: newGroupNumber,
+        assignedMeal: selectedNewGroupMeal.value,
+        memberPersonIds: [selectedMember.value!.personId],
+        hostPersonId: selectedMember.value!.personId,
+      });
+    } else {
+      // Add to existing group
+      const group = localDinnerGroups.value.find(
+        (g) => g.groupNumber === selectedGroupNumber.value,
+      );
+      if (
+        group &&
+        !group.memberPersonIds.includes(selectedMember.value!.personId)
+      ) {
+        group.memberPersonIds.push(selectedMember.value!.personId);
+      }
+    }
+
+    showAddDialog.value = false;
+    selectedMember.value = null;
+    selectedGroupNumber.value = null;
+    selectedNewGroupMeal.value = null;
+    hasUnsavedChanges.value = true;
+  };
+
+  // Post-notification: require confirmation with affected participants
+  if (isPostNotification.value && selectedGroupNumber.value !== -1) {
     const group = localDinnerGroups.value.find(
       (g) => g.groupNumber === selectedGroupNumber.value,
     );
-    if (
-      group &&
-      !group.memberPersonIds.includes(selectedMember.value.personId)
-    ) {
-      group.memberPersonIds.push(selectedMember.value.personId);
-    }
+    const affectedInfo = group
+      ? getAffectedParticipantsInfo(group.groupNumber)
+      : null;
+
+    confirm.require({
+      message: buildAffectedParticipantsMessage(
+        `adding ${selectedMember.value.person.firstName} ${selectedMember.value.person.lastName} to Group ${selectedGroupNumber.value}`,
+        affectedInfo,
+      ),
+      header: 'Confirm Change After Notifications',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClass: 'p-button-warning',
+      acceptLabel: 'Confirm Change',
+      accept: performAdd,
+    });
+    return;
   }
 
-  showAddDialog.value = false;
-  selectedMember.value = null;
-  selectedGroupNumber.value = null;
-  selectedNewGroupMeal.value = null;
-  hasUnsavedChanges.value = true;
+  performAdd();
 }
 </script>

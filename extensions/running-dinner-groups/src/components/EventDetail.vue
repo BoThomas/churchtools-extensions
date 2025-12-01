@@ -273,10 +273,11 @@
             :event="event"
             :members="activeMembers"
             :dinner-groups="dinnerGroups"
+            :routes="routes"
             :loading="loadingGroups"
             @groups-created="handleGroupsCreated"
             @groups-saved="handleGroupsSaved"
-            @refresh="loadDinnerGroups"
+            @refresh="handleDinnerGroupsRefresh"
           />
         </TabPanel>
 
@@ -710,6 +711,12 @@ async function handleGroupsCreated() {
 
 async function handleGroupsSaved() {
   await loadDinnerGroups();
+  emit('status-changed');
+}
+
+async function handleDinnerGroupsRefresh() {
+  // Reload both dinner groups and routes (routes may have been reset)
+  await Promise.all([loadDinnerGroups(), loadRoutes()]);
   emit('status-changed');
 }
 
