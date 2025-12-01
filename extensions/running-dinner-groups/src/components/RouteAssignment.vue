@@ -211,8 +211,17 @@ watch(
   () => props.routes,
   (newRoutes) => {
     if (newRoutes.length > 0 && localRoutes.value.length === 0) {
+      // Initialize from saved routes
       localRoutes.value = newRoutes.map((r) => ({ ...r.value }));
       isSaved.value = true;
+    } else if (
+      newRoutes.length === 0 &&
+      localRoutes.value.length > 0 &&
+      isSaved.value
+    ) {
+      // Routes were deleted externally (e.g., from DinnerGroupBuilder reset)
+      localRoutes.value = [];
+      isSaved.value = false;
     }
   },
   { immediate: true },

@@ -596,8 +596,16 @@ watch(
   () => props.dinnerGroups,
   (newGroups) => {
     if (newGroups.length > 0 && localDinnerGroups.value.length === 0) {
+      // Initialize from saved groups
       localDinnerGroups.value = newGroups.map((g) => ({ ...g.value }));
       hasUnsavedChanges.value = false;
+    } else if (
+      newGroups.length === 0 &&
+      localDinnerGroups.value.length > 0 &&
+      !hasUnsavedChanges.value
+    ) {
+      // Groups were deleted externally (e.g., from reset)
+      localDinnerGroups.value = [];
     }
   },
   { immediate: true },
