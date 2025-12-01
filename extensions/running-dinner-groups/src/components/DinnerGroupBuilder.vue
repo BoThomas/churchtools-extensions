@@ -35,7 +35,17 @@
         </div>
       </div>
 
-      <div class="flex gap-2 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="relative">
+          <i
+            class="pi pi-search absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-400 text-sm"
+          ></i>
+          <InputText
+            v-model="searchQuery"
+            placeholder="Search..."
+            class="pl-8 h-8 text-sm w-48"
+          />
+        </div>
         <Button
           label="Create Groups"
           icon="pi pi-users"
@@ -91,7 +101,7 @@
     <!-- Groups Table -->
     <DataTable
       v-if="localDinnerGroups.length > 0"
-      :value="localDinnerGroups"
+      :value="filteredDinnerGroups"
       v-model:expandedRows="expandedRows"
       dataKey="groupNumber"
       size="small"
@@ -144,7 +154,6 @@
       <!-- Expanded Row Content -->
       <template #expansion="{ data }">
         <div class="p-3">
-          <div class="font-medium text-sm mb-2">Group Members</div>
           <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <div
               v-for="member in getGroupMembers(data)"
@@ -360,6 +369,7 @@ import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import DataTable from '@churchtools-extensions/prime-volt/DataTable.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Column from 'primevue/column';
 
 const props = defineProps<{
@@ -393,6 +403,7 @@ const showAddDialog = ref(false);
 const selectedMember = ref<GroupMember | null>(null);
 const selectedGroupNumber = ref<number | null>(null);
 const expandedRows = ref<Record<number, boolean>>({});
+const searchQuery = ref('');
 
 // Computed
 const activeMembers = computed(() =>
@@ -432,6 +443,46 @@ const assignedPersonIds = computed(() => {
 const unassignedMembers = computed(() =>
   activeMembers.value.filter((m) => !assignedPersonIds.value.has(m.personId)),
 );
+
+const filteredDinnerGroups = computed(() => {
+  if (!searchQuery.value) {
+    return localDinnerGroups.value;
+  }
+
+  const query = searchQuery.value.toLowerCase();
+  return localDinnerGroups.value.filter((group) => {
+    // Search by group number
+    if (group.groupNumber.toString().includes(query)) return true;
+
+    // Search by meal type
+    if (getMealLabel(group.assignedMeal).toLowerCase().includes(query))
+      return true;
+
+    // Search by member names and info
+    const members = getGroupMembers(group);
+    for (const member of members) {
+      if (member.person.firstName.toLowerCase().includes(query)) return true;
+      if (member.person.lastName.toLowerCase().includes(query)) return true;
+      if (member.person.email?.toLowerCase().includes(query)) return true;
+      if (member.fields?.dietaryRestrictions?.toLowerCase().includes(query))
+        return true;
+      if (member.fields?.allergyInfo?.toLowerCase().includes(query))
+        return true;
+      if (member.fields?.partnerPreference?.toLowerCase().includes(query))
+        return true;
+
+      // Search in address
+      const address = member.person.addresses?.[0];
+      if (address) {
+        if (address.street?.toLowerCase().includes(query)) return true;
+        if (address.city?.toLowerCase().includes(query)) return true;
+        if (address.zip?.toLowerCase().includes(query)) return true;
+      }
+    }
+
+    return false;
+  });
+});
 
 const groupOptions = computed(() => [
   { label: '+ Create New Group', value: -1 },

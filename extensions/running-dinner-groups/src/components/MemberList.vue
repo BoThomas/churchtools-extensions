@@ -25,14 +25,26 @@
           >
         </div>
       </div>
-      <Button
-        icon="pi pi-refresh"
-        size="small"
-        text
-        @click="$emit('refresh')"
-        :loading="loading"
-        v-tooltip="'Refresh members'"
-      />
+      <div class="flex items-center gap-2">
+        <div class="relative">
+          <i
+            class="pi pi-search absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-400 text-sm"
+          ></i>
+          <InputText
+            v-model="searchQuery"
+            placeholder="Search..."
+            class="pl-8 h-8 text-sm w-48"
+          />
+        </div>
+        <Button
+          icon="pi pi-refresh"
+          size="small"
+          text
+          @click="$emit('refresh')"
+          :loading="loading"
+          v-tooltip="'Refresh members'"
+        />
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -67,35 +79,6 @@
       class="p-datatable-sm"
       stripedRows
     >
-      <!-- Global Search -->
-      <template #header>
-        <div class="flex items-center justify-between gap-4">
-          <div class="relative">
-            <i
-              class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"
-            ></i>
-            <InputText
-              v-model="searchQuery"
-              placeholder="Search members..."
-              class="pl-10 w-64"
-            />
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-surface-600 dark:text-surface-400"
-              >Filter:</label
-            >
-            <Select
-              v-model="statusFilter"
-              :options="statusOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="All Statuses"
-              class="w-40"
-            />
-          </div>
-        </div>
-      </template>
-
       <!-- Name Column -->
       <template #empty>
         <div class="text-center py-4 text-surface-500">
@@ -244,7 +227,6 @@ import Column from 'primevue/column';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
-import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import { useToast } from 'primevue/usetoast';
 
 const props = defineProps<{
@@ -259,13 +241,6 @@ defineEmits<{
 
 const toast = useToast();
 const searchQuery = ref('');
-const statusFilter = ref<string | null>(null);
-
-const statusOptions = [
-  { label: 'All', value: null },
-  { label: 'Active', value: 'active' },
-  { label: 'Waitlist', value: 'waiting' },
-];
 
 // Computed
 const activeMembers = computed(() =>
@@ -277,25 +252,45 @@ const waitingMembers = computed(() =>
 );
 
 const filteredMembers = computed(() => {
-  let result = props.members;
-
-  // Status filter
-  if (statusFilter.value) {
-    result = result.filter((m) => m.groupMemberStatus === statusFilter.value);
+  if (!searchQuery.value) {
+    return props.members;
   }
 
-  // Search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    result = result.filter(
-      (m) =>
-        m.person.firstName.toLowerCase().includes(query) ||
-        m.person.lastName.toLowerCase().includes(query) ||
-        m.person.email?.toLowerCase().includes(query),
-    );
-  }
+  const query = searchQuery.value.toLowerCase();
+  return props.members.filter((m) => {
+    // Search in basic person info
+    if (m.person.firstName.toLowerCase().includes(query)) return true;
+    if (m.person.lastName.toLowerCase().includes(query)) return true;
+    if (m.person.email?.toLowerCase().includes(query)) return true;
 
-  return result;
+    // Search in status
+    if (m.groupMemberStatus.toLowerCase().includes(query)) return true;
+
+    // Search in meal preference
+    if (m.fields?.mealPreference?.toLowerCase().includes(query)) return true;
+
+    // Search in dietary restrictions and allergies
+    if (m.fields?.dietaryRestrictions?.toLowerCase().includes(query))
+      return true;
+    if (m.fields?.allergyInfo?.toLowerCase().includes(query)) return true;
+
+    // Search in partner preference
+    if (m.fields?.partnerPreference?.toLowerCase().includes(query)) return true;
+
+    // Search in phone numbers
+    const phone = m.person.phoneNumbers?.[0]?.phoneNumber;
+    if (phone?.toLowerCase().includes(query)) return true;
+
+    // Search in address
+    const address = m.person.addresses?.[0];
+    if (address) {
+      if (address.street?.toLowerCase().includes(query)) return true;
+      if (address.city?.toLowerCase().includes(query)) return true;
+      if (address.zip?.toLowerCase().includes(query)) return true;
+    }
+
+    return false;
+  });
 });
 
 // Helpers

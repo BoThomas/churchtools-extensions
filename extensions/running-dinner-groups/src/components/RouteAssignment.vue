@@ -92,11 +92,7 @@
     </div>
 
     <!-- No groups warning -->
-    <Message
-      v-if="dinnerGroups.length === 0"
-      severity="info"
-      :closable="false"
-    >
+    <Message v-if="dinnerGroups.length === 0" severity="info" :closable="false">
       Create dinner groups first before assigning routes.
     </Message>
 
