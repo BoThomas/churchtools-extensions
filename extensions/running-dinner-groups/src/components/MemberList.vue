@@ -1,28 +1,28 @@
 <template>
   <div class="space-y-4">
     <!-- Header with stats -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap gap-3">
         <div
-          class="text-center px-4 py-2 bg-surface-100 dark:bg-surface-800 rounded"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-100 dark:bg-surface-800"
         >
-          <div class="text-2xl font-bold text-primary">
-            {{ activeMembers.length }}
-          </div>
-          <div class="text-xs text-surface-600 dark:text-surface-400">
-            Active
-          </div>
+          <i class="pi pi-users text-primary text-sm"></i>
+          <span class="font-semibold">{{ activeMembers.length }}</span>
+          <span class="text-sm text-surface-600 dark:text-surface-400"
+            >Active</span
+          >
         </div>
         <div
           v-if="waitingMembers.length > 0"
-          class="text-center px-4 py-2 bg-surface-100 dark:bg-surface-800 rounded"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-900/30"
         >
-          <div class="text-2xl font-bold text-orange-500">
-            {{ waitingMembers.length }}
-          </div>
-          <div class="text-xs text-surface-600 dark:text-surface-400">
-            Waitlist
-          </div>
+          <i class="pi pi-clock text-orange-500 text-sm"></i>
+          <span class="font-semibold text-orange-700 dark:text-orange-300">{{
+            waitingMembers.length
+          }}</span>
+          <span class="text-sm text-orange-700 dark:text-orange-300"
+            >Waitlist</span
+          >
         </div>
       </div>
       <Button

@@ -1,114 +1,123 @@
 <template>
   <div class="space-y-4">
-    <!-- Status and Actions Card -->
-    <Card>
-      <template #content>
-        <div class="space-y-4">
-          <!-- Status Info -->
-          <div class="grid grid-cols-3 gap-4">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-primary">
-                {{ dinnerGroups.length }}
-              </div>
-              <div class="text-sm text-surface-600 dark:text-surface-400">
-                Dinner Groups
-              </div>
-            </div>
-            <div class="text-center">
-              <div class="text-2xl font-bold text-success">
-                {{ localRoutes.length }}
-              </div>
-              <div class="text-sm text-surface-600 dark:text-surface-400">
-                Routes Assigned
-              </div>
-            </div>
-            <div class="text-center">
-              <div
-                class="text-2xl font-bold"
-                :class="
-                  notificationsSent ? 'text-green-500' : 'text-surface-400'
-                "
-              >
-                <i
-                  :class="notificationsSent ? 'pi pi-check' : 'pi pi-envelope'"
-                ></i>
-              </div>
-              <div class="text-sm text-surface-600 dark:text-surface-400">
-                {{ notificationsSent ? 'Sent' : 'Pending' }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex gap-2 flex-wrap">
-            <Button
-              label="Assign Routes"
-              icon="pi pi-map"
-              @click="handleAssignRoutes"
-              :loading="assigning"
-              :disabled="
-                assigning || localRoutes.length > 0 || dinnerGroups.length === 0
-              "
-            />
-            <Button
-              v-if="localRoutes.length > 0 && !isSaved"
-              label="Save Routes"
-              icon="pi pi-save"
-              @click="handleSaveRoutes"
-              :loading="saving"
-              severity="success"
-            />
-            <Button
-              v-if="localRoutes.length > 0 && isSaved && !notificationsSent"
-              label="Send Notifications"
-              icon="pi pi-send"
-              @click="handleSendNotifications"
-              :loading="sendingNotifications"
-              severity="info"
-            />
-            <DangerButton
-              v-if="localRoutes.length > 0"
-              label="Reset"
-              icon="pi pi-refresh"
-              outlined
-              @click="handleReset"
-              :disabled="assigning || saving"
-            />
-          </div>
-
-          <!-- No groups warning -->
-          <Message
-            v-if="dinnerGroups.length === 0"
-            severity="info"
-            :closable="false"
+    <!-- Overview Stats & Actions -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap gap-3">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-100 dark:bg-surface-800"
+        >
+          <i class="pi pi-sitemap text-primary text-sm"></i>
+          <span class="font-semibold">{{ dinnerGroups.length }}</span>
+          <span class="text-sm text-surface-600 dark:text-surface-400"
+            >Dinner Groups</span
           >
-            Create dinner groups first before assigning routes.
-          </Message>
-
-          <!-- Warnings -->
-          <div v-if="warnings.length > 0" class="space-y-2">
-            <Message
-              v-for="(warning, idx) in warnings"
-              :key="idx"
-              severity="warn"
-              :closable="false"
-            >
-              {{ warning }}
-            </Message>
-          </div>
-
-          <!-- Success Message -->
-          <Message
-            v-if="localRoutes.length > 0 && warnings.length === 0"
-            severity="success"
-            :closable="false"
-          >
-            Routes successfully assigned! All groups have complete dinner
-            routes.
-          </Message>
         </div>
-      </template>
-    </Card>
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-100 dark:bg-surface-800"
+        >
+          <i class="pi pi-map text-green-500 text-sm"></i>
+          <span class="font-semibold">{{ localRoutes.length }}</span>
+          <span class="text-sm text-surface-600 dark:text-surface-400"
+            >Routes</span
+          >
+        </div>
+        <div
+          v-if="localRoutes.length > 0"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+          :class="
+            notificationsSent
+              ? 'bg-green-100 dark:bg-green-900/30'
+              : 'bg-surface-100 dark:bg-surface-800'
+          "
+        >
+          <i
+            class="text-sm"
+            :class="
+              notificationsSent
+                ? 'pi pi-check-circle text-green-500'
+                : 'pi pi-envelope text-surface-400'
+            "
+          ></i>
+          <span
+            class="text-sm"
+            :class="
+              notificationsSent
+                ? 'text-green-700 dark:text-green-300'
+                : 'text-surface-600 dark:text-surface-400'
+            "
+            >{{ notificationsSent ? 'Notifications Sent' : 'Pending' }}</span
+          >
+        </div>
+      </div>
+
+      <div class="flex gap-2 flex-wrap">
+        <Button
+          label="Assign Routes"
+          icon="pi pi-map"
+          size="small"
+          @click="handleAssignRoutes"
+          :loading="assigning"
+          :disabled="
+            assigning || localRoutes.length > 0 || dinnerGroups.length === 0
+          "
+        />
+        <Button
+          v-if="localRoutes.length > 0 && !isSaved"
+          label="Save Routes"
+          icon="pi pi-save"
+          size="small"
+          @click="handleSaveRoutes"
+          :loading="saving"
+          severity="success"
+        />
+        <Button
+          v-if="localRoutes.length > 0 && isSaved && !notificationsSent"
+          label="Send Notifications"
+          icon="pi pi-send"
+          size="small"
+          @click="handleSendNotifications"
+          :loading="sendingNotifications"
+          severity="info"
+        />
+        <DangerButton
+          v-if="localRoutes.length > 0"
+          label="Reset"
+          icon="pi pi-refresh"
+          size="small"
+          outlined
+          @click="handleReset"
+          :disabled="assigning || saving"
+        />
+      </div>
+    </div>
+
+    <!-- No groups warning -->
+    <Message
+      v-if="dinnerGroups.length === 0"
+      severity="info"
+      :closable="false"
+    >
+      Create dinner groups first before assigning routes.
+    </Message>
+
+    <!-- Warnings -->
+    <Message
+      v-for="(warning, idx) in warnings"
+      :key="idx"
+      severity="warn"
+      :closable="false"
+    >
+      {{ warning }}
+    </Message>
+
+    <!-- Success Message -->
+    <Message
+      v-if="localRoutes.length > 0 && warnings.length === 0"
+      severity="success"
+      :closable="false"
+    >
+      Routes successfully assigned! All groups have complete dinner routes.
+    </Message>
 
     <!-- Routes Display -->
     <div v-if="localRoutes.length > 0" class="space-y-4">
@@ -126,20 +135,19 @@
     </div>
 
     <!-- Empty State -->
-    <Card v-else>
-      <template #content>
-        <div class="text-center py-12">
-          <i class="pi pi-map text-6xl text-surface-400 mb-4"></i>
-          <p class="text-lg text-surface-600 dark:text-surface-400 mb-2">
-            No routes assigned yet
-          </p>
-          <p class="text-sm text-surface-500">
-            Click "Assign Routes" to automatically create dinner routes for all
-            groups.
-          </p>
-        </div>
-      </template>
-    </Card>
+    <div
+      v-else
+      class="text-center py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
+    >
+      <i class="pi pi-map text-5xl text-surface-400 mb-4"></i>
+      <p class="text-lg text-surface-600 dark:text-surface-400 mb-2">
+        No routes assigned yet
+      </p>
+      <p class="text-sm text-surface-500">
+        Click "Assign Routes" to automatically create dinner routes for all
+        groups.
+      </p>
+    </div>
   </div>
 </template>
 
@@ -158,7 +166,6 @@ import { useRouteStore } from '@/stores/route';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
