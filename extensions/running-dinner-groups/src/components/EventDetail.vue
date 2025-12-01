@@ -16,7 +16,7 @@
     </template>
 
     <Tabs v-model:value="activeTab" class="flex flex-col h-full">
-      <TabList class="flex-shrink-0">
+      <TabList class="shrink-0">
         <Tab value="overview">
           <i class="pi pi-info-circle mr-2"></i>
           Overview
@@ -312,8 +312,6 @@ import {
   type EventMetadata,
   type Group,
   type GroupMember,
-  type DinnerGroup,
-  type Route,
 } from '@/types/models';
 import { useChurchtoolsStore } from '@/stores/churchtools';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';
@@ -355,11 +353,15 @@ const routeStore = useRouteStore();
 
 const activeTab = ref('overview');
 const members = ref<GroupMember[]>([]);
-const dinnerGroups = ref<CategoryValue<DinnerGroup>[]>([]);
-const routes = ref<CategoryValue<Route>[]>([]);
 const loadingMembers = ref(false);
-const loadingGroups = ref(false);
-const loadingRoutes = ref(false);
+
+// Use computed properties that read directly from stores - single source of truth
+const dinnerGroups = computed(() =>
+  dinnerGroupStore.getByEventId(props.event.id),
+);
+const routes = computed(() => routeStore.getByEventId(props.event.id));
+const loadingGroups = computed(() => dinnerGroupStore.loading);
+const loadingRoutes = computed(() => routeStore.loading);
 
 // Computed
 const isVisible = computed({
@@ -653,30 +655,18 @@ async function loadMembers() {
 }
 
 async function loadDinnerGroups() {
-  loadingGroups.value = true;
   try {
     await dinnerGroupStore.fetchAll();
-    dinnerGroups.value = dinnerGroupStore.dinnerGroups.filter(
-      (g) => g.value.eventMetadataId === props.event.id,
-    );
   } catch (error) {
     console.error('Failed to load dinner groups:', error);
-  } finally {
-    loadingGroups.value = false;
   }
 }
 
 async function loadRoutes() {
-  loadingRoutes.value = true;
   try {
     await routeStore.fetchAll();
-    routes.value = routeStore.routes.filter(
-      (r) => r.value.eventMetadataId === props.event.id,
-    );
   } catch (error) {
     console.error('Failed to load routes:', error);
-  } finally {
-    loadingRoutes.value = false;
   }
 }
 

@@ -62,6 +62,36 @@ export const useDinnerGroupStore = defineStore('dinnerGroup', () => {
   }
 
   /**
+   * Create a single dinner group
+   */
+  async function create(
+    group: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<{ id: number }> {
+    saving.value = true;
+    error.value = null;
+    try {
+      await ensureCategory();
+      if (!category) throw new Error('Category not initialized');
+      const now = new Date().toISOString();
+      const groupData: DinnerGroup = {
+        ...group,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const result = await category.create(groupData);
+      await fetchAll(); // Refresh list
+      return result;
+    } catch (err) {
+      error.value =
+        err instanceof Error ? err.message : 'Failed to create dinner group';
+      console.error('create error:', err);
+      throw err;
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  /**
    * Create multiple dinner groups (batch)
    */
   async function createMultiple(
@@ -130,6 +160,27 @@ export const useDinnerGroupStore = defineStore('dinnerGroup', () => {
   }
 
   /**
+   * Delete a single dinner group by ID
+   */
+  async function deleteById(id: number): Promise<void> {
+    saving.value = true;
+    error.value = null;
+    try {
+      await ensureCategory();
+      if (!category) throw new Error('Category not initialized');
+      await category.delete(id);
+      await fetchAll(); // Refresh list
+    } catch (err) {
+      error.value =
+        err instanceof Error ? err.message : 'Failed to delete dinner group';
+      console.error('deleteById error:', err);
+      throw err;
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  /**
    * Delete all dinner groups for an event
    */
   async function deleteByEventId(eventMetadataId: number): Promise<void> {
@@ -173,8 +224,10 @@ export const useDinnerGroupStore = defineStore('dinnerGroup', () => {
     saving,
     error,
     fetchAll,
+    create,
     createMultiple,
     update,
+    deleteById,
     deleteByEventId,
     getByEventId,
   };

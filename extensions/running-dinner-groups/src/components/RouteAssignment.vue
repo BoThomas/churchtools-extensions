@@ -206,12 +206,16 @@ const notificationsSent = computed(
     props.event.value.status === 'completed',
 );
 
-// Watch for existing routes
+// Watch for existing routes - sync local state with store
 watch(
   () => props.routes,
   (newRoutes) => {
-    if (newRoutes.length > 0 && localRoutes.value.length === 0) {
-      // Initialize from saved routes
+    if (newRoutes.length > 0 && isSaved.value) {
+      // Sync from store when routes are saved (no unsaved changes)
+      // This handles post-save updates
+      localRoutes.value = newRoutes.map((r) => ({ ...r.value }));
+    } else if (newRoutes.length > 0 && localRoutes.value.length === 0) {
+      // Initial load from saved routes
       localRoutes.value = newRoutes.map((r) => ({ ...r.value }));
       isSaved.value = true;
     } else if (

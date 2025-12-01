@@ -591,14 +591,14 @@ function buildAffectedParticipantsMessage(
   return message;
 }
 
-// Watch for existing dinner groups
+// Watch for existing dinner groups - sync local state with store
 watch(
   () => props.dinnerGroups,
   (newGroups) => {
-    if (newGroups.length > 0 && localDinnerGroups.value.length === 0) {
-      // Initialize from saved groups
+    if (newGroups.length > 0 && !hasUnsavedChanges.value) {
+      // Sync from store when there are no unsaved changes
+      // This handles both initial load and post-save updates
       localDinnerGroups.value = newGroups.map((g) => ({ ...g.value }));
-      hasUnsavedChanges.value = false;
     } else if (
       newGroups.length === 0 &&
       localDinnerGroups.value.length > 0 &&
@@ -652,18 +652,32 @@ async function handleSaveGroups() {
 
   try {
     if (hasSavedGroups.value) {
-      // Groups already exist - UPDATE them to preserve database IDs
-      // (this is important because routes reference groups by their DB ID)
+      // Groups already exist - handle updates, creates, and deletes
       for (const localGroup of localDinnerGroups.value) {
         const savedGroup = props.dinnerGroups.find(
           (g) => g.value.groupNumber === localGroup.groupNumber,
         );
         if (savedGroup) {
+          // Update existing group
           await dinnerGroupStore.update(savedGroup.id, {
             ...localGroup,
             id: savedGroup.id, // Preserve the database ID in the value
           });
+        } else {
+          // Create new group (added after initial save)
+          await dinnerGroupStore.create(localGroup);
         }
+      }
+
+      // Delete groups that were removed locally
+      const localGroupNumbers = new Set(
+        localDinnerGroups.value.map((g) => g.groupNumber),
+      );
+      const groupsToDelete = props.dinnerGroups.filter(
+        (g) => !localGroupNumbers.has(g.value.groupNumber),
+      );
+      for (const group of groupsToDelete) {
+        await dinnerGroupStore.deleteById(group.id);
       }
     } else {
       // First save - create new groups
