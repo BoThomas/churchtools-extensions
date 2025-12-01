@@ -316,6 +316,7 @@ import {
 import { useChurchtoolsStore } from '@/stores/churchtools';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';
 import { useRouteStore } from '@/stores/route';
+import { useEventMetadataStore } from '@/stores/eventMetadata';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
 import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
@@ -350,6 +351,14 @@ const emit = defineEmits<{
 const churchtoolsStore = useChurchtoolsStore();
 const dinnerGroupStore = useDinnerGroupStore();
 const routeStore = useRouteStore();
+const eventMetadataStore = useEventMetadataStore();
+
+// Get the current event from the store for reactive status updates
+const currentEvent = computed(
+  () =>
+    eventMetadataStore.events.find((e) => e.id === props.event.id) ??
+    props.event,
+);
 
 const activeTab = ref('overview');
 const members = ref<GroupMember[]>([]);
@@ -457,7 +466,7 @@ const activeMembers = computed(() =>
 const nextStepTitle = computed(() => {
   if (isArchived.value) return 'Event Archived';
 
-  const status = props.event.value.status;
+  const status = currentEvent.value.value.status;
   switch (status) {
     case 'active':
       if (isRegistrationOpen.value) {
@@ -483,7 +492,7 @@ const nextStepTitle = computed(() => {
 const nextStepDescription = computed(() => {
   if (isArchived.value) return 'This event has been archived and is read-only.';
 
-  const status = props.event.value.status;
+  const status = currentEvent.value.value.status;
   const memberCount = activeMembers.value.length;
 
   switch (status) {
@@ -519,7 +528,7 @@ const nextStepStyle = computed(() => {
     };
   }
 
-  const status = props.event.value.status;
+  const status = currentEvent.value.value.status;
   switch (status) {
     case 'active':
       if (isRegistrationOpen.value) {
@@ -579,7 +588,7 @@ const nextStepStyle = computed(() => {
 const nextStepAction = computed(() => {
   if (isArchived.value) return null;
 
-  const status = props.event.value.status;
+  const status = currentEvent.value.value.status;
   switch (status) {
     case 'active':
       if (isRegistrationOpen.value) {
