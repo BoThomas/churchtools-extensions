@@ -13,6 +13,7 @@ import { type Route } from '@/types/models';
  */
 export const useRouteStore = defineStore('route', () => {
   const routes = ref<CategoryValue<Route>[]>([]);
+  const localRoutes = ref<Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[]>([]);
   const loading = ref(false);
   const saving = ref(false);
   const error = ref<string | null>(null);
@@ -141,8 +142,28 @@ export const useRouteStore = defineStore('route', () => {
     return routes.value.find((r) => r.value.dinnerGroupId === dinnerGroupId);
   }
 
+  /**
+   * Clear local (unsaved) routes for an event
+   * Called when groups are reset to ensure local route state is also cleared
+   */
+  function clearLocalRoutes(eventMetadataId: number): void {
+    localRoutes.value = localRoutes.value.filter(
+      (r) => r.eventMetadataId !== eventMetadataId,
+    );
+  }
+
+  /**
+   * Set local routes (for working state before saving)
+   */
+  function setLocalRoutes(
+    newRoutes: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[],
+  ): void {
+    localRoutes.value = newRoutes;
+  }
+
   return {
     routes,
+    localRoutes,
     loading,
     saving,
     error,
@@ -151,5 +172,7 @@ export const useRouteStore = defineStore('route', () => {
     deleteByEventId,
     getByEventId,
     getByDinnerGroupId,
+    clearLocalRoutes,
+    setLocalRoutes,
   };
 });

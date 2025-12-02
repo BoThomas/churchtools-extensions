@@ -285,6 +285,7 @@ async function handleDeleteEvent(event: CategoryValue<EventMetadata>) {
         // Delete dinner groups and routes from KV store
         await dinnerGroupStore.deleteByEventId(event.id);
         await routeStore.deleteByEventId(event.id);
+        routeStore.clearLocalRoutes(event.id);
 
         // Delete event metadata from KV store
         await eventMetadataStore.remove(event.id);

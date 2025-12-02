@@ -219,12 +219,16 @@ const eventMetadataStore = useEventMetadataStore();
 const confirm = useConfirm();
 const toast = useToast();
 
-const localRoutes = ref<Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[]>([]);
 const warnings = ref<string[]>([]);
 const assigning = ref(false);
 const saving = ref(false);
 const sendingNotifications = ref(false);
 const isSaved = ref(false);
+
+// Use store's localRoutes filtered by event
+const localRoutes = computed(() =>
+  routeStore.localRoutes.filter((r) => r.eventMetadataId === props.event.id),
+);
 
 // Computed
 const sortedRoutes = computed(() => {
@@ -303,10 +307,10 @@ watch(
     if (newRoutes.length > 0 && isSaved.value) {
       // Sync from store when routes are saved (no unsaved changes)
       // This handles post-save updates
-      localRoutes.value = newRoutes.map((r) => ({ ...r.value }));
+      routeStore.setLocalRoutes(newRoutes.map((r) => ({ ...r.value })));
     } else if (newRoutes.length > 0 && localRoutes.value.length === 0) {
       // Initial load from saved routes
-      localRoutes.value = newRoutes.map((r) => ({ ...r.value }));
+      routeStore.setLocalRoutes(newRoutes.map((r) => ({ ...r.value })));
       isSaved.value = true;
     } else if (
       newRoutes.length === 0 &&
@@ -314,12 +318,21 @@ watch(
       isSaved.value
     ) {
       // Routes were deleted externally (e.g., from DinnerGroupBuilder reset)
-      localRoutes.value = [];
+      routeStore.clearLocalRoutes(props.event.id);
       isSaved.value = false;
     }
   },
   { immediate: true },
 );
+
+// Watch for local routes being cleared (e.g., from DinnerGroupBuilder reset)
+// Clear warnings and reset state when routes are emptied
+watch(localRoutes, (newLocalRoutes) => {
+  if (newLocalRoutes.length === 0) {
+    warnings.value = [];
+    isSaved.value = false;
+  }
+});
 
 // Methods
 async function handleAssignRoutes() {
@@ -333,7 +346,7 @@ async function handleAssignRoutes() {
       props.members,
     );
 
-    localRoutes.value = result.routes;
+    routeStore.setLocalRoutes(result.routes);
     warnings.value = result.warnings;
     isSaved.value = false;
 
@@ -482,7 +495,7 @@ function handleReset() {
           status: 'groups-created',
         });
       }
-      localRoutes.value = [];
+      routeStore.clearLocalRoutes(props.event.id);
       warnings.value = [];
       isSaved.value = false;
       emit('refresh');

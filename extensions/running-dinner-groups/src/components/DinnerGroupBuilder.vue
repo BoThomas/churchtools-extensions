@@ -792,6 +792,8 @@ function handleReset() {
         await dinnerGroupStore.deleteByEventId(props.event.id);
         await eventMetadataStore.update(props.event.id, { status: 'active' });
       }
+      // Always clear local routes (handles unsaved routes too)
+      routeStore.clearLocalRoutes(props.event.id);
       localDinnerGroups.value = [];
       warnings.value = [];
       hasUnsavedChanges.value = false;
@@ -884,6 +886,7 @@ function deleteGroup(groupNumber: number) {
       accept: async () => {
         // Reset routes first
         await routeStore.deleteByEventId(props.event.id);
+        routeStore.clearLocalRoutes(props.event.id);
         await eventMetadataStore.update(props.event.id, {
           status: 'groups-created',
         });
@@ -946,6 +949,7 @@ function addMemberToGroup() {
       accept: async () => {
         // Reset routes first
         await routeStore.deleteByEventId(props.event.id);
+        routeStore.clearLocalRoutes(props.event.id);
         await eventMetadataStore.update(props.event.id, {
           status: 'groups-created',
         });
