@@ -445,12 +445,17 @@ const unassignedMembers = computed(() =>
 );
 
 const filteredDinnerGroups = computed(() => {
+  // Sort by groupNumber first
+  const sorted = [...localDinnerGroups.value].sort(
+    (a, b) => a.groupNumber - b.groupNumber,
+  );
+
   if (!searchQuery.value) {
-    return localDinnerGroups.value;
+    return sorted;
   }
 
   const query = searchQuery.value.toLowerCase();
-  return localDinnerGroups.value.filter((group) => {
+  return sorted.filter((group) => {
     // Search by group number
     if (group.groupNumber.toString().includes(query)) return true;
 

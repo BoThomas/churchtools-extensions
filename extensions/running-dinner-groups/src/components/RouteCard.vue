@@ -4,13 +4,38 @@
     class="p-4 bg-surface-50 dark:bg-surface-900 rounded-lg"
   >
     <!-- Group Header -->
-    <div class="flex items-center justify-between mb-4">
+    <div class="mb-4">
       <div class="flex items-center gap-2">
         <span class="font-semibold">Group {{ groupNumber }}</span>
         <span class="text-surface-400">·</span>
         <span class="text-sm text-surface-500">
           {{ getOwnGroupMembers().map(formatMemberName).join(', ') }}
         </span>
+      </div>
+      <div
+        v-if="allGroupsToMeet.length > 0"
+        class="text-xs text-surface-400 mt-1 flex flex-wrap items-center gap-1"
+      >
+        <span class="text-surface-500">Will meet:</span>
+        <button
+          v-for="group in allGroupsToMeet"
+          :key="group.id"
+          class="px-1.5 py-0.5 bg-surface-100 dark:bg-surface-700 rounded text-xs hover:bg-surface-200 dark:hover:bg-surface-600 transition-colors cursor-pointer inline-flex items-center gap-1"
+          @click="scrollToGroup(group.id)"
+        >
+          <span>
+            <span class="font-medium">G{{ group.value.groupNumber }}</span
+            >:
+            {{ getGroupMembers(group).map(formatMemberName).join(', ') }}
+          </span>
+          <span
+            v-if="getMeetingCount(group.id) > 1"
+            class="px-1 py-0.5 bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 rounded-full text-[10px] font-semibold"
+            :title="`This group is met ${getMeetingCount(group.id)} times during the evening`"
+          >
+            {{ getMeetingCount(group.id) }}×
+          </span>
+        </button>
       </div>
     </div>
 
@@ -203,6 +228,81 @@ const dinnerGroup = computed(() =>
 );
 
 const groupNumber = computed(() => dinnerGroup.value?.value.groupNumber ?? 0);
+
+// Get all groups this group will meet during the dinner (in order of encounter)
+const allGroupsToMeet = computed(() => {
+  const groupIdsToMeet: number[] = [];
+  const seenGroupIds = new Set<number>();
+
+  // For each stop in the route (in order), find all groups at that location
+  for (const stop of props.route.stops) {
+    // Collect groups at this stop
+    const groupsAtStop: CategoryValue<DinnerGroup>[] = [];
+
+    for (const otherRoute of props.allRoutes) {
+      const matchingStop = otherRoute.stops.find(
+        (s) =>
+          s.meal === stop.meal &&
+          s.hostDinnerGroupId === stop.hostDinnerGroupId,
+      );
+      if (
+        matchingStop &&
+        otherRoute.dinnerGroupId !== props.route.dinnerGroupId &&
+        !seenGroupIds.has(otherRoute.dinnerGroupId)
+      ) {
+        const group = props.dinnerGroups.find(
+          (g) => g.id === otherRoute.dinnerGroupId,
+        );
+        if (group) {
+          groupsAtStop.push(group);
+        }
+      }
+    }
+
+    // Sort groups at this stop by group number, then add them
+    groupsAtStop
+      .sort((a, b) => a.value.groupNumber - b.value.groupNumber)
+      .forEach((group) => {
+        groupIdsToMeet.push(group.id);
+        seenGroupIds.add(group.id);
+      });
+  }
+
+  // Return groups in the order they were encountered
+  return groupIdsToMeet
+    .map((id) => props.dinnerGroups.find((g) => g.id === id))
+    .filter((g): g is CategoryValue<DinnerGroup> => g !== undefined);
+});
+
+// Count how many times each group is met (at different stops)
+const groupMeetingCounts = computed(() => {
+  const counts = new Map<number, number>();
+
+  for (const stop of props.route.stops) {
+    for (const otherRoute of props.allRoutes) {
+      const matchingStop = otherRoute.stops.find(
+        (s) =>
+          s.meal === stop.meal &&
+          s.hostDinnerGroupId === stop.hostDinnerGroupId,
+      );
+      if (
+        matchingStop &&
+        otherRoute.dinnerGroupId !== props.route.dinnerGroupId
+      ) {
+        counts.set(
+          otherRoute.dinnerGroupId,
+          (counts.get(otherRoute.dinnerGroupId) || 0) + 1,
+        );
+      }
+    }
+  }
+
+  return counts;
+});
+
+function getMeetingCount(groupId: number): number {
+  return groupMeetingCounts.value.get(groupId) || 1;
+}
 
 // Helper to format name as "John D."
 function formatMemberName(member: GroupMember): string {

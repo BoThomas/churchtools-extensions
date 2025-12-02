@@ -106,14 +106,13 @@
       {{ warning }}
     </Message>
 
-    <!-- Success Message -->
-    <Message
-      v-if="localRoutes.length > 0 && warnings.length === 0"
-      severity="success"
-      :closable="false"
-    >
-      Routes successfully assigned! All groups have complete dinner routes.
-    </Message>
+    <!-- Network Graph Visualization -->
+    <RouteNetworkGraph
+      v-if="localRoutes.length > 0"
+      :routes="localRoutes"
+      :dinner-groups="dinnerGroups"
+      :members="members"
+    />
 
     <!-- Routes Display -->
     <div v-if="localRoutes.length > 0" class="space-y-4">
@@ -199,7 +198,7 @@ import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import RouteCard from './RouteCard.vue';
-
+import RouteNetworkGraph from './RouteNetworkGraph.vue';
 const props = defineProps<{
   event: CategoryValue<EventMetadata>;
   members: GroupMember[];
