@@ -22,6 +22,16 @@ export function getMealLabel(meal: string): string {
   return labels[meal] || meal;
 }
 
+// Helper to get meal label without emoji
+export function getMealLabelWithoutEmoji(meal: string): string {
+  const labels: Record<string, string> = {
+    starter: 'Starter',
+    mainCourse: 'Main Course',
+    dessert: 'Dessert',
+  };
+  return labels[meal] || meal;
+}
+
 // Helper to get just the meal emoji
 export function getMealEmoji(meal: string): string {
   const emojis: Record<string, string> = {

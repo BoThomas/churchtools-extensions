@@ -1,89 +1,156 @@
 <template>
-  <Card class="h-full">
-    <template #title>
-      <div class="flex items-center justify-between">
-        <span>Group {{ groupNumber }}</span>
-        <Chip :label="`${memberCount} members`" class="text-xs" />
+  <div
+    :id="`route-group-${route.dinnerGroupId}`"
+    class="p-4 bg-surface-50 dark:bg-surface-900 rounded-lg"
+  >
+    <!-- Group Header -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="font-semibold">Group {{ groupNumber }}</span>
+        <span class="text-surface-400">·</span>
+        <span class="text-sm text-surface-500">
+          {{ getOwnGroupMembers().map(formatMemberName).join(', ') }}
+        </span>
       </div>
-    </template>
-    <template #content>
-      <div class="space-y-3">
-        <!-- Route Stops -->
+    </div>
+
+    <!-- Journey Timeline -->
+    <div class="relative pl-8">
+      <!-- Vertical line -->
+      <div
+        class="absolute left-[1.4rem] top-0 bottom-0 w-0.5 bg-surface-300 dark:bg-surface-600"
+      ></div>
+
+      <div
+        v-for="(stop, idx) in route.stops"
+        :key="idx"
+        class="relative pb-6 last:pb-0"
+      >
+        <!-- Timeline dot -->
         <div
-          v-for="(stop, idx) in route.stops"
-          :key="idx"
-          class="flex gap-3 pb-3"
-          :class="{
-            'border-b border-surface-200 dark:border-surface-700':
-              idx < route.stops.length - 1,
-          }"
+          class="absolute -left-5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold"
+          :class="[
+            getMealColor(stop.meal),
+            isHostingMeal(stop) ? 'ring-2 ring-primary ring-offset-2' : '',
+          ]"
         >
-          <div class="shrink-0">
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
-              :class="getMealColor(stop.meal)"
-            >
-              {{ idx + 1 }}
+          {{ getMealEmoji(stop.meal) }}
+        </div>
+
+        <!-- Content -->
+        <div
+          class="ml-4 p-3 bg-surface-0 dark:bg-surface-800 rounded-lg shadow-sm"
+          :class="{
+            'border-2 border-primary': isHostingMeal(stop),
+            'border border-surface-200 dark:border-surface-700 cursor-pointer hover:border-primary/50 transition-colors':
+              !isHostingMeal(stop),
+          }"
+          @click="!isHostingMeal(stop) && scrollToGroup(stop.hostDinnerGroupId)"
+        >
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold">{{
+                getMealLabelWithoutEmoji(stop.meal)
+              }}</span>
+              <Badge
+                v-if="isHostingMeal(stop)"
+                value="Host"
+                severity="success"
+                class="text-xs"
+              />
             </div>
+            <span class="text-sm text-surface-500">
+              {{ formatTime(stop.startTime) }} -
+              {{ formatTime(stop.endTime) }}
+            </span>
           </div>
-          <div class="flex-1 min-w-0">
-            <div class="font-semibold text-sm mb-1">
-              {{ getMealLabel(stop.meal) }}
-              <span v-if="isHostingMeal(stop)" class="text-primary">
-                (Hosting)
-              </span>
-            </div>
 
-            <!-- Time -->
-            <div class="text-sm text-surface-600 dark:text-surface-400 mb-1">
-              <i class="pi pi-clock text-xs mr-1"></i>
-              {{ formatTime(stop.startTime) }} - {{ formatTime(stop.endTime) }}
+          <div class="grid gap-2 text-sm">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-users text-surface-400"></i>
+              <span>{{
+                getHostGroupMembers(stop).map(formatMemberName).join(', ')
+              }}</span>
             </div>
-
-            <!-- Address -->
-            <div v-if="getHostAddress(stop)" class="text-sm">
+            <div v-if="getHostAddress(stop)" class="flex items-center gap-2">
+              <i class="pi pi-map-marker text-surface-400"></i>
               <a
                 :href="getGoogleMapsLink(stop)"
                 target="_blank"
-                class="inline-flex items-center gap-1 text-primary hover:underline"
+                class="text-primary hover:underline"
               >
-                <i class="pi pi-map-marker text-xs"></i>
-                <span class="truncate">{{ getHostAddress(stop) }}</span>
+                {{ getHostAddress(stop) }}
               </a>
             </div>
+          </div>
 
-            <!-- After Party Location -->
+          <!-- Expandable guest list -->
+          <div
+            v-if="
+              isHostingMeal(stop) && getGuestGroupsAtLocation(stop).length > 0
+            "
+            class="mt-3 pt-3 border-t border-surface-200 dark:border-surface-700"
+          >
+            <div class="text-xs font-semibold text-surface-500 mb-2">
+              Guests arriving ({{ getTotalGuestsAtLocation(stop) }} people):
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="group in getGuestGroupsAtLocation(stop)"
+                :key="group.id"
+                class="px-2 py-1 bg-surface-100 dark:bg-surface-700 rounded text-xs text-left hover:bg-surface-200 dark:hover:bg-surface-600 transition-colors cursor-pointer"
+                @click="scrollToGroup(group.id)"
+              >
+                <span class="font-medium">G{{ group.value.groupNumber }}</span
+                >:
+                {{ getGroupMembers(group).map(formatMemberName).join(', ') }}
+              </button>
+            </div>
+
+            <!-- Dietary Needs -->
             <div
-              v-if="isDessertAtAfterParty(stop)"
-              class="mt-1 text-xs text-surface-500 italic"
+              v-if="getAllDietaryAtLocation(stop).length > 0"
+              class="mt-3 p-2 bg-orange-50 dark:bg-orange-900/20 rounded text-xs"
             >
-              🎉 All groups meet at the after party location
+              <div
+                class="font-semibold text-orange-700 dark:text-orange-300 mb-1"
+              >
+                🍽️ Dietary Needs:
+              </div>
+              <div
+                v-for="item in getAllDietaryAtLocation(stop)"
+                :key="item.personId"
+                class="text-surface-700 dark:text-surface-300"
+              >
+                {{ item.name }}:
+                <span class="font-medium">{{ item.dietary }}</span>
+              </div>
             </div>
-
-            <!-- Host Info -->
-            <div v-if="getHostName(stop)" class="text-xs text-surface-500 mt-1">
-              Host: {{ getHostName(stop) }}
-            </div>
-          </div>
-        </div>
-
-        <!-- After Party Info -->
-        <div
-          v-if="event.value.afterParty"
-          class="pt-2 border-t border-surface-200 dark:border-surface-700"
-        >
-          <div class="flex items-center gap-2 text-sm">
-            <i class="pi pi-sparkles text-yellow-500"></i>
-            <span class="font-medium">After Party</span>
-          </div>
-          <div class="text-sm text-surface-600 dark:text-surface-400 mt-1">
-            {{ event.value.afterParty.time }} @
-            {{ event.value.afterParty.location }}
           </div>
         </div>
       </div>
-    </template>
-  </Card>
+    </div>
+
+    <!-- After Party -->
+    <div v-if="event.value.afterParty" class="relative pl-8 pt-2">
+      <div
+        class="absolute -left-5 w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center"
+      >
+        🎉
+      </div>
+      <div
+        class="ml-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800"
+      >
+        <div class="font-semibold text-yellow-800 dark:text-yellow-200">
+          After Party
+        </div>
+        <div class="text-sm text-yellow-700 dark:text-yellow-300">
+          {{ event.value.afterParty.time }} @
+          {{ event.value.afterParty.location }}
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -96,12 +163,25 @@ import type {
   RouteStop,
   GroupMember,
 } from '@/types/models';
-import { getMealLabel } from '@/types/models';
-import Card from '@churchtools-extensions/prime-volt/Card.vue';
-import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
+import { getMealEmoji, getMealLabelWithoutEmoji } from '@/types/models';
+import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
+
+// Scroll to a group's route card
+function scrollToGroup(groupId: number) {
+  const element = document.getElementById(`route-group-${groupId}`);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Brief highlight effect with light blue background
+    element.classList.add('!bg-blue-100/50', 'dark:!bg-blue-900/50');
+    setTimeout(() => {
+      element.classList.remove('!bg-blue-100/50', 'dark:!bg-blue-900/50');
+    }, 1500);
+  }
+}
 
 const props = defineProps<{
   route: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>;
+  allRoutes: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[];
   dinnerGroups: CategoryValue<DinnerGroup>[];
   members: GroupMember[];
   event: CategoryValue<EventMetadata>;
@@ -114,9 +194,12 @@ const dinnerGroup = computed(() =>
 
 const groupNumber = computed(() => dinnerGroup.value?.value.groupNumber ?? 0);
 
-const memberCount = computed(
-  () => dinnerGroup.value?.value.memberPersonIds.length ?? 0,
-);
+// Helper to format name as "John D."
+function formatMemberName(member: GroupMember): string {
+  const firstName = member.person.firstName;
+  const lastInitial = member.person.lastName?.charAt(0);
+  return lastInitial ? `${firstName} ${lastInitial}.` : firstName;
+}
 
 // Methods
 function getMealColor(meal: string): string {
@@ -162,14 +245,15 @@ function getHostMember(stop: RouteStop): GroupMember | undefined {
   return props.members.find((m) => m.personId === hostGroup.value.hostPersonId);
 }
 
-function getHostName(stop: RouteStop): string | null {
-  const host = getHostMember(stop);
-  if (!host) return null;
-  return `${host.person.firstName} ${host.person.lastName}`;
+function getHostGroupMembers(stop: RouteStop): GroupMember[] {
+  const hostGroup = getHostGroup(stop);
+  if (!hostGroup) return [];
+  return props.members.filter((m) =>
+    hostGroup.value.memberPersonIds.includes(m.personId),
+  );
 }
 
 function getHostAddress(stop: RouteStop): string | null {
-  // If dessert at after party, use after party location
   if (isDessertAtAfterParty(stop)) {
     return props.event.value.afterParty?.location ?? null;
   }
@@ -184,5 +268,82 @@ function getGoogleMapsLink(stop: RouteStop): string {
   const address = getHostAddress(stop);
   if (!address) return '#';
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+function getOwnGroupMembers(): GroupMember[] {
+  if (!dinnerGroup.value) return [];
+  return props.members.filter((m) =>
+    dinnerGroup.value!.value.memberPersonIds.includes(m.personId),
+  );
+}
+
+function getGroupMembers(group: CategoryValue<DinnerGroup>): GroupMember[] {
+  return props.members.filter((m) =>
+    group.value.memberPersonIds.includes(m.personId),
+  );
+}
+
+function getGroupsAtLocation(stop: RouteStop): CategoryValue<DinnerGroup>[] {
+  // Find all groups that are at this location for this meal
+  const groupIds = new Set<number>();
+
+  for (const otherRoute of props.allRoutes) {
+    const matchingStop = otherRoute.stops.find(
+      (s) =>
+        s.meal === stop.meal && s.hostDinnerGroupId === stop.hostDinnerGroupId,
+    );
+    if (matchingStop) {
+      groupIds.add(otherRoute.dinnerGroupId);
+    }
+  }
+
+  return props.dinnerGroups
+    .filter((g) => groupIds.has(g.id))
+    .sort((a, b) => a.value.groupNumber - b.value.groupNumber);
+}
+
+function getGuestGroupsAtLocation(
+  stop: RouteStop,
+): CategoryValue<DinnerGroup>[] {
+  // Get all groups except the host group
+  return getGroupsAtLocation(stop).filter(
+    (g) => g.id !== stop.hostDinnerGroupId,
+  );
+}
+
+function getTotalGuestsAtLocation(stop: RouteStop): number {
+  const groups = getGuestGroupsAtLocation(stop);
+  return groups.reduce(
+    (count, group) => count + group.value.memberPersonIds.length,
+    0,
+  );
+}
+
+function getAllDietaryAtLocation(
+  stop: RouteStop,
+): { personId: number; name: string; dietary: string }[] {
+  const groups = getGroupsAtLocation(stop);
+  const dietary: { personId: number; name: string; dietary: string }[] = [];
+
+  for (const group of groups) {
+    const members = getGroupMembers(group);
+    for (const member of members) {
+      const restrictions = [
+        member.fields?.dietaryRestrictions,
+        member.fields?.allergyInfo,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      if (restrictions) {
+        dietary.push({
+          personId: member.personId,
+          name: `${member.person.firstName} ${member.person.lastName}`,
+          dietary: restrictions,
+        });
+      }
+    }
+  }
+
+  return dietary;
 }
 </script>

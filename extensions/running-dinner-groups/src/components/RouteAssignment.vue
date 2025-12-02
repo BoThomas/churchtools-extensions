@@ -123,6 +123,7 @@
           v-for="route in sortedRoutes"
           :key="route.dinnerGroupId"
           :route="route"
+          :all-routes="localRoutes"
           :dinner-groups="dinnerGroups"
           :members="members"
           :event="event"

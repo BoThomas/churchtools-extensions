@@ -7,6 +7,10 @@
     "type-check": "tsc --noEmit"
   },
   "exports": {
+    "./Accordion.vue": "./volt/Accordion.vue",
+    "./AccordionContent.vue": "./volt/AccordionContent.vue",
+    "./AccordionHeader.vue": "./volt/AccordionHeader.vue",
+    "./AccordionPanel.vue": "./volt/AccordionPanel.vue",
     "./AutoComplete.vue": "./volt/AutoComplete.vue",
     "./Badge.vue": "./volt/Badge.vue",
     "./Button.vue": "./volt/Button.vue",
