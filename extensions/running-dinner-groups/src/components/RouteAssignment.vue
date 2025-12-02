@@ -118,16 +118,47 @@
     <!-- Routes Display -->
     <div v-if="localRoutes.length > 0" class="space-y-4">
       <h3 class="text-lg font-semibold">Assigned Routes</h3>
-      <div class="grid gap-4 md:grid-cols-2">
-        <RouteCard
-          v-for="route in sortedRoutes"
-          :key="route.dinnerGroupId"
-          :route="route"
-          :all-routes="localRoutes"
-          :dinner-groups="dinnerGroups"
-          :members="members"
-          :event="event"
-        />
+
+      <div class="flex gap-4">
+        <!-- Left Sidebar: Group Selector -->
+        <div class="w-48 shrink-0">
+          <div class="sticky top-4 space-y-2">
+            <button
+              v-for="route in sortedRoutes"
+              :key="route.dinnerGroupId"
+              :id="`sidebar-group-${route.dinnerGroupId}`"
+              class="w-full text-left px-3 py-2 rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors cursor-pointer"
+              @click="scrollToRouteCard(route.dinnerGroupId)"
+            >
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-sm"
+                  >G{{ getGroupNumber(route) }}</span
+                >
+                <span class="text-xs">{{ getHostedMealEmoji(route) }}</span>
+              </div>
+              <div class="text-xs text-surface-500 truncate mt-0.5">
+                {{
+                  getGroupMembers(route)
+                    .map((m) => formatMemberName(m))
+                    .join(', ')
+                }}
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Route Cards -->
+        <div class="flex-1 space-y-4">
+          <RouteCard
+            v-for="route in sortedRoutes"
+            :key="route.dinnerGroupId"
+            :route="route"
+            :all-routes="localRoutes"
+            :dinner-groups="dinnerGroups"
+            :members="members"
+            :event="event"
+          />
+        </div>
       </div>
     </div>
 
@@ -157,6 +188,7 @@ import type {
   Route,
   GroupMember,
 } from '@/types/models';
+import { getMealEmoji } from '@/types/models';
 import { routingService } from '@/services/RoutingService';
 import { emailService } from '@/services/EmailService';
 import { useRouteStore } from '@/stores/route';
@@ -209,6 +241,61 @@ const notificationsSent = computed(
     props.event.value.status === 'notifications-sent' ||
     props.event.value.status === 'completed',
 );
+
+// Sidebar helper functions
+function getGroupNumber(
+  route: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>,
+): number {
+  const group = props.dinnerGroups.find((g) => g.id === route.dinnerGroupId);
+  return group?.value.groupNumber ?? 0;
+}
+
+function getGroupMembers(
+  route: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>,
+): GroupMember[] {
+  const group = props.dinnerGroups.find((g) => g.id === route.dinnerGroupId);
+  if (!group) return [];
+  return props.members.filter((m) =>
+    group.value.memberPersonIds.includes(m.personId),
+  );
+}
+
+function formatMemberName(member: GroupMember): string {
+  const firstName = member.person.firstName;
+  const lastInitial = member.person.lastName?.charAt(0);
+  return lastInitial ? `${firstName} ${lastInitial}.` : firstName;
+}
+
+function getHostedMealEmoji(
+  route: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>,
+): string {
+  const hostedStop = route.stops.find(
+    (stop) => stop.hostDinnerGroupId === route.dinnerGroupId,
+  );
+  return hostedStop ? getMealEmoji(hostedStop.meal) : '';
+}
+
+function scrollToRouteCard(groupId: number) {
+  const routeCard = document.getElementById(`route-group-${groupId}`);
+  const sidebarItem = document.getElementById(`sidebar-group-${groupId}`);
+
+  if (routeCard) {
+    routeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Highlight route card
+    routeCard.classList.add('!bg-blue-100', 'dark:!bg-blue-900/30');
+    setTimeout(() => {
+      routeCard.classList.remove('!bg-blue-100', 'dark:!bg-blue-900/30');
+    }, 1500);
+  }
+
+  if (sidebarItem) {
+    // Highlight sidebar item
+    sidebarItem.classList.add('!bg-blue-100', 'dark:!bg-blue-900/30');
+    setTimeout(() => {
+      sidebarItem.classList.remove('!bg-blue-100', 'dark:!bg-blue-900/30');
+    }, 1500);
+  }
+}
 
 // Watch for existing routes - sync local state with store
 watch(

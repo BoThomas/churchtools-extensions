@@ -166,15 +166,25 @@ import type {
 import { getMealEmoji, getMealLabelWithoutEmoji } from '@/types/models';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 
-// Scroll to a group's route card
+// Scroll to a group's route card and highlight both card and sidebar item
 function scrollToGroup(groupId: number) {
-  const element = document.getElementById(`route-group-${groupId}`);
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Brief highlight effect with light blue background
-    element.classList.add('!bg-blue-100/50', 'dark:!bg-blue-900/50');
+  const routeCard = document.getElementById(`route-group-${groupId}`);
+  const sidebarItem = document.getElementById(`sidebar-group-${groupId}`);
+
+  if (routeCard) {
+    routeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Highlight route card
+    routeCard.classList.add('!bg-blue-100', 'dark:!bg-blue-900/30');
     setTimeout(() => {
-      element.classList.remove('!bg-blue-100/50', 'dark:!bg-blue-900/50');
+      routeCard.classList.remove('!bg-blue-100', 'dark:!bg-blue-900/30');
+    }, 1500);
+  }
+
+  if (sidebarItem) {
+    // Highlight sidebar item
+    sidebarItem.classList.add('!bg-blue-100', 'dark:!bg-blue-900/30');
+    setTimeout(() => {
+      sidebarItem.classList.remove('!bg-blue-100', 'dark:!bg-blue-900/30');
     }, 1500);
   }
 }
