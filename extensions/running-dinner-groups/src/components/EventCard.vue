@@ -23,15 +23,52 @@
           <span>{{ formatEventDate }}</span>
         </div>
 
-        <!-- Member Count -->
-        <div
-          class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400"
-        >
-          <i class="pi pi-users text-xs"></i>
-          <span>{{ memberCount ?? 0 }} participants</span>
-          <span v-if="(waitlistCount ?? 0) > 0" class="text-orange-500">
-            ({{ waitlistCount }} on waitlist)
-          </span>
+        <!-- Registration Progress Bar -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between items-center text-sm">
+            <div
+              class="flex items-center gap-2 text-surface-600 dark:text-surface-400"
+            >
+              <i class="pi pi-users text-xs"></i>
+              <span>Registrations</span>
+            </div>
+            <span class="font-medium text-surface-700 dark:text-surface-300">
+              {{ registrationLabel }}
+            </span>
+          </div>
+          <!-- Multi-segment progress bar -->
+          <div
+            class="h-2 rounded-full overflow-hidden bg-surface-200 dark:bg-surface-700 flex"
+          >
+            <!-- Active participants segment -->
+            <div
+              v-if="activePercent > 0"
+              class="h-full bg-primary transition-all duration-300"
+              :style="{ width: `${activePercent}%` }"
+            ></div>
+            <!-- Waitlist segment -->
+            <div
+              v-if="waitlistPercent > 0"
+              class="h-full bg-orange-400 dark:bg-orange-500 transition-all duration-300"
+              :style="{ width: `${waitlistPercent}%` }"
+            ></div>
+          </div>
+          <!-- Legend for waitlist -->
+          <div
+            v-if="(waitlistCount ?? 0) > 0"
+            class="flex items-center gap-3 text-xs text-surface-500 dark:text-surface-400"
+          >
+            <span class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              {{ memberCount ?? 0 }} confirmed
+            </span>
+            <span class="flex items-center gap-1">
+              <span
+                class="w-2 h-2 rounded-full bg-orange-400 dark:bg-orange-500"
+              ></span>
+              {{ waitlistCount }} waitlist
+            </span>
+          </div>
         </div>
 
         <!-- Registration Status -->
@@ -41,10 +78,16 @@
             :class="
               isRegistrationOpen
                 ? 'pi-lock-open text-green-500'
-                : 'pi-lock text-red-500'
+                : 'pi-lock text-surface-500'
             "
           ></i>
-          <span :class="isRegistrationOpen ? 'text-green-600' : 'text-red-600'">
+          <span
+            :class="
+              isRegistrationOpen
+                ? 'text-green-600'
+                : 'text-surface-600 dark:text-surface-400'
+            "
+          >
             Registration {{ isRegistrationOpen ? 'Open' : 'Closed' }}
           </span>
         </div>
@@ -153,6 +196,46 @@ const signUpOpeningDate = computed(() => {
 const isRegistrationScheduledFuture = computed(() => {
   if (!signUpOpeningDate.value) return false;
   return signUpOpeningDate.value > new Date();
+});
+
+// Progress bar computations
+const maxMembers = computed(() => props.group?.settings?.maxMembers ?? null);
+
+const activePercent = computed(() => {
+  const max = maxMembers.value;
+  const active = props.memberCount ?? 0;
+  if (!max || max <= 0) {
+    // No limit set - show some progress but cap at 100%
+    return Math.min(active * 10, 100); // 10% per person, max 100%
+  }
+  return Math.min((active / max) * 100, 100);
+});
+
+const waitlistPercent = computed(() => {
+  const max = maxMembers.value;
+  const waitlist = props.waitlistCount ?? 0;
+  if (!max || max <= 0 || waitlist === 0) return 0;
+  // Waitlist shows as additional percentage (can overflow past 100% visually capped)
+  const remaining = Math.max(0, 100 - activePercent.value);
+  return Math.min((waitlist / max) * 100, remaining + 20); // Allow slight overflow effect
+});
+
+const registrationLabel = computed(() => {
+  const active = props.memberCount ?? 0;
+  const waitlist = props.waitlistCount ?? 0;
+  const max = maxMembers.value;
+
+  if (max && max > 0) {
+    if (waitlist > 0) {
+      return `${active} / ${max} (+${waitlist} waitlist)`;
+    }
+    return `${active} / ${max}`;
+  }
+  // No limit set
+  if (waitlist > 0) {
+    return `${active} (+${waitlist} waitlist)`;
+  }
+  return `${active} participants`;
 });
 
 const formattedOpeningDate = computed(() => {
@@ -281,16 +364,16 @@ const nextStepStyle = computed(() => {
         };
       }
       return {
-        bgClass: 'bg-amber-50 dark:bg-amber-900/20',
-        iconClass: 'pi-arrow-right text-amber-500',
-        textClass: 'text-amber-700 dark:text-amber-300',
+        bgClass: 'bg-blue-50 dark:bg-blue-900/20',
+        iconClass: 'pi-arrow-right text-blue-500',
+        textClass: 'text-blue-700 dark:text-blue-300',
       };
     case 'groups-created':
     case 'routes-assigned':
       return {
-        bgClass: 'bg-amber-50 dark:bg-amber-900/20',
-        iconClass: 'pi-arrow-right text-amber-500',
-        textClass: 'text-amber-700 dark:text-amber-300',
+        bgClass: 'bg-blue-50 dark:bg-blue-900/20',
+        iconClass: 'pi-arrow-right text-blue-500',
+        textClass: 'text-blue-700 dark:text-blue-300',
       };
     case 'notifications-sent':
     case 'completed':

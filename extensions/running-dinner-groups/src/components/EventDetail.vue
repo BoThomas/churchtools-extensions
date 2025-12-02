@@ -118,6 +118,90 @@
               </template>
             </Card>
 
+            <!-- Registration Statistics Card -->
+            <Card>
+              <template #title>
+                <i class="pi pi-users mr-2"></i>
+                Registration
+              </template>
+              <template #content>
+                <div class="space-y-4">
+                  <!-- Progress bar -->
+                  <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                      <span class="text-surface-600 dark:text-surface-400"
+                        >Progress</span
+                      >
+                      <span class="font-medium">{{
+                        registrationProgressLabel
+                      }}</span>
+                    </div>
+                    <!-- Multi-segment progress bar -->
+                    <div
+                      class="h-3 rounded-full overflow-hidden bg-surface-200 dark:bg-surface-700 flex"
+                    >
+                      <!-- Active participants segment -->
+                      <div
+                        v-if="activePercent > 0"
+                        class="h-full bg-primary transition-all duration-300"
+                        :style="{ width: `${activePercent}%` }"
+                      ></div>
+                      <!-- Waitlist segment -->
+                      <div
+                        v-if="waitlistPercent > 0"
+                        class="h-full bg-orange-400 dark:bg-orange-500 transition-all duration-300"
+                        :style="{ width: `${waitlistPercent}%` }"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <!-- Stats breakdown -->
+                  <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="w-3 h-3 rounded-full bg-primary"></span>
+                      <span class="font-semibold min-w-[2ch] text-right">{{
+                        activeMembers.length
+                      }}</span>
+                      <span class="text-surface-600 dark:text-surface-400"
+                        >Confirmed</span
+                      >
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="w-3 h-3 rounded-full bg-orange-400 dark:bg-orange-500"
+                      ></span>
+                      <span class="font-semibold min-w-[2ch] text-right">{{
+                        waitlistMembers.length
+                      }}</span>
+                      <span class="text-surface-600 dark:text-surface-400"
+                        >Waitlist</span
+                      >
+                    </div>
+                    <div v-if="maxMembersLimit" class="flex items-center gap-2">
+                      <span
+                        class="w-3 h-3 rounded-full bg-surface-300 dark:bg-surface-600"
+                      ></span>
+                      <span class="font-semibold min-w-[2ch] text-right">{{
+                        availableSpots
+                      }}</span>
+                      <span class="text-surface-600 dark:text-surface-400"
+                        >Available</span
+                      >
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="pi pi-users text-surface-400 text-xs"></i>
+                      <span class="font-semibold min-w-[2ch] text-right">{{
+                        members.length
+                      }}</span>
+                      <span class="text-surface-600 dark:text-surface-400"
+                        >Total</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </Card>
+
             <!-- Menu Times Card -->
             <Card>
               <template #title>
@@ -203,7 +287,7 @@
             </Card>
 
             <!-- Quick Actions Card -->
-            <Card class="md:col-span-2">
+            <Card>
               <template #title>
                 <i class="pi pi-bolt mr-2"></i>
                 Quick Actions
@@ -444,7 +528,62 @@ const registrationStatusText = computed(() => {
 const registrationStatusSeverity = computed(() => {
   if (isRegistrationOpen.value) return 'success';
   if (isRegistrationScheduledFuture.value) return 'info';
-  return 'danger';
+  return 'secondary';
+});
+
+// Registration progress bar computations
+const maxMembersLimit = computed(
+  () => props.group?.settings?.maxMembers ?? null,
+);
+
+const waitlistMembers = computed(() =>
+  members.value.filter(
+    (m) =>
+      m.waitinglistPosition !== null && m.waitinglistPosition !== undefined,
+  ),
+);
+
+const activePercent = computed(() => {
+  const max = maxMembersLimit.value;
+  const active = activeMembers.value.length;
+  if (!max || max <= 0) {
+    // No limit set - show some progress but cap at 100%
+    return Math.min(active * 10, 100); // 10% per person, max 100%
+  }
+  return Math.min((active / max) * 100, 100);
+});
+
+const waitlistPercent = computed(() => {
+  const max = maxMembersLimit.value;
+  const waitlist = waitlistMembers.value.length;
+  if (!max || max <= 0 || waitlist === 0) return 0;
+  // Waitlist shows as additional percentage (can overflow past 100% visually capped)
+  const remaining = Math.max(0, 100 - activePercent.value);
+  return Math.min((waitlist / max) * 100, remaining + 20); // Allow slight overflow effect
+});
+
+const availableSpots = computed(() => {
+  const max = maxMembersLimit.value;
+  if (!max || max <= 0) return null;
+  return Math.max(0, max - activeMembers.value.length);
+});
+
+const registrationProgressLabel = computed(() => {
+  const active = activeMembers.value.length;
+  const waitlist = waitlistMembers.value.length;
+  const max = maxMembersLimit.value;
+
+  if (max && max > 0) {
+    if (waitlist > 0) {
+      return `${active} / ${max} (+${waitlist} waitlist)`;
+    }
+    return `${active} / ${max}`;
+  }
+  // No limit set
+  if (waitlist > 0) {
+    return `${active} (+${waitlist} waitlist)`;
+  }
+  return `${active} participants`;
 });
 
 // Check if the next step action button should show loading
