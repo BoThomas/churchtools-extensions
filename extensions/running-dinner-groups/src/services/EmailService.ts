@@ -12,6 +12,41 @@ export interface EmailContent {
   textBody: string;
 }
 
+export interface EmailOptions {
+  /** Optional intro text to show at the beginning of the email */
+  introText?: string;
+  /** All routes for the event (needed to calculate real guest counts) */
+  allRoutes?: CategoryValue<Route>[];
+}
+
+/**
+ * Extract time portion from a time string (handles both "18:00" and "2025-12-10T18:00:00" formats)
+ */
+function extractTime(time: string): string {
+  // Check if it's an ISO timestamp
+  if (time.includes('T')) {
+    const timePart = time.split('T')[1];
+    // Return HH:MM format (strip seconds if present)
+    return timePart.substring(0, 5);
+  }
+  // Already in HH:MM format
+  return time.substring(0, 5);
+}
+
+/**
+ * Format time string for display (e.g., "18:00" -> "18:00 Uhr")
+ */
+function formatTime(time: string): string {
+  return `${extractTime(time)} Uhr`;
+}
+
+/**
+ * Format time range for display (e.g., "18:00 - 19:30 Uhr")
+ */
+function formatTimeRange(startTime: string, endTime: string): string {
+  return `${extractTime(startTime)} - ${extractTime(endTime)} Uhr`;
+}
+
 /**
  * Service for generating and sending email notifications
  */
@@ -25,6 +60,7 @@ export class EmailService {
     dinnerGroup: CategoryValue<DinnerGroup>,
     allDinnerGroups: CategoryValue<DinnerGroup>[],
     members: GroupMember[],
+    options: EmailOptions = {},
   ): EmailContent {
     const groupMembers = members.filter((m) =>
       dinnerGroup.value.memberPersonIds.includes(m.personId),
@@ -33,32 +69,125 @@ export class EmailService {
     // Get event name from group ID (would need to fetch from ChurchTools)
     const eventName = `Running Dinner Event`;
 
-    const subject = `${eventName} - Your Route for Group ${dinnerGroup.value.groupNumber}`;
+    const subject = `${eventName} - Deine Route`;
+
+    // Find the stop where this group is hosting (their own meal)
+    const ownMealStop = route.value.stops.find(
+      (stop) => stop.hostDinnerGroupId === dinnerGroup.id,
+    );
 
     // Generate HTML body
     let htmlBody = `
       <h2>${eventName}</h2>
-      <h3>Your Group: #${dinnerGroup.value.groupNumber}</h3>
+    `;
 
-      <h4>Group Members:</h4>
+    // Add optional intro text
+    if (options.introText) {
+      htmlBody += `<p>${options.introText}</p>`;
+    }
+
+    htmlBody += `
+      <h3>Deine Gruppe</h3>
       <ul>
     `;
 
     groupMembers.forEach((member) => {
       const name = `${member.person.firstName} ${member.person.lastName}`;
-      const email = member.person.email || 'No email';
+      const email = member.person.email || 'Keine E-Mail';
       const phone =
         member.person.phoneNumbers && member.person.phoneNumbers.length > 0
           ? member.person.phoneNumbers[0].phoneNumber
-          : 'No phone';
+          : 'Keine Telefonnummer';
 
-      htmlBody += `<li><strong>${name}</strong><br>Email: ${email}<br>Phone: ${phone}</li>`;
+      htmlBody += `<li><strong>${name}</strong><br>E-Mail: ${email}<br>Telefon: ${phone}</li>`;
     });
 
     htmlBody += `</ul>`;
 
+    // Highlight the own hosted meal prominently
+    if (ownMealStop) {
+      const ownMealName =
+        ownMealStop.meal === 'starter'
+          ? 'Vorspeise'
+          : ownMealStop.meal === 'mainCourse'
+            ? 'Hauptgang'
+            : 'Nachspeise';
+
+      // Find visiting groups by checking all routes for groups that visit this host
+      const visitingDinnerGroupIds: number[] = [];
+      if (options.allRoutes) {
+        options.allRoutes.forEach((otherRoute) => {
+          // Skip our own route
+          if (otherRoute.value.dinnerGroupId === dinnerGroup.id) return;
+
+          // Check if this route has a stop at our group for our hosted meal
+          const visitsUs = otherRoute.value.stops.some(
+            (stop) =>
+              stop.hostDinnerGroupId === dinnerGroup.id &&
+              stop.meal === ownMealStop.meal,
+          );
+          if (visitsUs) {
+            visitingDinnerGroupIds.push(otherRoute.value.dinnerGroupId);
+          }
+        });
+      }
+
+      // Get the visiting groups and their members
+      const visitingGroups = allDinnerGroups.filter((g) =>
+        visitingDinnerGroupIds.includes(g.id!),
+      );
+      const visitingMemberIds = visitingGroups.flatMap(
+        (g) => g.value.memberPersonIds,
+      );
+      const visitingMembers = members.filter((m) =>
+        visitingMemberIds.includes(m.personId),
+      );
+
+      const guestCount = visitingMembers.length;
+      const groupCount = visitingGroups.length;
+
+      htmlBody += `
+        <div style="background-color: #f0f7ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 16px 0;">
+          <h3 style="margin-top: 0; color: #1e40af;">🍽️ Ihr bereitet zu: ${ownMealName}</h3>
+          <p style="margin-bottom: 0;">
+            <strong>Zeit:</strong> ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}<br>
+            <strong>Gäste:</strong> ${guestCount} Personen (${groupCount} Gruppen)
+          </p>
+      `;
+
+      // Collect dietary restrictions and allergies from visiting guests (without names)
+      const dietaryRestrictions: string[] = [];
+      const allergies: string[] = [];
+
+      visitingMembers.forEach((guest) => {
+        if (guest.fields?.dietaryRestrictions) {
+          dietaryRestrictions.push(guest.fields.dietaryRestrictions);
+        }
+        if (guest.fields?.allergyInfo) {
+          allergies.push(guest.fields.allergyInfo);
+        }
+      });
+
+      // Deduplicate and display
+      const uniqueDietaryRestrictions = [...new Set(dietaryRestrictions)];
+      const uniqueAllergies = [...new Set(allergies)];
+
+      if (uniqueDietaryRestrictions.length > 0 || uniqueAllergies.length > 0) {
+        htmlBody += `<br><strong>Ernährungshinweise:</strong><ul style="margin-bottom: 0;">`;
+        uniqueDietaryRestrictions.forEach((restriction) => {
+          htmlBody += `<li>${restriction}</li>`;
+        });
+        uniqueAllergies.forEach((allergy) => {
+          htmlBody += `<li>Allergie: ${allergy}</li>`;
+        });
+        htmlBody += `</ul>`;
+      }
+
+      htmlBody += `</div>`;
+    }
+
     // Add route stops
-    htmlBody += `<h3>Your Route:</h3>`;
+    htmlBody += `<h3>Deine Route</h3>`;
 
     route.value.stops.forEach((stop, index) => {
       const hostGroup = allDinnerGroups.find(
@@ -66,84 +195,67 @@ export class EmailService {
       );
       if (!hostGroup) return;
 
+      const isOwnMeal = hostGroup.id === dinnerGroup.id;
+
       const hostPerson = members.find(
         (m) => m.personId === hostGroup.value.hostPersonId,
       );
       const hostName = hostPerson
         ? `${hostPerson.person.firstName} ${hostPerson.person.lastName}`
-        : 'Unknown';
+        : 'Unbekannt';
 
       const hostAddress = hostPerson?.person.addresses?.[0]
         ? `${hostPerson.person.addresses[0].street || ''}, ${hostPerson.person.addresses[0].zip || ''} ${hostPerson.person.addresses[0].city || ''}`
-        : 'Address not provided';
+        : 'Adresse nicht angegeben';
 
       const mealName =
         stop.meal === 'starter'
-          ? 'Starter'
+          ? 'Vorspeise'
           : stop.meal === 'mainCourse'
-            ? 'Main Course'
-            : 'Dessert';
+            ? 'Hauptgang'
+            : 'Nachspeise';
 
       // Check if this is dessert at after party location
       const isDessertAtAfterParty =
         stop.meal === 'dessert' && eventMetadata.afterParty?.isDessertLocation;
 
-      htmlBody += `
-        <h4>${index + 1}. ${mealName} (${stop.startTime} - ${stop.endTime})</h4>
-        <p>
-      `;
-
-      if (isDessertAtAfterParty) {
+      if (isOwnMeal) {
+        // Own meal - just show time and that it's at home
+        htmlBody += `
+          <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+          <p><em>Bei euch zu Hause (siehe oben)</em></p>
+        `;
+      } else if (isDessertAtAfterParty) {
         // Dessert is at after party location for everyone
         htmlBody += `
-          <strong>Location:</strong> ${eventMetadata.afterParty!.location} (After Party Venue)<br>
-          <em>All groups gather at the after party location for dessert!</em><br>
+          <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+          <p>
+            <strong>Ort:</strong> ${eventMetadata.afterParty!.location} (After Party)<br>
+            <em>Alle Gruppen treffen sich zum Nachtisch am After Party Ort!</em><br>
         `;
 
         // Add Google Maps link for after party location
         const encodedAddress = encodeURIComponent(
           eventMetadata.afterParty!.location,
         );
-        htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">View on Google Maps</a><br>`;
+        htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">In Google Maps öffnen</a>`;
+        htmlBody += `</p>`;
       } else {
-        // Standard home-based meal
+        // Standard home-based meal (visiting another group)
         htmlBody += `
-          <strong>Host:</strong> ${hostName} (Group #${hostGroup.value.groupNumber})<br>
-          <strong>Address:</strong> ${hostAddress}<br>
+          <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+          <p>
+            <strong>Gastgeber:</strong> ${hostName}<br>
+            <strong>Adresse:</strong> ${hostAddress}<br>
         `;
 
         // Add Google Maps link if address is available
-        if (hostAddress !== 'Address not provided') {
+        if (hostAddress !== 'Adresse nicht angegeben') {
           const encodedAddress = encodeURIComponent(hostAddress);
-          htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">View on Google Maps</a><br>`;
+          htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">In Google Maps öffnen</a>`;
         }
+        htmlBody += `</p>`;
       }
-
-      // Add dietary restrictions of guests at this stop
-      // For simplicity, include all groups' dietary info
-      const dietaryInfo: string[] = [];
-      groupMembers.forEach((guest) => {
-        if (guest.fields?.dietaryRestrictions) {
-          dietaryInfo.push(
-            `${guest.person.firstName}: ${guest.fields.dietaryRestrictions}`,
-          );
-        }
-        if (guest.fields?.allergyInfo) {
-          dietaryInfo.push(
-            `${guest.person.firstName} (Allergy): ${guest.fields.allergyInfo}`,
-          );
-        }
-      });
-
-      if (dietaryInfo.length > 0) {
-        htmlBody += `<strong>Dietary Notes:</strong><ul>`;
-        dietaryInfo.forEach((info) => {
-          htmlBody += `<li>${info}</li>`;
-        });
-        htmlBody += `</ul>`;
-      }
-
-      htmlBody += `</p>`;
     });
 
     // Add after party info if available
@@ -151,83 +263,157 @@ export class EmailService {
       htmlBody += `
         <h3>After Party</h3>
         <p>
-          <strong>Time:</strong> ${eventMetadata.afterParty.time}<br>
-          <strong>Location:</strong> ${eventMetadata.afterParty.location}<br>
+          <strong>Zeit:</strong> ${formatTime(eventMetadata.afterParty.time)}<br>
+          <strong>Ort:</strong> ${eventMetadata.afterParty.location}<br>
       `;
       if (eventMetadata.afterParty.description) {
-        htmlBody += `<strong>Description:</strong> ${eventMetadata.afterParty.description}<br>`;
+        htmlBody += `${eventMetadata.afterParty.description}<br>`;
       }
       htmlBody += `</p>`;
     }
 
-    htmlBody += `
-      <hr>
-      <p style="color: #666; font-size: 12px;">
-        This email was generated by the Running Dinner Groups extension for ChurchTools.
-      </p>
-    `;
-
     // Generate plain text version
     let textBody = `${eventName}\n\n`;
-    textBody += `Your Group: #${dinnerGroup.value.groupNumber}\n\n`;
-    textBody += `Group Members:\n`;
+
+    // Add optional intro text
+    if (options.introText) {
+      textBody += `${options.introText}\n\n`;
+    }
+
+    textBody += `Deine Gruppe:\n`;
     groupMembers.forEach((member) => {
       const name = `${member.person.firstName} ${member.person.lastName}`;
-      const email = member.person.email || 'No email';
+      const email = member.person.email || 'Keine E-Mail';
       const phone =
         member.person.phoneNumbers && member.person.phoneNumbers.length > 0
           ? member.person.phoneNumbers[0].phoneNumber
-          : 'No phone';
-      textBody += `- ${name}\n  Email: ${email}\n  Phone: ${phone}\n`;
+          : 'Keine Telefonnummer';
+      textBody += `- ${name}\n  E-Mail: ${email}\n  Telefon: ${phone}\n`;
     });
 
-    textBody += `\nYour Route:\n`;
+    // Highlight own meal in plain text
+    if (ownMealStop) {
+      const ownMealName =
+        ownMealStop.meal === 'starter'
+          ? 'Vorspeise'
+          : ownMealStop.meal === 'mainCourse'
+            ? 'Hauptgang'
+            : 'Nachspeise';
+
+      // Find visiting groups by checking all routes
+      const visitingDinnerGroupIds: number[] = [];
+      if (options.allRoutes) {
+        options.allRoutes.forEach((otherRoute) => {
+          if (otherRoute.value.dinnerGroupId === dinnerGroup.id) return;
+          const visitsUs = otherRoute.value.stops.some(
+            (stop) =>
+              stop.hostDinnerGroupId === dinnerGroup.id &&
+              stop.meal === ownMealStop.meal,
+          );
+          if (visitsUs) {
+            visitingDinnerGroupIds.push(otherRoute.value.dinnerGroupId);
+          }
+        });
+      }
+
+      const visitingGroups = allDinnerGroups.filter((g) =>
+        visitingDinnerGroupIds.includes(g.id!),
+      );
+      const visitingMemberIds = visitingGroups.flatMap(
+        (g) => g.value.memberPersonIds,
+      );
+      const visitingMembers = members.filter((m) =>
+        visitingMemberIds.includes(m.personId),
+      );
+
+      const guestCount = visitingMembers.length;
+      const groupCount = visitingGroups.length;
+
+      textBody += `\n========================================\n`;
+      textBody += `🍽️ IHR BEREITET ZU: ${ownMealName.toUpperCase()}\n`;
+      textBody += `Zeit: ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}\n`;
+      textBody += `Gäste: ${guestCount} Personen (${groupCount} Gruppen)\n`;
+
+      // Collect dietary restrictions and allergies (without names)
+      const dietaryRestrictions: string[] = [];
+      const allergies: string[] = [];
+
+      visitingMembers.forEach((guest) => {
+        if (guest.fields?.dietaryRestrictions) {
+          dietaryRestrictions.push(guest.fields.dietaryRestrictions);
+        }
+        if (guest.fields?.allergyInfo) {
+          allergies.push(guest.fields.allergyInfo);
+        }
+      });
+
+      const uniqueDietaryRestrictions = [...new Set(dietaryRestrictions)];
+      const uniqueAllergies = [...new Set(allergies)];
+
+      if (uniqueDietaryRestrictions.length > 0 || uniqueAllergies.length > 0) {
+        textBody += `\nErnährungshinweise:\n`;
+        uniqueDietaryRestrictions.forEach((restriction) => {
+          textBody += `  - ${restriction}\n`;
+        });
+        uniqueAllergies.forEach((allergy) => {
+          textBody += `  - Allergie: ${allergy}\n`;
+        });
+      }
+
+      textBody += `========================================\n`;
+    }
+
+    textBody += `\nDeine Route:\n`;
     route.value.stops.forEach((stop, index) => {
       const hostGroup = allDinnerGroups.find(
         (g) => g.id === stop.hostDinnerGroupId,
       );
       if (!hostGroup) return;
 
+      const isOwnMeal = hostGroup.id === dinnerGroup.id;
+
       const hostPerson = members.find(
         (m) => m.personId === hostGroup.value.hostPersonId,
       );
       const hostName = hostPerson
         ? `${hostPerson.person.firstName} ${hostPerson.person.lastName}`
-        : 'Unknown';
+        : 'Unbekannt';
       const hostAddress = hostPerson?.person.addresses?.[0]
         ? `${hostPerson.person.addresses[0].street || ''}, ${hostPerson.person.addresses[0].zip || ''} ${hostPerson.person.addresses[0].city || ''}`
-        : 'Address not provided';
+        : 'Adresse nicht angegeben';
 
       const mealName =
         stop.meal === 'starter'
-          ? 'Starter'
+          ? 'Vorspeise'
           : stop.meal === 'mainCourse'
-            ? 'Main Course'
-            : 'Dessert';
+            ? 'Hauptgang'
+            : 'Nachspeise';
 
       // Check if this is dessert at after party location
       const isDessertAtAfterParty =
         stop.meal === 'dessert' && eventMetadata.afterParty?.isDessertLocation;
 
-      textBody += `\n${index + 1}. ${mealName} (${stop.startTime} - ${stop.endTime})\n`;
+      textBody += `\n${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}\n`;
 
-      if (isDessertAtAfterParty) {
+      if (isOwnMeal) {
+        textBody += `   Bei euch zu Hause (siehe oben)\n`;
+      } else if (isDessertAtAfterParty) {
         // Dessert is at after party location for everyone
-        textBody += `   Location: ${eventMetadata.afterParty!.location} (After Party Venue)\n`;
-        textBody += `   All groups gather at the after party location for dessert!\n`;
+        textBody += `   Ort: ${eventMetadata.afterParty!.location} (After Party)\n`;
+        textBody += `   Alle Gruppen treffen sich zum Nachtisch am After Party Ort!\n`;
       } else {
         // Standard home-based meal
-        textBody += `   Host: ${hostName} (Group #${hostGroup.value.groupNumber})\n`;
-        textBody += `   Address: ${hostAddress}\n`;
+        textBody += `   Gastgeber: ${hostName}\n`;
+        textBody += `   Adresse: ${hostAddress}\n`;
       }
     });
 
     if (eventMetadata.afterParty) {
       textBody += `\nAfter Party:\n`;
-      textBody += `Time: ${eventMetadata.afterParty.time}\n`;
-      textBody += `Location: ${eventMetadata.afterParty.location}\n`;
+      textBody += `Zeit: ${formatTime(eventMetadata.afterParty.time)}\n`;
+      textBody += `Ort: ${eventMetadata.afterParty.location}\n`;
       if (eventMetadata.afterParty.description) {
-        textBody += `Description: ${eventMetadata.afterParty.description}\n`;
+        textBody += `${eventMetadata.afterParty.description}\n`;
       }
     }
 
@@ -267,8 +453,15 @@ export class EmailService {
     routes: CategoryValue<Route>[],
     dinnerGroups: CategoryValue<DinnerGroup>[],
     members: GroupMember[],
+    options: EmailOptions = {},
   ): Promise<{ sent: number; failed: number; errors: string[] }> {
     const results = { sent: 0, failed: 0, errors: [] as string[] };
+
+    // Ensure allRoutes is available for guest count calculation
+    const optionsWithRoutes: EmailOptions = {
+      ...options,
+      allRoutes: options.allRoutes ?? routes,
+    };
 
     for (const route of routes) {
       try {
@@ -289,6 +482,7 @@ export class EmailService {
           dinnerGroup,
           dinnerGroups,
           members,
+          optionsWithRoutes,
         );
 
         await this.sendEmail(
@@ -309,6 +503,5 @@ export class EmailService {
     return results;
   }
 }
-
 // Export singleton instance
 export const emailService = new EmailService();
