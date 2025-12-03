@@ -4,6 +4,7 @@ import type {
   GroupMember,
   MealType,
 } from '@/types/models';
+import { shuffleArray } from '@/utils/array';
 
 export interface GroupingResult {
   dinnerGroups: Omit<DinnerGroup, 'id' | 'createdAt' | 'updatedAt'>[];
@@ -14,18 +15,6 @@ export interface GroupingResult {
 interface PreferenceGraph {
   mutual: Map<number, Set<number>>; // Bidirectional preferences
   oneSided: Map<number, Set<number>>; // Unidirectional preferences
-}
-
-/**
- * Shuffle an array in place using Fisher-Yates algorithm
- */
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
 }
 
 /**
