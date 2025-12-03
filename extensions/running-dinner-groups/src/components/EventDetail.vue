@@ -368,7 +368,7 @@
         <!-- Routes Tab -->
         <TabPanel value="routes">
           <RouteAssignment
-            :event="event"
+            :event="currentEvent"
             :members="members"
             :dinner-groups="dinnerGroups"
             :routes="routes"
@@ -862,7 +862,9 @@ async function handleRoutesSaved() {
   await loadRoutes();
 }
 
-function handleSendNotifications() {}
+async function handleSendNotifications() {
+  await eventMetadataStore.fetchAll();
+}
 
 onMounted(() => {
   if (props.visible) {

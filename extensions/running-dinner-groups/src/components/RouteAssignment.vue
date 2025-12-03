@@ -179,7 +179,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import type {
   EventMetadata,
@@ -223,12 +223,22 @@ const warnings = ref<string[]>([]);
 const assigning = ref(false);
 const saving = ref(false);
 const sendingNotifications = ref(false);
-const isSaved = ref(false);
 
-// Use store's localRoutes filtered by event
-const localRoutes = computed(() =>
-  routeStore.localRoutes.filter((r) => r.eventMetadataId === props.event.id),
-);
+// Local unsaved routes - only used when routes are newly assigned but not yet saved
+const unsavedRoutes = ref<Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[]>([]);
+
+// Whether we have saved routes in the store
+const isSaved = computed(() => props.routes.length > 0);
+
+// The routes to display: either saved routes from props, or unsaved local routes
+const localRoutes = computed(() => {
+  if (isSaved.value) {
+    // Use saved routes from props (reactive to store changes)
+    return props.routes.map((r) => r.value);
+  }
+  // Use unsaved local routes
+  return unsavedRoutes.value;
+});
 
 // Computed
 const sortedRoutes = computed(() => {
@@ -300,40 +310,6 @@ function scrollToRouteCard(groupId: number) {
   }
 }
 
-// Watch for existing routes - sync local state with store
-watch(
-  () => props.routes,
-  (newRoutes) => {
-    if (newRoutes.length > 0 && isSaved.value) {
-      // Sync from store when routes are saved (no unsaved changes)
-      // This handles post-save updates
-      routeStore.setLocalRoutes(newRoutes.map((r) => ({ ...r.value })));
-    } else if (newRoutes.length > 0 && localRoutes.value.length === 0) {
-      // Initial load from saved routes
-      routeStore.setLocalRoutes(newRoutes.map((r) => ({ ...r.value })));
-      isSaved.value = true;
-    } else if (
-      newRoutes.length === 0 &&
-      localRoutes.value.length > 0 &&
-      isSaved.value
-    ) {
-      // Routes were deleted externally (e.g., from DinnerGroupBuilder reset)
-      routeStore.clearLocalRoutes(props.event.id);
-      isSaved.value = false;
-    }
-  },
-  { immediate: true },
-);
-
-// Watch for local routes being cleared (e.g., from DinnerGroupBuilder reset)
-// Clear warnings and reset state when routes are emptied
-watch(localRoutes, (newLocalRoutes) => {
-  if (newLocalRoutes.length === 0) {
-    warnings.value = [];
-    isSaved.value = false;
-  }
-});
-
 // Methods
 async function handleAssignRoutes() {
   assigning.value = true;
@@ -346,9 +322,8 @@ async function handleAssignRoutes() {
       props.members,
     );
 
-    routeStore.setLocalRoutes(result.routes);
+    unsavedRoutes.value = result.routes;
     warnings.value = result.warnings;
-    isSaved.value = false;
 
     toast.add({
       severity: 'success',
@@ -376,23 +351,24 @@ async function handleSaveRoutes() {
   saving.value = true;
 
   try {
-    // Delete existing routes for this event
+    // Delete existing routes for this event (if any)
     await routeStore.deleteByEventId(props.event.id);
 
-    // Create new routes
-    await routeStore.createMultiple(localRoutes.value);
+    // Create new routes from unsaved local state
+    await routeStore.createMultiple(unsavedRoutes.value);
+
+    // Clear unsaved routes - they're now persisted
+    unsavedRoutes.value = [];
 
     // Update event status
     await eventMetadataStore.update(props.event.id, {
       status: 'routes-assigned',
     });
 
-    isSaved.value = true;
-
     toast.add({
       severity: 'success',
       summary: 'Routes Saved',
-      detail: `Saved ${localRoutes.value.length} routes`,
+      detail: `Saved routes successfully`,
       life: 3000,
     });
 
@@ -421,11 +397,8 @@ async function handleSendNotifications() {
       sendingNotifications.value = true;
 
       try {
-        // Get saved routes from store (need CategoryValue format)
-        await routeStore.fetchAll();
-        const savedRoutes = routeStore.routes.filter(
-          (r) => r.value.eventMetadataId === props.event.id,
-        );
+        // Use routes from props (already the saved routes)
+        const savedRoutes = props.routes;
 
         // Send emails for each route
         for (const route of savedRoutes) {
@@ -440,6 +413,7 @@ async function handleSendNotifications() {
             dinnerGroup,
             props.dinnerGroups,
             props.members,
+            { allRoutes: savedRoutes },
           );
 
           // Send email (uses console fallback for now)
@@ -489,15 +463,15 @@ function handleReset() {
     acceptClass: 'p-button-danger',
     accept: async () => {
       if (isSaved.value) {
-        // Delete from store
+        // Delete from store and reset status
         await routeStore.deleteByEventId(props.event.id);
         await eventMetadataStore.update(props.event.id, {
           status: 'groups-created',
         });
       }
-      routeStore.clearLocalRoutes(props.event.id);
+      // Clear unsaved local routes
+      unsavedRoutes.value = [];
       warnings.value = [];
-      isSaved.value = false;
       emit('refresh');
     },
   });
