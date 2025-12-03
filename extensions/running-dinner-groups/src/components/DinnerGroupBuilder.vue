@@ -89,15 +89,16 @@
       {{ event.value.preferredGroupSize }} per group). Currently have
       {{ activeMembers.length }}.
     </Message>
+    <!-- Warnings -->
+    <!-- Warnings -->
     <Message
       v-for="(warning, idx) in warnings"
       :key="idx"
       severity="warn"
-      :closable="false"
+      :closable="true"
     >
       {{ warning }}
     </Message>
-
     <!-- Groups Table -->
     <DataTable
       v-if="localDinnerGroups.length > 0"

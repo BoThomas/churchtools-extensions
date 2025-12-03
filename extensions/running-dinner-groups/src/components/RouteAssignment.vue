@@ -101,7 +101,7 @@
       v-for="(warning, idx) in warnings"
       :key="idx"
       severity="warn"
-      :closable="false"
+      :closable="true"
     >
       {{ warning }}
     </Message>
