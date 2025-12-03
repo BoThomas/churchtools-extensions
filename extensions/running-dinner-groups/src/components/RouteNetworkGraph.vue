@@ -1,5 +1,9 @@
 <template>
-  <Fieldset legend="Connection Overview" toggleable :collapsed="true">
+  <Fieldset legend="Connection Overview" toggleable :collapsed="false">
+    <p class="text-sm text-surface-500 dark:text-surface-400 mb-4">
+      Click a group to highlight its connections, or use the legend to filter by
+      meal type.
+    </p>
     <div class="flex items-center justify-end gap-4 text-xs mb-4">
       <button
         class="flex items-center gap-1 px-2 py-1 rounded transition-colors cursor-pointer"
@@ -11,7 +15,9 @@
         @click="toggleMeal('starter')"
       >
         <span class="w-3 h-0.5 bg-blue-500 rounded"></span>
-        <span class="text-surface-600 dark:text-surface-400">Starter</span>
+        <span class="text-surface-600 dark:text-surface-400">{{
+          getMealLabel('starter')
+        }}</span>
       </button>
       <button
         class="flex items-center gap-1 px-2 py-1 rounded transition-colors cursor-pointer"
@@ -23,7 +29,9 @@
         @click="toggleMeal('mainCourse')"
       >
         <span class="w-3 h-0.5 bg-green-500 rounded"></span>
-        <span class="text-surface-600 dark:text-surface-400">Main</span>
+        <span class="text-surface-600 dark:text-surface-400">{{
+          getMealLabel('mainCourse')
+        }}</span>
       </button>
       <button
         class="flex items-center gap-1 px-2 py-1 rounded transition-colors cursor-pointer"
@@ -35,34 +43,17 @@
         @click="toggleMeal('dessert')"
       >
         <span class="w-3 h-0.5 bg-pink-500 rounded"></span>
-        <span class="text-surface-600 dark:text-surface-400">Dessert</span>
+        <span class="text-surface-600 dark:text-surface-400">{{
+          getMealLabel('dessert')
+        }}</span>
       </button>
     </div>
     <div ref="containerRef" class="relative w-full" style="height: 400px">
       <canvas
         ref="canvasRef"
-        class="absolute inset-0"
-        @mousemove="handleMouseMove"
-        @mouseleave="hoveredNode = null"
+        class="absolute inset-0 cursor-pointer"
+        @click="handleClick"
       ></canvas>
-      <!-- Tooltip -->
-      <div
-        v-if="hoveredNode"
-        class="absolute pointer-events-none bg-surface-0 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg p-2 text-sm z-10"
-        :style="{
-          left: `${tooltipPos.x}px`,
-          top: `${tooltipPos.y}px`,
-          transform: 'translate(-50%, -100%) translateY(-8px)',
-        }"
-      >
-        <div class="font-semibold">Group {{ hoveredNode.groupNumber }}</div>
-        <div class="text-xs text-surface-500">
-          {{ hoveredNode.members.join(', ') }}
-        </div>
-        <div class="text-xs text-surface-400 mt-1">
-          Hosts: {{ hoveredNode.hostsMeal }}
-        </div>
-      </div>
     </div>
   </Fieldset>
 </template>
@@ -71,7 +62,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import type { DinnerGroup, Route, GroupMember } from '@/types/models';
-import { getMealLabelWithoutEmoji } from '@/types/models';
+import { getMealEmoji, getMealLabel } from '@/types/models';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 
 const props = defineProps<{
@@ -87,7 +78,7 @@ interface Node {
   id: number;
   groupNumber: number;
   members: string[];
-  hostsMeal: string;
+  mealEmoji: string;
   x: number;
   y: number;
   radius: number;
@@ -102,8 +93,7 @@ interface Edge {
 
 const nodes = ref<Node[]>([]);
 const edges = ref<Edge[]>([]);
-const hoveredNode = ref<Node | null>(null);
-const tooltipPos = ref({ x: 0, y: 0 });
+const selectedNodeId = ref<number | null>(null);
 
 const visibleMeals = ref({
   starter: true,
@@ -146,10 +136,10 @@ const graphData = computed(() => {
       id: group.id,
       groupNumber: group.value.groupNumber,
       members: groupMembers,
-      hostsMeal: getMealLabelWithoutEmoji(hostedMeal),
+      mealEmoji: getMealEmoji(hostedMeal),
       x: 0,
       y: 0,
-      radius: 30 + groupMembers.length * 5,
+      radius: 20 + groupMembers.length * 6,
     });
   });
 
@@ -225,6 +215,29 @@ function draw() {
     const toNode = nodes.value.find((n) => n.id === edge.to);
     if (!fromNode || !toNode) return;
 
+    // Determine edge opacity based on connection type
+    let opacity = 1;
+    if (selectedNodeId.value !== null) {
+      // Direct connection (1st class): edge directly connected to selected node
+      const isDirectConnection =
+        edge.from === selectedNodeId.value || edge.to === selectedNodeId.value;
+
+      if (isDirectConnection) {
+        opacity = 1;
+      } else {
+        // Check for 2nd class connection: groups that meet the selected group as guests at the same host
+        // Find all hosts where the selected group is a guest
+        const selectedGroupHosts = visibleEdges
+          .filter((e) => e.from === selectedNodeId.value)
+          .map((e) => e.to);
+
+        // Check if this edge goes to the same host (sibling guests)
+        const isSecondClassConnection = selectedGroupHosts.includes(edge.to);
+
+        opacity = isSecondClassConnection ? 0.4 : 0.05;
+      }
+    }
+
     // Calculate offset for multiple edges between same nodes
     const edgesBetween = visibleEdges.filter(
       (e) =>
@@ -253,6 +266,7 @@ function draw() {
 
     ctx.beginPath();
     ctx.strokeStyle = edge.color;
+    ctx.globalAlpha = opacity;
     ctx.lineWidth = 2;
     ctx.moveTo(startX, startY);
     ctx.quadraticCurveTo(midX, midY, endX, endY);
@@ -297,43 +311,45 @@ function draw() {
     ctx.lineTo(ax2, ay2);
     ctx.closePath();
     ctx.fill();
+    ctx.globalAlpha = 1;
   });
 
   // Draw nodes
   const isDark = document.documentElement.classList.contains('dark');
   nodes.value.forEach((node) => {
-    const isHovered = hoveredNode.value?.id === node.id;
+    const isSelected = selectedNodeId.value === node.id;
 
     // Node circle
     ctx.beginPath();
     ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-    ctx.fillStyle = isHovered
-      ? isDark
-        ? '#374151'
-        : '#e5e7eb'
-      : isDark
-        ? '#1f2937'
-        : '#f3f4f6';
+    ctx.fillStyle = isDark ? '#1f2937' : '#f3f4f6';
     ctx.fill();
-    ctx.strokeStyle = isHovered ? '#3b82f6' : isDark ? '#4b5563' : '#d1d5db';
-    ctx.lineWidth = isHovered ? 3 : 2;
+    ctx.strokeStyle = isSelected ? '#3b82f6' : isDark ? '#4b5563' : '#d1d5db';
+    ctx.lineWidth = isSelected ? 3 : 2;
     ctx.stroke();
 
-    // Group number
+    // Calculate vertical positioning based on number of members
+    const lineHeight = 12;
+    const totalLines = node.members.length + 1; // +1 for header (group + emoji)
+    const startY = node.y - ((totalLines - 1) * lineHeight) / 2;
+
+    // Group number with meal emoji
     ctx.fillStyle = isDark ? '#f9fafb' : '#111827';
-    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.font = 'bold 12px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`G${node.groupNumber}`, node.x, node.y - 6);
+    ctx.fillText(`${node.mealEmoji} G${node.groupNumber}`, node.x, startY);
 
-    // Member count
+    // Member names
     ctx.fillStyle = isDark ? '#9ca3af' : '#6b7280';
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText(`${node.members.length} ppl`, node.x, node.y + 8);
+    node.members.forEach((member, index) => {
+      ctx.fillText(member, node.x, startY + (index + 1) * lineHeight);
+    });
   });
 }
 
-function handleMouseMove(event: MouseEvent) {
+function handleClick(event: MouseEvent) {
   const canvas = canvasRef.value;
   if (!canvas) return;
 
@@ -341,17 +357,22 @@ function handleMouseMove(event: MouseEvent) {
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
 
-  // Find hovered node
-  const found = nodes.value.find((node) => {
+  // Find clicked node
+  const clickedNode = nodes.value.find((node) => {
     const dx = node.x - x;
     const dy = node.y - y;
     return Math.sqrt(dx * dx + dy * dy) <= node.radius;
   });
 
-  hoveredNode.value = found || null;
-  if (found) {
-    tooltipPos.value = { x: found.x, y: found.y - found.radius };
+  // Toggle selection: if clicking same node, deselect; otherwise select new node
+  if (clickedNode) {
+    selectedNodeId.value =
+      selectedNodeId.value === clickedNode.id ? null : clickedNode.id;
+  } else {
+    selectedNodeId.value = null;
   }
+
+  draw();
 }
 
 let resizeObserver: ResizeObserver | null = null;
