@@ -4,7 +4,6 @@ import type {
   Route,
   RouteStop,
   GroupMember,
-  MealType,
 } from '@/types/models';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 
@@ -13,13 +12,16 @@ export interface RoutingResult {
   warnings: string[];
 }
 
-interface RouteAssignment {
-  dinnerGroupId: number;
-  stops: {
-    starter: number; // hostDinnerGroupId
-    mainCourse: number; // hostDinnerGroupId
-    dessert: number; // hostDinnerGroupId
-  };
+/**
+ * Shuffle an array using Fisher-Yates algorithm
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 /**
@@ -73,11 +75,11 @@ export class RoutingService {
     }
 
     // Group dinner groups by meal type
-    const starterGroups = dinnerGroups.filter(
-      (g) => g.value.assignedMeal === 'starter',
+    const starterGroups = shuffleArray(
+      dinnerGroups.filter((g) => g.value.assignedMeal === 'starter'),
     );
-    const mainCourseGroups = dinnerGroups.filter(
-      (g) => g.value.assignedMeal === 'mainCourse',
+    const mainCourseGroups = shuffleArray(
+      dinnerGroups.filter((g) => g.value.assignedMeal === 'mainCourse'),
     );
     const dessertGroups = dinnerGroups.filter(
       (g) => g.value.assignedMeal === 'dessert',
@@ -103,42 +105,126 @@ export class RoutingService {
       groupById.set(g.id, g);
     });
 
-    // Simplified assignment: only need to pair starters with main courses
-    // Each group goes to one starter location and one main course location
-    // Then everyone goes to the same dessert location (after party)
+    // Shuffle all groups for random processing order
+    const shuffledGroups = shuffleArray([...dinnerGroups]);
+
+    // For central dessert, we need to assign each group to:
+    // 1. A starter host (the starter group they visit OR they host if they're a starter group)
+    // 2. A main course host (the main group they visit OR they host if they're a main group)
+    // 3. After party (same for everyone)
+
     const routes: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[] = [];
 
-    // Use a simple round-robin assignment to avoid duplicates as much as possible
-    for (let i = 0; i < dinnerGroups.length; i++) {
-      const group = dinnerGroups[i];
+    // Track how many visitors each host has (each host can have 2 visitors)
+    const starterVisitorCount = new Map<number, number>();
+    const mainVisitorCount = new Map<number, number>();
+    starterGroups.forEach((g) => starterVisitorCount.set(g.id, 0));
+    mainCourseGroups.forEach((g) => mainVisitorCount.set(g.id, 0));
+
+    // Calculate max visitors per host
+    const totalGroups = dinnerGroups.length;
+    const numStarterHosts = starterGroups.length;
+    const numMainHosts = mainCourseGroups.length;
+    const maxStarterVisitors = Math.ceil(
+      (totalGroups - numStarterHosts) / numStarterHosts,
+    );
+    const maxMainVisitors = Math.ceil(
+      (totalGroups - numMainHosts) / numMainHosts,
+    );
+
+    // Track which groups have met
+    const meetCount = new Map<string, number>();
+
+    function getPairKey(id1: number, id2: number): string {
+      return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
+    }
+
+    function getMeetCount(id1: number, id2: number): number {
+      return meetCount.get(getPairKey(id1, id2)) || 0;
+    }
+
+    function addMeeting(id1: number, id2: number): void {
+      if (id1 === id2) return;
+      const key = getPairKey(id1, id2);
+      meetCount.set(key, (meetCount.get(key) || 0) + 1);
+    }
+
+    for (const group of shuffledGroups) {
+      const groupId = group.id;
+      const groupMeal = group.value.assignedMeal;
       const stops: RouteStop[] = [];
 
-      // Find starter host (rotate through starter groups)
-      const starterIndex = i % starterGroups.length;
-      const starterHost = starterGroups[starterIndex];
+      // Determine starter host
+      let starterHostId: number;
+      if (groupMeal === 'starter') {
+        // This group hosts starter
+        starterHostId = groupId;
+      } else {
+        // Find a starter host with capacity, preferring ones we haven't met
+        const availableHosts = starterGroups
+          .filter(
+            (h) => starterVisitorCount.get(h.id)! < maxStarterVisitors + 1,
+          )
+          .sort(
+            (a, b) => getMeetCount(groupId, a.id) - getMeetCount(groupId, b.id),
+          );
+
+        if (availableHosts.length === 0) {
+          // All hosts full, just pick one randomly
+          starterHostId = shuffleArray([...starterGroups])[0].id;
+        } else {
+          // Add randomness among hosts with same meet count
+          const minMeetCount = getMeetCount(groupId, availableHosts[0].id);
+          const bestHosts = availableHosts.filter(
+            (h) => getMeetCount(groupId, h.id) === minMeetCount,
+          );
+          starterHostId = shuffleArray(bestHosts)[0].id;
+        }
+        starterVisitorCount.set(
+          starterHostId,
+          starterVisitorCount.get(starterHostId)! + 1,
+        );
+      }
 
       stops.push({
         meal: 'starter',
-        hostDinnerGroupId: starterHost.id,
+        hostDinnerGroupId: starterHostId,
         startTime: eventMetadata.menu.starter.startTime,
         endTime: eventMetadata.menu.starter.endTime,
       });
 
-      // Find main course host (rotate through main course groups, offset to reduce duplicates)
-      const mainIndex =
-        (i + Math.floor(starterGroups.length / 2)) % mainCourseGroups.length;
-      const mainHost = mainCourseGroups[mainIndex];
+      // Determine main course host
+      let mainHostId: number;
+      if (groupMeal === 'mainCourse') {
+        mainHostId = groupId;
+      } else {
+        const availableHosts = mainCourseGroups
+          .filter((h) => mainVisitorCount.get(h.id)! < maxMainVisitors + 1)
+          .sort(
+            (a, b) => getMeetCount(groupId, a.id) - getMeetCount(groupId, b.id),
+          );
+
+        if (availableHosts.length === 0) {
+          mainHostId = shuffleArray([...mainCourseGroups])[0].id;
+        } else {
+          const minMeetCount = getMeetCount(groupId, availableHosts[0].id);
+          const bestHosts = availableHosts.filter(
+            (h) => getMeetCount(groupId, h.id) === minMeetCount,
+          );
+          mainHostId = shuffleArray(bestHosts)[0].id;
+        }
+        mainVisitorCount.set(mainHostId, mainVisitorCount.get(mainHostId)! + 1);
+      }
 
       stops.push({
         meal: 'mainCourse',
-        hostDinnerGroupId: mainHost.id,
+        hostDinnerGroupId: mainHostId,
         startTime: eventMetadata.menu.mainCourse.startTime,
         endTime: eventMetadata.menu.mainCourse.endTime,
       });
 
       // Dessert: use first dessert group as placeholder (represents after party)
-      // In reality, all groups go to after party location, not a home
-      const dessertPlaceholder = dessertGroups[0] || starterGroups[0]; // Fallback to any group
+      const dessertPlaceholder = dessertGroups[0] || starterGroups[0];
 
       stops.push({
         meal: 'dessert',
@@ -147,9 +233,17 @@ export class RoutingService {
         endTime: eventMetadata.menu.dessert.endTime,
       });
 
+      // Track meetings
+      if (starterHostId !== groupId) {
+        addMeeting(groupId, starterHostId);
+      }
+      if (mainHostId !== groupId) {
+        addMeeting(groupId, mainHostId);
+      }
+
       routes.push({
         eventMetadataId: eventMetadata.id!,
-        dinnerGroupId: group.id,
+        dinnerGroupId: groupId,
         stops,
       });
     }
@@ -159,6 +253,15 @@ export class RoutingService {
 
   /**
    * Standard route assignment: all meals at different homes
+   *
+   * Key constraint: Each group should meet every other group AT MOST once.
+   * At each meal, 3 groups are present (host + 2 visitors), so all 3 meet each other.
+   *
+   * For 9 groups (3 per meal type):
+   * - Each group meets 2 others at each meal = 6 total meetings
+   * - With 8 other groups, this works perfectly with no duplicates
+   *
+   * The algorithm uses a constraint-based approach to find valid assignments.
    */
   private assignRoutesStandard(
     eventMetadata: EventMetadata,
@@ -175,15 +278,15 @@ export class RoutingService {
       );
     }
 
-    // Group dinner groups by meal type
-    const starterGroups = dinnerGroups.filter(
-      (g) => g.value.assignedMeal === 'starter',
+    // Group dinner groups by meal type (shuffle for randomization)
+    const starterGroups = shuffleArray(
+      dinnerGroups.filter((g) => g.value.assignedMeal === 'starter'),
     );
-    const mainCourseGroups = dinnerGroups.filter(
-      (g) => g.value.assignedMeal === 'mainCourse',
+    const mainCourseGroups = shuffleArray(
+      dinnerGroups.filter((g) => g.value.assignedMeal === 'mainCourse'),
     );
-    const dessertGroups = dinnerGroups.filter(
-      (g) => g.value.assignedMeal === 'dessert',
+    const dessertGroups = shuffleArray(
+      dinnerGroups.filter((g) => g.value.assignedMeal === 'dessert'),
     );
 
     // Validate equal number of groups per meal
@@ -198,18 +301,19 @@ export class RoutingService {
     }
 
     const numGroups = dinnerGroups.length;
+
     if (numGroups < 3) {
       throw new Error('Need at least 3 groups (one per meal type).');
     }
 
-    // Check if the no-duplicate constraint is mathematically possible
+    // Each group meets 2 others at each of 3 meals = 6 meetings
+    // For no duplicates, we need at least 9 groups
     const canAvoidDuplicates = numGroups >= 9;
     if (!canAvoidDuplicates) {
       warnings.push(
-        `With only ${numGroups} groups, it's mathematically impossible to ensure no group meets another group more than once. ` +
-          `Each group will meet 2 others at each meal (6 meetings total), but there are only ${numGroups - 1} other groups. ` +
-          `For guaranteed no-duplicate assignments, you need at least 9 groups (3 per meal type). ` +
-          `The algorithm will try to minimize duplicate meetings.`,
+        `With only ${numGroups} groups, some groups may meet more than once. ` +
+          `For guaranteed unique meetings, you need at least 9 groups (3 per meal type). ` +
+          `The algorithm will minimize duplicate meetings.`,
       );
     }
 
@@ -219,370 +323,335 @@ export class RoutingService {
       groupById.set(g.id, g);
     });
 
-    // Try to find a valid route assignment using backtracking
-    const assignments: RouteAssignment[] = [];
-    const usedPairs = new Set<string>();
-    const pairMeetCount = new Map<string, number>();
+    // Create index mappings for easier computation
+    const starterIds = starterGroups.map((g) => g.id);
+    const mainIds = mainCourseGroups.map((g) => g.id);
+    const dessertIds = dessertGroups.map((g) => g.id);
 
-    // Diagnostic tracking
-    let attemptCount = 0;
-    const maxAttempts = 100000;
-    const failureReasons: Map<string, number> = new Map();
+    // For the standard running dinner with 3 groups per meal type:
+    // We need to create a "rotation" where each group visits different hosts
+    // and meets different groups at each meal.
 
-    // Relaxed mode: allow duplicates if mathematically necessary
-    const relaxedMode = !canAvoidDuplicates;
+    // Use Latin Square approach for optimal assignment:
+    // Each row = a group, each column = a meal, value = which "table" they're at
+    // Groups at the same table for a meal will meet each other
 
-    function logFailure(reason: string) {
-      failureReasons.set(reason, (failureReasons.get(reason) || 0) + 1);
+    // For starter: table assignment is straightforward - each starter group hosts table 0, 1, 2
+    // Main course and dessert visitors need to be assigned so no pair meets twice
+
+    // Track which groups meet at each meal
+    const starterTables: number[][] = starterIds.map((id) => [id]); // Each starter host is a table
+    const mainTables: number[][] = mainIds.map((id) => [id]);
+    const dessertTables: number[][] = dessertIds.map((id) => [id]);
+
+    // Track all meetings globally
+    const meetings = new Set<string>();
+
+    function getPairKey(id1: number, id2: number): string {
+      return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
     }
 
-    function getPairKey(groupId1: number, groupId2: number): string {
-      return groupId1 < groupId2
-        ? `${groupId1}-${groupId2}`
-        : `${groupId2}-${groupId1}`;
+    function haveMet(id1: number, id2: number): boolean {
+      return meetings.has(getPairKey(id1, id2));
     }
 
-    function addPair(groupId1: number, groupId2: number) {
-      if (groupId1 === groupId2) return;
-      const key = getPairKey(groupId1, groupId2);
-      usedPairs.add(key);
-      pairMeetCount.set(key, (pairMeetCount.get(key) || 0) + 1);
+    function recordMeeting(id1: number, id2: number): void {
+      if (id1 !== id2) {
+        meetings.add(getPairKey(id1, id2));
+      }
     }
 
-    function getMeetCount(groupId1: number, groupId2: number): number {
-      if (groupId1 === groupId2) return 0;
-      const key = getPairKey(groupId1, groupId2);
-      return pairMeetCount.get(key) || 0;
-    }
-
-    function hasMetTooManyTimes(groupId1: number, groupId2: number): boolean {
-      const count = getMeetCount(groupId1, groupId2);
-      const maxAllowed = relaxedMode ? 2 : 1;
-      return count >= maxAllowed;
-    }
-
-    // Count how many groups can still meet at each meal location
-    function getAvailableSlots(hostId: number, meal: MealType): number {
-      const groupsAtThisMeal = assignments.filter(
-        (a) => a.stops[meal] === hostId,
-      ).length;
-      return 3 - groupsAtThisMeal; // Each meal location hosts exactly 3 groups
-    }
-
-    function scoreAssignment(
+    function wouldCauseDuplicate(
       groupId: number,
-      starterHostId: number,
-      mainCourseHostId: number,
-      dessertHostId: number,
-    ): number {
-      let score = 0;
-
-      // Strongly prefer different hosts for different meals (variety bonus)
-      const hosts = [starterHostId, mainCourseHostId, dessertHostId];
-      const uniqueHosts = new Set(hosts.filter((h) => h !== groupId));
-      score += uniqueHosts.size * 100;
-
-      // Penalize meeting the same groups multiple times
-      const hostsToCheck = [starterHostId, mainCourseHostId, dessertHostId];
-      for (const hostId of hostsToCheck) {
-        if (hostId !== groupId) {
-          const meetCount = getMeetCount(groupId, hostId);
-          score -= meetCount * 50;
+      tableMembers: number[],
+    ): boolean {
+      for (const memberId of tableMembers) {
+        if (haveMet(groupId, memberId)) {
+          return true;
         }
       }
-
-      return score;
+      return false;
     }
 
-    function isValidAssignment(
-      groupId: number,
-      starterHostId: number,
-      mainCourseHostId: number,
-      dessertHostId: number,
-    ): { valid: boolean; reason?: string } {
-      const group = groupById.get(groupId);
-      if (!group) return { valid: false, reason: 'Group not found' };
-
-      // The group must host its own assigned meal
-      const meal = group.value.assignedMeal;
-      if (meal === 'starter' && starterHostId !== groupId) {
-        return {
-          valid: false,
-          reason: 'Group must host their assigned meal (starter)',
-        };
-      }
-      if (meal === 'mainCourse' && mainCourseHostId !== groupId) {
-        return {
-          valid: false,
-          reason: 'Group must host their assigned meal (mainCourse)',
-        };
-      }
-      if (meal === 'dessert' && dessertHostId !== groupId) {
-        return {
-          valid: false,
-          reason: 'Group must host their assigned meal (dessert)',
-        };
-      }
-
-      // Check if this group has already met any of these hosts (too many times)
-      const hostsToCheck = [starterHostId, mainCourseHostId, dessertHostId];
-      for (const hostId of hostsToCheck) {
-        if (hostId !== groupId && hasMetTooManyTimes(groupId, hostId)) {
-          const meetCount = getMeetCount(groupId, hostId);
-          return {
-            valid: false,
-            reason: `Group ${groupId} already met host ${hostId} ${meetCount} times`,
-          };
+    function recordTableMeetings(tableMembers: number[]): void {
+      for (let i = 0; i < tableMembers.length; i++) {
+        for (let j = i + 1; j < tableMembers.length; j++) {
+          recordMeeting(tableMembers[i], tableMembers[j]);
         }
       }
-
-      // Check capacity at each meal location (each can host exactly 3 groups)
-      if (getAvailableSlots(starterHostId, 'starter') <= 0) {
-        return {
-          valid: false,
-          reason: `Starter host ${starterHostId} is full`,
-        };
-      }
-      if (getAvailableSlots(mainCourseHostId, 'mainCourse') <= 0) {
-        return {
-          valid: false,
-          reason: `Main course host ${mainCourseHostId} is full`,
-        };
-      }
-      if (getAvailableSlots(dessertHostId, 'dessert') <= 0) {
-        return {
-          valid: false,
-          reason: `Dessert host ${dessertHostId} is full`,
-        };
-      }
-
-      // Ensure the hosts at this meal will meet exactly 2 other groups (not including themselves)
-      const hostsThisGroupVisits = hostsToCheck.filter((h) => h !== groupId);
-      for (const hostId of hostsThisGroupVisits) {
-        // Check if assigning this group would cause issues with other assignments
-        for (const assignment of assignments) {
-          const assignedHosts = [
-            assignment.stops.starter,
-            assignment.stops.mainCourse,
-            assignment.stops.dessert,
-          ];
-
-          // If the other group is also visiting this host, they would meet
-          if (
-            assignedHosts.includes(hostId) &&
-            assignment.dinnerGroupId !== groupId
-          ) {
-            if (hasMetTooManyTimes(assignment.dinnerGroupId, groupId)) {
-              const meetCount = getMeetCount(assignment.dinnerGroupId, groupId);
-              return {
-                valid: false,
-                reason: `Would cause too many meetings between ${groupId} and ${assignment.dinnerGroupId} (already met ${meetCount} times)`,
-              };
-            }
-          }
-        }
-      }
-
-      return { valid: true };
     }
 
-    function backtrack(groupIndex: number): boolean {
-      attemptCount++;
+    // Try to find a valid assignment using backtracking
+    // We need to assign each non-host group to tables for meals they don't host
 
-      // Prevent infinite loops
-      if (attemptCount > maxAttempts) {
-        logFailure('Max attempts exceeded');
+    // Collect all groups that need visitor assignments for each meal
+    const starterVisitors = [...mainIds, ...dessertIds]; // Groups visiting starter hosts
+    const mainVisitors = [...starterIds, ...dessertIds]; // Groups visiting main hosts
+    const dessertVisitors = [...starterIds, ...mainIds]; // Groups visiting dessert hosts
+
+    // Use backtracking to find valid assignments
+    function tryAssignments(): boolean {
+      // Reset state
+      meetings.clear();
+      starterTables.forEach((table, i) => {
+        table.length = 0;
+        table.push(starterIds[i]);
+      });
+      mainTables.forEach((table, i) => {
+        table.length = 0;
+        table.push(mainIds[i]);
+      });
+      dessertTables.forEach((table, i) => {
+        table.length = 0;
+        table.push(dessertIds[i]);
+      });
+
+      // Assign visitors to starter tables
+      const shuffledStarterVisitors = shuffleArray([...starterVisitors]);
+      if (!assignVisitorsToTables(shuffledStarterVisitors, starterTables)) {
         return false;
       }
 
-      // Base case: all groups assigned
-      if (groupIndex >= numGroups) {
-        return true;
-      }
+      // Record starter meetings
+      starterTables.forEach((table) => recordTableMeetings(table));
 
-      const currentGroup = dinnerGroups[groupIndex];
-      const currentGroupId = currentGroup.id;
-
-      // Collect all valid assignments with their scores
-      const candidates: Array<{
-        assignment: RouteAssignment;
-        score: number;
-      }> = [];
-
-      // Try all combinations of hosts
-      for (const starterGroup of starterGroups) {
-        for (const mainCourseGroup of mainCourseGroups) {
-          for (const dessertGroup of dessertGroups) {
-            const starterHostId = starterGroup.id;
-            const mainCourseHostId = mainCourseGroup.id;
-            const dessertHostId = dessertGroup.id;
-
-            const validation = isValidAssignment(
-              currentGroupId,
-              starterHostId,
-              mainCourseHostId,
-              dessertHostId,
-            );
-
-            if (validation.valid) {
-              const score = scoreAssignment(
-                currentGroupId,
-                starterHostId,
-                mainCourseHostId,
-                dessertHostId,
-              );
-
-              const assignment: RouteAssignment = {
-                dinnerGroupId: currentGroupId,
-                stops: {
-                  starter: starterHostId,
-                  mainCourse: mainCourseHostId,
-                  dessert: dessertHostId,
-                },
-              };
-
-              candidates.push({ assignment, score });
-            } else if (validation.reason) {
-              logFailure(validation.reason);
-            }
-          }
-        }
-      }
-
-      if (candidates.length === 0) {
-        logFailure(`No valid assignments for group ${currentGroupId}`);
+      // Assign visitors to main tables
+      const shuffledMainVisitors = shuffleArray([...mainVisitors]);
+      if (!assignVisitorsToTables(shuffledMainVisitors, mainTables)) {
         return false;
       }
 
-      // Sort candidates by score (highest first) to try best options first
-      candidates.sort((a, b) => b.score - a.score);
+      // Record main meetings
+      mainTables.forEach((table) => recordTableMeetings(table));
 
-      // Try candidates in order of score
-      for (const candidate of candidates) {
-        const assignment = candidate.assignment;
+      // Assign visitors to dessert tables
+      const shuffledDessertVisitors = shuffleArray([...dessertVisitors]);
+      if (!assignVisitorsToTables(shuffledDessertVisitors, dessertTables)) {
+        return false;
+      }
 
-        assignments.push(assignment);
+      return true;
+    }
 
-        // Mark pairs as met
-        const savedPairs = new Set(usedPairs);
-        const savedCounts = new Map(pairMeetCount);
-        const hostsToVisit = [
-          assignment.stops.starter,
-          assignment.stops.mainCourse,
-          assignment.stops.dessert,
-        ];
-        for (const hostId of hostsToVisit) {
-          if (hostId !== currentGroupId) {
-            addPair(currentGroupId, hostId);
-          }
+    function assignVisitorsToTables(
+      visitors: number[],
+      tables: number[][],
+    ): boolean {
+      const targetSize = 3; // Each table should have 3 groups (1 host + 2 visitors)
+      const unassigned = [...visitors];
+
+      // Use backtracking for assignment
+      return backtrackAssign(unassigned, tables, targetSize, 0);
+    }
+
+    function backtrackAssign(
+      unassigned: number[],
+      tables: number[][],
+      targetSize: number,
+      depth: number,
+    ): boolean {
+      // Base case: all visitors assigned
+      if (unassigned.length === 0) {
+        // Check all tables have correct size
+        return tables.every((t) => t.length === targetSize);
+      }
+
+      // Limit recursion depth to prevent infinite loops
+      if (depth > 1000) {
+        return false;
+      }
+
+      const visitor = unassigned[0];
+      const remaining = unassigned.slice(1);
+
+      // Try each table in random order
+      const tableOrder = shuffleArray(
+        tables.map((_, i) => i).filter((i) => tables[i].length < targetSize),
+      );
+
+      for (const tableIdx of tableOrder) {
+        const table = tables[tableIdx];
+
+        // Check if this assignment would cause a duplicate meeting
+        if (canAvoidDuplicates && wouldCauseDuplicate(visitor, table)) {
+          continue;
         }
 
-        // Recurse
-        if (backtrack(groupIndex + 1)) {
+        // Try this assignment
+        table.push(visitor);
+
+        if (backtrackAssign(remaining, tables, targetSize, depth + 1)) {
           return true;
         }
 
-        // Backtrack: undo assignment
-        assignments.pop();
-        usedPairs.clear();
-        savedPairs.forEach((pair) => usedPairs.add(pair));
-        pairMeetCount.clear();
-        savedCounts.forEach((count, pair) => pairMeetCount.set(pair, count));
+        // Backtrack
+        table.pop();
+      }
+
+      // If we can't avoid duplicates, allow them
+      if (!canAvoidDuplicates) {
+        // Find table with most space
+        const availableTables = tables
+          .map((t, i) => ({ idx: i, space: targetSize - t.length }))
+          .filter((t) => t.space > 0)
+          .sort((a, b) => b.space - a.space);
+
+        if (availableTables.length > 0) {
+          const table = tables[availableTables[0].idx];
+          table.push(visitor);
+          return backtrackAssign(remaining, tables, targetSize, depth + 1);
+        }
       }
 
       return false;
     }
 
-    // Run the backtracking algorithm
-    const success = backtrack(0);
+    // Try multiple times with different random orderings
+    let success = false;
+    const maxAttempts = 100;
 
-    if (!success) {
-      // Build detailed error message
-      let errorMsg = 'Could not find a valid route assignment.\n\n';
-      errorMsg += `Attempted ${attemptCount} configurations.\n`;
-      errorMsg += `Successfully assigned ${assignments.length} out of ${numGroups} groups.\n\n`;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Re-shuffle the group lists for each attempt
+      shuffleArray(starterIds);
+      shuffleArray(mainIds);
+      shuffleArray(dessertIds);
 
-      if (failureReasons.size > 0) {
-        errorMsg += 'Top failure reasons:\n';
-        const sortedReasons = Array.from(failureReasons.entries())
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5);
-
-        for (const [reason, count] of sortedReasons) {
-          errorMsg += `  • ${reason}: ${count} times\n`;
-        }
-        errorMsg += '\n';
+      if (tryAssignments()) {
+        success = true;
+        break;
       }
-
-      errorMsg += 'Suggestions:\n';
-      if (numGroups < 9) {
-        errorMsg += `  • You have only ${numGroups} groups. For no-duplicate meetings, you need at least 9 groups.\n`;
-        errorMsg +=
-          '  • With fewer groups, duplicate meetings are mathematically unavoidable.\n';
-        errorMsg +=
-          '  • Consider adding more participants to reach 9+ groups.\n';
-      }
-      errorMsg +=
-        '  • Try reassigning meals to balance the groups differently\n';
-      errorMsg += '  • Ensure equal number of groups per meal type\n';
-      errorMsg += '  • Total groups must be divisible by 3\n';
-      errorMsg += '  • Consider adjusting group compositions\n';
-      errorMsg += `  • Current distribution: ${starterGroups.length} starters, ${mainCourseGroups.length} main courses, ${dessertGroups.length} desserts\n`;
-      errorMsg += `  • Each meal location must host exactly 3 groups (host + 2 visitors)`;
-
-      console.error('Route assignment diagnostic info:', {
-        totalGroups: numGroups,
-        assignedGroups: assignments.length,
-        attemptCount,
-        relaxedMode,
-        canAvoidDuplicates,
-        failureReasons: Object.fromEntries(failureReasons),
-        pairMeetCounts: Object.fromEntries(pairMeetCount),
-        assignments,
-        starterGroupIds: starterGroups.map((g) => g.id),
-        mainCourseGroupIds: mainCourseGroups.map((g) => g.id),
-        dessertGroupIds: dessertGroups.map((g) => g.id),
-      });
-
-      throw new Error(errorMsg);
     }
 
-    // Convert assignments to Route objects
+    if (!success) {
+      throw new Error(
+        `Could not find valid route assignments after ${maxAttempts} attempts. ` +
+          `This may happen with unusual group configurations. ` +
+          `Try regenerating the groups or adjusting group sizes.`,
+      );
+    }
+
+    // Build routes from table assignments
     const routes: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[] = [];
 
-    for (const assignment of assignments) {
-      const group = groupById.get(assignment.dinnerGroupId);
-      if (!group) continue;
+    // Create a map from groupId to their table assignments
+    const groupToStarter = new Map<number, number>();
+    const groupToMain = new Map<number, number>();
+    const groupToDessert = new Map<number, number>();
 
-      const stops: RouteStop[] = [];
+    starterTables.forEach((table, tableIdx) => {
+      const hostId = starterIds[tableIdx];
+      table.forEach((groupId) => {
+        groupToStarter.set(groupId, hostId);
+      });
+    });
 
-      // Create stops in order: starter → main → dessert
-      const meals: Array<{ meal: MealType; hostId: number }> = [
-        { meal: 'starter', hostId: assignment.stops.starter },
-        { meal: 'mainCourse', hostId: assignment.stops.mainCourse },
-        { meal: 'dessert', hostId: assignment.stops.dessert },
-      ];
+    mainTables.forEach((table, tableIdx) => {
+      const hostId = mainIds[tableIdx];
+      table.forEach((groupId) => {
+        groupToMain.set(groupId, hostId);
+      });
+    });
 
-      for (const { meal, hostId } of meals) {
-        const hostGroup = groupById.get(hostId);
-        if (!hostGroup) continue;
+    dessertTables.forEach((table, tableIdx) => {
+      const hostId = dessertIds[tableIdx];
+      table.forEach((groupId) => {
+        groupToDessert.set(groupId, hostId);
+      });
+    });
 
-        const stop: RouteStop = {
-          meal,
-          hostDinnerGroupId: hostId,
-          startTime: eventMetadata.menu[meal].startTime,
-          endTime: eventMetadata.menu[meal].endTime,
-        };
-        stops.push(stop);
+    // Create routes for each group
+    for (const group of dinnerGroups) {
+      const groupId = group.id;
+
+      const starterHostId = groupToStarter.get(groupId);
+      const mainHostId = groupToMain.get(groupId);
+      const dessertHostId = groupToDessert.get(groupId);
+
+      if (
+        starterHostId === undefined ||
+        mainHostId === undefined ||
+        dessertHostId === undefined
+      ) {
+        throw new Error(
+          `Failed to assign complete route for group ${group.value.groupNumber}`,
+        );
       }
 
-      const route: Omit<Route, 'id' | 'createdAt' | 'updatedAt'> = {
-        eventMetadataId: eventMetadata.id!,
-        dinnerGroupId: assignment.dinnerGroupId,
-        stops,
-      };
+      const stops: RouteStop[] = [
+        {
+          meal: 'starter',
+          hostDinnerGroupId: starterHostId,
+          startTime: eventMetadata.menu.starter.startTime,
+          endTime: eventMetadata.menu.starter.endTime,
+        },
+        {
+          meal: 'mainCourse',
+          hostDinnerGroupId: mainHostId,
+          startTime: eventMetadata.menu.mainCourse.startTime,
+          endTime: eventMetadata.menu.mainCourse.endTime,
+        },
+        {
+          meal: 'dessert',
+          hostDinnerGroupId: dessertHostId,
+          startTime: eventMetadata.menu.dessert.startTime,
+          endTime: eventMetadata.menu.dessert.endTime,
+        },
+      ];
 
-      routes.push(route);
+      routes.push({
+        eventMetadataId: eventMetadata.id!,
+        dinnerGroupId: groupId,
+        stops,
+      });
+    }
+
+    // Verify no duplicate meetings (for debugging)
+    const meetingCounts = new Map<string, number>();
+    for (const route of routes) {
+      const groupId = route.dinnerGroupId;
+
+      for (const stop of route.stops) {
+        // Find all groups at this table
+        let tableMembers: number[] = [];
+        if (stop.meal === 'starter') {
+          const tableIdx = starterIds.indexOf(stop.hostDinnerGroupId);
+          tableMembers = starterTables[tableIdx] || [];
+        } else if (stop.meal === 'mainCourse') {
+          const tableIdx = mainIds.indexOf(stop.hostDinnerGroupId);
+          tableMembers = mainTables[tableIdx] || [];
+        } else {
+          const tableIdx = dessertIds.indexOf(stop.hostDinnerGroupId);
+          tableMembers = dessertTables[tableIdx] || [];
+        }
+
+        for (const otherId of tableMembers) {
+          if (otherId !== groupId) {
+            const key = getPairKey(groupId, otherId);
+            meetingCounts.set(key, (meetingCounts.get(key) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    // Check for duplicates
+    const duplicates: string[] = [];
+    for (const [pair, count] of meetingCounts) {
+      // Count is doubled because we count from both perspectives
+      const actualCount = count / 2;
+      if (actualCount > 1) {
+        const [id1, id2] = pair.split('-').map(Number);
+        const group1 = groupById.get(id1);
+        const group2 = groupById.get(id2);
+        if (group1 && group2) {
+          duplicates.push(
+            `G${group1.value.groupNumber} & G${group2.value.groupNumber} (${actualCount}x)`,
+          );
+        }
+      }
+    }
+
+    if (duplicates.length > 0) {
+      warnings.push(`Duplicate meetings: ${duplicates.join(', ')}`);
     }
 
     return { routes, warnings };
