@@ -429,7 +429,6 @@ const emit = defineEmits<{
   'toggle-registration': [];
   archive: [];
   delete: [];
-  'status-changed': [];
 }>();
 
 const churchtoolsStore = useChurchtoolsStore();
@@ -844,33 +843,26 @@ function handleClose() {
 
 async function handleGroupsCreated() {
   await loadDinnerGroups();
-  emit('status-changed');
 }
 
 async function handleGroupsSaved() {
   await loadDinnerGroups();
-  emit('status-changed');
 }
 
 async function handleDinnerGroupsRefresh() {
   // Reload both dinner groups and routes (routes may have been reset)
   await Promise.all([loadDinnerGroups(), loadRoutes()]);
-  emit('status-changed');
 }
 
 async function handleRoutesAssigned() {
   await loadRoutes();
-  emit('status-changed');
 }
 
 async function handleRoutesSaved() {
   await loadRoutes();
-  emit('status-changed');
 }
 
-function handleSendNotifications() {
-  emit('status-changed');
-}
+function handleSendNotifications() {}
 
 onMounted(() => {
   if (props.visible) {

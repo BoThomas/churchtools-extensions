@@ -87,7 +87,6 @@
       @toggle-registration="handleToggleRegistration(selectedEvent!)"
       @archive="handleArchiveEvent(selectedEvent!)"
       @delete="handleDeleteEvent(selectedEvent!)"
-      @status-changed="handleStatusChanged"
     />
   </div>
 </template>
@@ -358,9 +357,5 @@ async function handleToggleRegistration(event: CategoryValue<EventMetadata>) {
   } finally {
     actionLoading.value = null;
   }
-}
-
-async function handleStatusChanged() {
-  await loadAllData();
 }
 </script>
