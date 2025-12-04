@@ -201,6 +201,7 @@ import RouteCard from './RouteCard.vue';
 import RouteNetworkGraph from './RouteNetworkGraph.vue';
 const props = defineProps<{
   event: CategoryValue<EventMetadata>;
+  eventName: string;
   members: GroupMember[];
   dinnerGroups: CategoryValue<DinnerGroup>[];
   routes: CategoryValue<Route>[];
@@ -420,6 +421,7 @@ async function handleSendNotifications() {
             props.members,
             {
               allRoutes: savedRoutes,
+              eventName: props.eventName,
             },
           );
 

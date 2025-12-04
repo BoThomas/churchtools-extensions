@@ -369,6 +369,7 @@
         <TabPanel value="routes">
           <RouteAssignment
             :event="currentEvent"
+            :event-name="eventName"
             :members="members"
             :dinner-groups="dinnerGroups"
             :routes="routes"

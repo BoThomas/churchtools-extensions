@@ -60,6 +60,8 @@ export interface EmailOptions {
   introText?: string;
   /** All routes for the event (needed to calculate real guest counts) */
   allRoutes?: CategoryValue<Route>[];
+  /** The event/group name to display in the email */
+  eventName?: string;
 }
 
 /**
@@ -109,8 +111,8 @@ export class EmailService {
       dinnerGroup.value.memberPersonIds.includes(m.personId),
     );
 
-    // TODO: Get event name from group ID (would need to fetch from ChurchTools)
-    const eventName = `Running Dinner Event`;
+    // Use provided event name or fall back to default
+    const eventName = options.eventName ?? 'Running Dinner';
 
     const subject = `${eventName} - Deine Route`;
 
