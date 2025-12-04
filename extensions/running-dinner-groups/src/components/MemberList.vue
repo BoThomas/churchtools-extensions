@@ -25,36 +25,21 @@
           >
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="relative">
-          <i
-            class="pi pi-search absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-400 text-sm"
-          ></i>
-          <InputText
-            v-model="searchQuery"
-            placeholder="Search..."
-            class="pl-8 h-8 text-sm w-48"
-          />
-        </div>
-        <Button
-          icon="pi pi-refresh"
-          size="small"
-          text
-          @click="$emit('refresh')"
-          :loading="loading"
-          v-tooltip="'Refresh members'"
+      <div class="relative">
+        <i
+          class="pi pi-search absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-400 text-sm"
+        ></i>
+        <InputText
+          v-model="searchQuery"
+          placeholder="Search..."
+          class="pl-8 h-8 text-sm w-48"
         />
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-8">
-      <i class="pi pi-spin pi-spinner text-2xl text-primary"></i>
-    </div>
-
     <!-- Empty State -->
     <div
-      v-else-if="members.length === 0"
+      v-if="members.length === 0"
       class="text-center py-8 bg-surface-50 dark:bg-surface-800 rounded-lg"
     >
       <i class="pi pi-users text-4xl text-surface-400 mb-2"></i>
@@ -65,7 +50,7 @@
 
     <!-- Members Table -->
     <DataTable
-      v-else
+      v-if="members.length > 0"
       :value="filteredMembers"
       :paginator="filteredMembers.length > 10"
       :rows="10"
@@ -231,12 +216,7 @@ import { useToast } from 'primevue/usetoast';
 
 const props = defineProps<{
   members: GroupMember[];
-  loading?: boolean;
   showPartnerPreferences?: boolean;
-}>();
-
-defineEmits<{
-  refresh: [];
 }>();
 
 const toast = useToast();

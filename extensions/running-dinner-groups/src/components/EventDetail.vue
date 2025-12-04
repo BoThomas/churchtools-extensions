@@ -16,24 +16,34 @@
     </template>
 
     <Tabs v-model:value="activeTab" class="flex flex-col h-full">
-      <TabList class="shrink-0">
-        <Tab value="overview">
-          <i class="pi pi-info-circle mr-2"></i>
-          Overview
-        </Tab>
-        <Tab value="members">
-          <i class="pi pi-users mr-2"></i>
-          Members ({{ members.length }})
-        </Tab>
-        <Tab value="groups">
-          <i class="pi pi-sitemap mr-2"></i>
-          Dinner Groups ({{ dinnerGroups.length }})
-        </Tab>
-        <Tab value="routes">
-          <i class="pi pi-map mr-2"></i>
-          Routes ({{ routes.length }})
-        </Tab>
-      </TabList>
+      <div class="flex items-center gap-2 shrink-0">
+        <TabList class="flex-1">
+          <Tab value="overview">
+            <i class="pi pi-info-circle mr-2"></i>
+            Overview
+          </Tab>
+          <Tab value="members">
+            <i class="pi pi-users mr-2"></i>
+            Members ({{ members.length }})
+          </Tab>
+          <Tab value="groups">
+            <i class="pi pi-sitemap mr-2"></i>
+            Dinner Groups ({{ dinnerGroups.length }})
+          </Tab>
+          <Tab value="routes">
+            <i class="pi pi-map mr-2"></i>
+            Routes ({{ routes.length }})
+          </Tab>
+        </TabList>
+        <Button
+          icon="pi pi-refresh"
+          size="small"
+          text
+          @click="handleRefresh"
+          :loading="refreshing"
+          v-tooltip="'Refresh data'"
+        />
+      </div>
 
       <TabPanels class="mt-2 flex-1 overflow-y-auto">
         <!-- Overview Tab -->
@@ -345,9 +355,7 @@
         <TabPanel value="members">
           <MemberList
             :members="members"
-            :loading="loadingMembers"
             :show-partner-preferences="event.value.allowPartnerPreferences"
-            @refresh="loadMembers"
           />
         </TabPanel>
 
@@ -447,6 +455,7 @@ const currentEvent = computed(
 const activeTab = ref('overview');
 const members = ref<GroupMember[]>([]);
 const loadingMembers = ref(false);
+const refreshing = ref(false);
 
 // Use computed properties that read directly from stores - single source of truth
 const dinnerGroups = computed(() =>
@@ -865,6 +874,15 @@ async function handleRoutesSaved() {
 
 async function handleSendNotifications() {
   await eventMetadataStore.fetchAll();
+}
+
+async function handleRefresh() {
+  refreshing.value = true;
+  try {
+    await loadAllData();
+  } finally {
+    refreshing.value = false;
+  }
 }
 
 onMounted(() => {
