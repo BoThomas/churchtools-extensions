@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_USERNAME: string;
   readonly VITE_PASSWORD: string;
   readonly VITE_PORT: string;
+  readonly VITE_EMAIL_MODE?: 'console' | 'churchtools';
 }
 
 interface ImportMeta {

@@ -400,6 +400,10 @@ async function handleSendNotifications() {
         // Use routes from props (already the saved routes)
         const savedRoutes = props.routes;
 
+        let totalSent = 0;
+        let totalFailed = 0;
+        let allSimulated = true;
+
         // Send emails for each route
         for (const route of savedRoutes) {
           const dinnerGroup = props.dinnerGroups.find(
@@ -419,14 +423,18 @@ async function handleSendNotifications() {
             },
           );
 
-          console.log(email.textBody); // TODO: For debugging
-
-          // Send email (uses console fallback for now)
-          await emailService.sendEmail(
+          // Send email
+          const result = await emailService.sendEmail(
             dinnerGroup.value.memberPersonIds,
             email.subject,
             email.htmlBody,
           );
+
+          totalSent += result.sentCount;
+          totalFailed += result.failedPersonIds.length;
+          if (!result.wasSimulated) {
+            allSimulated = false;
+          }
         }
 
         // Update event status
@@ -434,10 +442,15 @@ async function handleSendNotifications() {
           status: 'notifications-sent',
         });
 
+        const modeNote = allSimulated
+          ? ' (development mode - check console)'
+          : '';
+        const failedNote = totalFailed > 0 ? `, ${totalFailed} failed` : '';
+
         toast.add({
           severity: 'success',
           summary: 'Notifications Sent',
-          detail: `Sent ${savedRoutes.length} route notifications (check console)`,
+          detail: `Sent ${savedRoutes.length} route notifications to ${totalSent} recipients${failedNote}${modeNote}`,
           life: 3000,
         });
 

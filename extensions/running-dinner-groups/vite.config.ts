@@ -26,6 +26,19 @@ export default ({ mode }: { mode: string }) => {
           changeOrigin: true,
           secure: true,
         },
+        // Proxy for legacy AJAX endpoints (email sending, etc.)
+        '/': {
+          target: process.env.VITE_EXTERNAL_API_URL,
+          changeOrigin: true,
+          secure: true,
+          // Only proxy requests with ?q= query parameter (legacy AJAX)
+          bypass: (req) => {
+            if (req.url?.includes('?q=')) {
+              return null; // Proxy this request
+            }
+            return req.url; // Don't proxy, serve locally
+          },
+        },
       },
     },
     plugins: [vue(), tailwindcss(), versionInfoPlugin()],
