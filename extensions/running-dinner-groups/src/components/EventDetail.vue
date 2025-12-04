@@ -270,28 +270,65 @@
               </template>
               <template #content>
                 <div class="space-y-2">
-                  <div class="flex justify-between">
-                    <span class="text-surface-600 dark:text-surface-400"
-                      >Time</span
-                    >
+                  <!-- Time -->
+                  <div class="flex items-center gap-2">
+                    <i
+                      class="pi pi-clock text-surface-500 dark:text-surface-400"
+                    ></i>
                     <span class="font-medium">{{
                       formatTime(event.value.afterParty.time)
                     }}</span>
                   </div>
-                  <div class="flex justify-between">
-                    <span class="text-surface-600 dark:text-surface-400"
-                      >Location</span
-                    >
-                    <span class="font-medium">{{
-                      event.value.afterParty.location
-                    }}</span>
-                  </div>
-                  <div
-                    v-if="event.value.afterParty.isDessertLocation"
-                    class="mt-2"
+
+                  <!-- Location (as Google Maps link) -->
+                  <a
+                    v-if="event.value.afterParty.address && afterPartyMapsLink"
+                    :href="afterPartyMapsLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="flex items-start gap-2 text-primary hover:underline"
                   >
-                    <Badge value="Dessert Location" severity="info" />
+                    <i class="pi pi-map-marker mt-0.5"></i>
+                    <span>
+                      {{
+                        event.value.afterParty.address.name ||
+                        event.value.afterParty.address.street
+                      }}
+                      <span
+                        v-if="
+                          event.value.afterParty.address.name &&
+                          event.value.afterParty.address.street
+                        "
+                      >
+                        · {{ event.value.afterParty.address.street }}
+                      </span>
+                      <span
+                        v-if="
+                          event.value.afterParty.address.zip ||
+                          event.value.afterParty.address.city
+                        "
+                      >
+                        · {{ event.value.afterParty.address.zip }}
+                        {{ event.value.afterParty.address.city }}
+                      </span>
+                      <i class="pi pi-external-link text-xs ml-1"></i>
+                    </span>
+                  </a>
+
+                  <!-- Description -->
+                  <div
+                    v-if="event.value.afterParty.description"
+                    class="text-sm text-surface-600 dark:text-surface-400 italic"
+                  >
+                    {{ event.value.afterParty.description }}
                   </div>
+
+                  <!-- Dessert Location Badge -->
+                  <Badge
+                    v-if="event.value.afterParty.isDessertLocation"
+                    value="Dessert Location"
+                    severity="info"
+                  />
                 </div>
               </template>
             </Card>
@@ -410,6 +447,7 @@ import { useChurchtoolsStore } from '@/stores/churchtools';
 import { useDinnerGroupStore } from '@/stores/dinnerGroup';
 import { useRouteStore } from '@/stores/route';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
+import { generateAddressLink } from '@/utils/googleMaps';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
 import TabList from '@churchtools-extensions/prime-volt/TabList.vue';
@@ -474,6 +512,23 @@ const isVisible = computed({
 const eventName = computed(
   () => props.group?.name ?? `Event #${props.event.value.groupId}`,
 );
+
+// Generate Google Maps link for after party address
+const afterPartyMapsLink = computed(() => {
+  const addr = props.event.value.afterParty?.address;
+  if (!addr) return null;
+
+  // Build address string from components
+  const parts: string[] = [];
+  if (addr.street) parts.push(addr.street);
+  if (addr.zip || addr.city) {
+    parts.push([addr.zip, addr.city].filter(Boolean).join(' '));
+  }
+  if (addr.country && addr.country !== 'DE') parts.push(addr.country);
+
+  if (parts.length === 0) return null;
+  return generateAddressLink(parts.join(', '));
+});
 
 const formatEventDate = computed(() => {
   try {

@@ -84,9 +84,18 @@ export const MenuConfigSchema = z.object({
 });
 export type MenuConfig = z.infer<typeof MenuConfigSchema>;
 
+export const AfterPartyAddressSchema = z.object({
+  name: z.string().optional(), // Venue name (e.g., "St. Georg Kirche")
+  street: z.string().optional(), // Street and number (e.g., "Hauptstraße 328")
+  zip: z.string().optional(), // Postal code (e.g., "75223")
+  city: z.string().optional(), // City (e.g., "Öschelbronn")
+  country: z.string().optional(), // Country code (defaults to DE)
+});
+export type AfterPartyAddress = z.infer<typeof AfterPartyAddressSchema>;
+
 export const AfterPartySchema = z.object({
   time: z.string(),
-  location: z.string(),
+  address: AfterPartyAddressSchema.optional(), // Structured address
   description: z.string().optional(),
   isDessertLocation: z.boolean().default(false), // If true, dessert course happens at after party location for all groups
 });

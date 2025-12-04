@@ -506,23 +506,79 @@
             />
           </div>
 
-          <!-- After Party Location -->
-          <div class="flex flex-col gap-2">
-            <label for="after-party-location" class="font-semibold text-sm">
-              Location
-            </label>
-            <InputText
-              id="after-party-location"
-              v-model="formData.afterParty.location"
-              placeholder="e.g., Bar Central"
-              :disabled="!hasAfterParty"
-            />
+          <!-- After Party Address -->
+          <div class="space-y-3">
+            <label class="font-semibold text-sm">Location Address</label>
+
+            <!-- Venue Name -->
+            <div class="flex flex-col gap-1">
+              <label
+                for="after-party-name"
+                class="text-xs text-surface-600 dark:text-surface-400"
+              >
+                Venue Name
+              </label>
+              <InputText
+                id="after-party-name"
+                v-model="formData.afterParty.address.name"
+                placeholder="e.g., St. Georg Kirche"
+                :disabled="!hasAfterParty"
+              />
+            </div>
+
+            <!-- Street -->
+            <div class="flex flex-col gap-1">
+              <label
+                for="after-party-street"
+                class="text-xs text-surface-600 dark:text-surface-400"
+              >
+                Street & Number
+              </label>
+              <InputText
+                id="after-party-street"
+                v-model="formData.afterParty.address.street"
+                placeholder="e.g., Hauptstraße 328"
+                :disabled="!hasAfterParty"
+              />
+            </div>
+
+            <!-- ZIP and City in a row -->
+            <div class="grid grid-cols-3 gap-2">
+              <div class="flex flex-col gap-1">
+                <label
+                  for="after-party-zip"
+                  class="text-xs text-surface-600 dark:text-surface-400"
+                >
+                  ZIP Code
+                </label>
+                <InputText
+                  id="after-party-zip"
+                  v-model="formData.afterParty.address.zip"
+                  placeholder="e.g., 75223"
+                  :disabled="!hasAfterParty"
+                />
+              </div>
+              <div class="flex flex-col gap-1 col-span-2">
+                <label
+                  for="after-party-city"
+                  class="text-xs text-surface-600 dark:text-surface-400"
+                >
+                  City
+                </label>
+                <InputText
+                  id="after-party-city"
+                  v-model="formData.afterParty.address.city"
+                  placeholder="e.g., Öschelbronn"
+                  :disabled="!hasAfterParty"
+                />
+              </div>
+            </div>
           </div>
 
           <!-- After Party Description -->
           <div class="flex flex-col gap-2">
             <label for="after-party-description" class="font-semibold text-sm">
-              Description
+              Description (optional)
             </label>
             <textarea
               id="after-party-description"
@@ -658,7 +714,13 @@ const formData = reactive({
   },
   afterParty: {
     time: createTime(0, 0) as Date | null, // 00:00
-    location: '',
+    address: {
+      name: '',
+      street: '',
+      zip: '',
+      city: '',
+      country: 'DE',
+    },
     description: '',
     isDessertLocation: false,
   },
@@ -748,7 +810,10 @@ watch(
 watch(hasAfterParty, (value) => {
   if (!value) {
     formData.afterParty.time = null;
-    formData.afterParty.location = '';
+    formData.afterParty.address.name = '';
+    formData.afterParty.address.street = '';
+    formData.afterParty.address.zip = '';
+    formData.afterParty.address.city = '';
     formData.afterParty.description = '';
     formData.afterParty.isDessertLocation = false;
   }
@@ -783,7 +848,10 @@ function resetForm() {
   formData.menu.dessert.endTime = createTime(23, 30);
   hasAfterParty.value = false;
   formData.afterParty.time = createTime(0, 0);
-  formData.afterParty.location = '';
+  formData.afterParty.address.name = '';
+  formData.afterParty.address.street = '';
+  formData.afterParty.address.zip = '';
+  formData.afterParty.address.city = '';
   formData.afterParty.description = '';
   formData.afterParty.isDessertLocation = false;
   personSelector.reset();
@@ -869,14 +937,18 @@ async function handleSubmit() {
 
     // Prepare after party data if enabled
     let afterParty = undefined;
-    if (
-      hasAfterParty.value &&
-      formData.afterParty.time &&
-      formData.afterParty.location
-    ) {
+    const hasValidAddress =
+      formData.afterParty.address.street || formData.afterParty.address.name;
+    if (hasAfterParty.value && formData.afterParty.time && hasValidAddress) {
       afterParty = {
         time: combineDateTime(validatedData.date, formData.afterParty.time),
-        location: formData.afterParty.location,
+        address: {
+          name: formData.afterParty.address.name || undefined,
+          street: formData.afterParty.address.street || undefined,
+          zip: formData.afterParty.address.zip || undefined,
+          city: formData.afterParty.address.city || undefined,
+          country: formData.afterParty.address.country || 'DE',
+        },
         description: formData.afterParty.description || undefined,
         isDessertLocation: formData.afterParty.isDessertLocation,
       };

@@ -4,7 +4,39 @@ import type {
   DinnerGroup,
   RouteStop,
   GroupMember,
+  AfterParty,
 } from '@/types/models';
+
+/**
+ * Format after party address as a string for display or Google Maps
+ */
+export function formatAfterPartyAddress(afterParty: AfterParty): string | null {
+  if (afterParty.address) {
+    const parts: string[] = [];
+    if (afterParty.address.name) parts.push(afterParty.address.name);
+    if (afterParty.address.street) parts.push(afterParty.address.street);
+    if (afterParty.address.zip || afterParty.address.city) {
+      parts.push(
+        [afterParty.address.zip, afterParty.address.city]
+          .filter(Boolean)
+          .join(' '),
+      );
+    }
+    if (parts.length > 0) return parts.join(', ');
+  }
+
+  return null;
+}
+
+/**
+ * Get just the venue name from after party (for short display)
+ */
+export function getAfterPartyVenueName(afterParty: AfterParty): string | null {
+  if (afterParty.address?.name) {
+    return afterParty.address.name;
+  }
+  return null;
+}
 
 /**
  * Get the address for a route stop
@@ -17,7 +49,7 @@ function getStopAddress(
 ): string | null {
   // Check if this is dessert at after party location
   if (stop.meal === 'dessert' && eventMetadata.afterParty?.isDessertLocation) {
-    return eventMetadata.afterParty.location;
+    return formatAfterPartyAddress(eventMetadata.afterParty);
   }
 
   // Get host address

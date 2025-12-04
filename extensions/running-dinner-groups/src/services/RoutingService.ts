@@ -84,7 +84,7 @@ export class RoutingService {
     }
 
     warnings.push(
-      `Dessert will be held at the after party location (${eventMetadata.afterParty?.location}) for all groups. ` +
+      `Dessert will be held at the after party location for all groups. ` +
         `No individual dessert hosts needed.`,
     );
 

@@ -167,24 +167,40 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- After Party -->
-    <div v-if="event.value.afterParty" class="relative pl-8 pt-2">
-      <div
-        class="absolute -left-5 w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center"
-      >
-        🎉
-      </div>
-      <div
-        class="ml-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800"
-      >
-        <div class="font-semibold text-yellow-800 dark:text-yellow-200">
-          After Party
+      <!-- After Party -->
+      <div v-if="event.value.afterParty" class="relative pt-2">
+        <!-- Timeline dot -->
+        <div
+          class="absolute -left-5 w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center"
+        >
+          🎉
         </div>
-        <div class="text-sm text-yellow-700 dark:text-yellow-300">
-          {{ event.value.afterParty.time }} @
-          {{ event.value.afterParty.location }}
+
+        <!-- Content -->
+        <div
+          class="ml-4 p-3 bg-surface-0 dark:bg-surface-800 rounded-lg shadow-sm border border-surface-200 dark:border-surface-700"
+        >
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-semibold">After Party</span>
+            <span class="text-sm text-surface-500">
+              {{ formatTime(event.value.afterParty.time) }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <i class="pi pi-map-marker text-surface-400"></i>
+            <a
+              v-if="getAfterPartyMapsLink()"
+              :href="getAfterPartyMapsLink()!"
+              target="_blank"
+              class="text-primary hover:underline"
+            >
+              {{ formatAfterPartyLocation(event.value.afterParty) }}
+            </a>
+            <span v-else>
+              {{ formatAfterPartyLocation(event.value.afterParty) }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -202,7 +218,10 @@ import type {
   GroupMember,
 } from '@/types/models';
 import { getMealEmoji, getMealLabelWithoutEmoji } from '@/types/models';
-import { generateFullRouteLink } from '@/utils/googleMaps';
+import {
+  generateFullRouteLink,
+  formatAfterPartyAddress,
+} from '@/utils/googleMaps';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 
 // Scroll to a group's route card and highlight both card and sidebar item
@@ -358,6 +377,13 @@ function formatTime(isoTime: string): string {
   }
 }
 
+function formatAfterPartyLocation(
+  afterParty: EventMetadata['afterParty'],
+): string {
+  if (!afterParty) return '';
+  return formatAfterPartyAddress(afterParty) ?? '';
+}
+
 function isHostingMeal(stop: RouteStop): boolean {
   return stop.hostDinnerGroupId === props.route.dinnerGroupId;
 }
@@ -389,7 +415,9 @@ function getHostGroupMembers(stop: RouteStop): GroupMember[] {
 
 function getHostAddress(stop: RouteStop): string | null {
   if (isDessertAtAfterParty(stop)) {
-    return props.event.value.afterParty?.location ?? null;
+    return props.event.value.afterParty
+      ? formatAfterPartyAddress(props.event.value.afterParty)
+      : null;
   }
 
   const host = getHostMember(stop);
@@ -401,6 +429,12 @@ function getHostAddress(stop: RouteStop): string | null {
 function getGoogleMapsLink(stop: RouteStop): string {
   const address = getHostAddress(stop);
   if (!address) return '#';
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+function getAfterPartyMapsLink(): string | null {
+  const address = formatAfterPartyLocation(props.event.value.afterParty);
+  if (!address) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 

@@ -1,17 +1,34 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 /**
- * Address data structure
+ * Address data structure for ChurchTools "Treffpunkt"
  */
 interface GroupAddress {
   id?: number;
+  name?: string; // The name shown as "Treffpunkt" in ChurchTools
   street?: string;
   addition?: string;
+  district?: string;
   zip?: string;
   city?: string;
   country?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: string;
+  longitude?: string;
+  icon?: string;
+  color?: string;
+}
+
+/**
+ * Meeting (Treffen) data structure for ChurchTools group meetings
+ */
+interface GroupMeeting {
+  id?: number;
+  groupId: number;
+  startDate: string; // ISO date string
+  endDate?: string; // ISO date string (optional, defaults to startDate)
+  isCompleted?: boolean;
+  isCanceled?: boolean;
+  comment?: string | null;
 }
 
 /**
@@ -39,18 +56,24 @@ export class AddressService {
   }
 
   /**
-   * Set the after-party location for a group
+   * Set the after-party location for a group as a ChurchTools "Treffpunkt"
    * @param groupId - The ChurchTools group ID
-   * @param address - The address data
+   * @param address - The address data including name for the meeting point
    */
   async setAfterPartyLocation(
     groupId: number,
     address: {
+      name?: string; // The display name for the Treffpunkt
       street?: string;
       addition?: string;
+      district?: string;
       zip?: string;
       city?: string;
       country?: string;
+      latitude?: string;
+      longitude?: string;
+      icon?: string;
+      color?: string;
     },
   ): Promise<GroupAddress | null> {
     try {
@@ -153,6 +176,59 @@ export class AddressService {
     }
 
     return parts.join(', ');
+  }
+
+  // ==================== Group Meetings (Treffen) ====================
+
+  /**
+   * Create a meeting (Treffen) for a group
+   * @param groupId - The ChurchTools group ID
+   * @param startDate - The start date/time of the meeting (ISO string)
+   * @param endDate - The end date/time of the meeting (ISO string, optional)
+   * @param comment - Optional comment for the meeting
+   */
+  async createGroupMeeting(
+    groupId: number,
+    startDate: string,
+    endDate?: string,
+    comment?: string,
+  ): Promise<GroupMeeting | null> {
+    try {
+      const response = (await churchtoolsClient.post(
+        `/groups/${groupId}/meetings`,
+        {
+          groupId,
+          startDate,
+          endDate: endDate || startDate,
+          comment: comment || null,
+        },
+      )) as GroupMeeting | { data: GroupMeeting };
+
+      const result = 'data' in response ? response.data : response;
+      console.log('Group meeting created:', groupId, result);
+      return result;
+    } catch (error) {
+      console.error('Failed to create group meeting:', error);
+      throw new Error('Failed to create group meeting');
+    }
+  }
+
+  /**
+   * Get meetings for a group
+   * @param groupId - The ChurchTools group ID
+   */
+  async getGroupMeetings(groupId: number): Promise<GroupMeeting[]> {
+    try {
+      const response = await churchtoolsClient.get(
+        `/groups/${groupId}/meetings`,
+      );
+      return Array.isArray(response)
+        ? (response as GroupMeeting[])
+        : (response as { data: GroupMeeting[] }).data || [];
+    } catch (error) {
+      console.error('Failed to get group meetings:', error);
+      return [];
+    }
   }
 }
 

@@ -1,6 +1,7 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { Group, GroupMember, Person } from '@/types/models';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
+import { addressService } from './AddressService';
 
 /**
  * Service for configuring ChurchTools groups for Running Dinner events
@@ -187,7 +188,13 @@ export class GroupConfigService {
     };
     afterParty?: {
       time: string;
-      location: string;
+      address?: {
+        name?: string;
+        street?: string;
+        zip?: string;
+        city?: string;
+        country?: string;
+      };
       description?: string;
       isDessertLocation?: boolean;
     };
@@ -306,7 +313,7 @@ export class GroupConfigService {
         afterParty: options.afterParty
           ? {
               time: options.afterParty.time,
-              location: options.afterParty.location,
+              address: options.afterParty.address,
               description: options.afterParty.description,
               isDessertLocation: options.afterParty.isDessertLocation ?? false,
             }
@@ -316,6 +323,54 @@ export class GroupConfigService {
         status: 'active',
         organizerId: options.organizerId,
       });
+
+      // 7. Set after party location as ChurchTools "Treffpunkt" if provided
+      if (options.afterParty?.address) {
+        try {
+          await addressService.setAfterPartyLocation(createdGroup.id, {
+            name:
+              options.afterParty.address.name ||
+              options.afterParty.description ||
+              'After Party',
+            street: options.afterParty.address.street,
+            zip: options.afterParty.address.zip,
+            city: options.afterParty.address.city,
+            country: options.afterParty.address.country || 'DE',
+            icon: 'house',
+            color: 'parent',
+          });
+          console.log(
+            'After party location set as Treffpunkt for group:',
+            createdGroup.id,
+          );
+        } catch (addressError) {
+          // Log but don't fail the group creation if address setting fails
+          console.warn(
+            'Failed to set after party location as Treffpunkt:',
+            addressError,
+          );
+        }
+      }
+
+      // 8. Create a group meeting (Treffen) for the event date
+      try {
+        // Use the after party time if available, otherwise use the dessert end time
+        const meetingEndTime =
+          options.afterParty?.time || options.menu.dessert.endTime;
+
+        await addressService.createGroupMeeting(
+          createdGroup.id,
+          options.date, // Event date as start
+          meetingEndTime, // End time
+        );
+        console.log(
+          'Group meeting (Treffen) created for group:',
+          createdGroup.id,
+        );
+      } catch (meetingError) {
+        // Log but don't fail the group creation if meeting creation fails
+        console.warn('Failed to create group meeting (Treffen):', meetingError);
+      }
 
       console.log(
         'Child group created successfully:',

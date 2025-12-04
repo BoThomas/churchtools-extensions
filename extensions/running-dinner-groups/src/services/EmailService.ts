@@ -5,7 +5,10 @@ import type {
   GroupMember,
 } from '@/types/models';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
-import { generateFullRouteLink } from '@/utils/googleMaps';
+import {
+  generateFullRouteLink,
+  formatAfterPartyAddress,
+} from '@/utils/googleMaps';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 /**
@@ -308,14 +311,14 @@ export class EmailService {
         `;
       } else if (isDessertAtAfterParty) {
         // Dessert is at after party location for everyone
-        const encodedAfterPartyAddress = encodeURIComponent(
-          eventMetadata.afterParty!.location,
-        );
+        const afterPartyLocation =
+          formatAfterPartyAddress(eventMetadata.afterParty!) ?? '';
+        const encodedAfterPartyAddress = encodeURIComponent(afterPartyLocation);
         htmlBody += `
           <div style="padding: 16px; background-color: #fef3c7; border-left: 4px solid #f59e0b; margin-bottom: 12px;">
             <h4 style="margin: 0 0 8px 0; color: #92400e; font-size: 16px;">🎉 ${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
             <p style="margin: 0; color: #78350f;">
-              <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyAddress}" style="color: #b45309;">${eventMetadata.afterParty!.location}</a><br>
+              <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyAddress}" style="color: #b45309;">${afterPartyLocation}</a><br>
               <em>Alle Gruppen treffen sich zum Nachtisch am After Party Ort!</em>
             </p>
           </div>
@@ -341,15 +344,15 @@ export class EmailService {
 
     // Add after party info if available
     if (eventMetadata.afterParty) {
-      const encodedAfterPartyLocation = encodeURIComponent(
-        eventMetadata.afterParty.location,
-      );
+      const afterPartyLocation =
+        formatAfterPartyAddress(eventMetadata.afterParty) ?? '';
+      const encodedAfterPartyLocation = encodeURIComponent(afterPartyLocation);
       htmlBody += `
         <div style="margin-top: 24px; padding: 20px; background-color: #fef3c7; text-align: center;">
           <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 20px;">🎉 After Party</h3>
           <p style="margin: 0; color: #78350f; font-size: 16px;">
             <strong>Zeit:</strong> ${formatTime(eventMetadata.afterParty.time)}<br>
-            <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyLocation}" style="color: #b45309;">${eventMetadata.afterParty.location}</a>
+            <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyLocation}" style="color: #b45309;">${afterPartyLocation}</a>
       `;
       if (eventMetadata.afterParty.description) {
         htmlBody += `<br><em>${eventMetadata.afterParty.description}</em>`;
@@ -510,7 +513,9 @@ export class EmailService {
         textBody += `   Bei euch zu Hause (siehe oben)\n`;
       } else if (isDessertAtAfterParty) {
         // Dessert is at after party location for everyone
-        textBody += `   Ort: ${eventMetadata.afterParty!.location} (After Party)\n`;
+        const afterPartyLocation =
+          formatAfterPartyAddress(eventMetadata.afterParty!) ?? '';
+        textBody += `   Ort: ${afterPartyLocation} (After Party)\n`;
         textBody += `   Alle Gruppen treffen sich zum Nachtisch am After Party Ort!\n`;
       } else {
         // Standard home-based meal
@@ -520,9 +525,11 @@ export class EmailService {
     });
 
     if (eventMetadata.afterParty) {
+      const afterPartyLocation =
+        formatAfterPartyAddress(eventMetadata.afterParty) ?? '';
       textBody += `\nAfter Party:\n`;
       textBody += `Zeit: ${formatTime(eventMetadata.afterParty.time)}\n`;
-      textBody += `Ort: ${eventMetadata.afterParty.location}\n`;
+      textBody += `Ort: ${afterPartyLocation}\n`;
       if (eventMetadata.afterParty.description) {
         textBody += `${eventMetadata.afterParty.description}\n`;
       }
