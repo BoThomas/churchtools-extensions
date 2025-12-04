@@ -121,26 +121,26 @@
       <div class="flex gap-4">
         <!-- Left Sidebar: Group Selector -->
         <div class="w-48 shrink-0">
-          <div class="sticky top-4 space-y-2">
+          <div class="sticky top-4 space-y-1">
             <button
               v-for="route in sortedRoutes"
               :key="route.dinnerGroupId"
               :id="`sidebar-group-${route.dinnerGroupId}`"
-              class="w-full text-left px-3 py-2 rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors cursor-pointer"
+              class="w-full text-left px-2 py-1 rounded-lg bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors cursor-pointer"
               @click="scrollToRouteCard(route.dinnerGroupId)"
             >
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-sm"
+              <div class="flex items-center gap-1.5">
+                <span class="font-semibold text-xs"
                   >G{{ getGroupNumber(route) }}</span
                 >
                 <span class="text-xs">{{ getHostedMealEmoji(route) }}</span>
-              </div>
-              <div class="text-xs text-surface-500 truncate mt-0.5">
-                {{
-                  getGroupMembers(route)
-                    .map((m) => formatMemberName(m))
-                    .join(', ')
-                }}
+                <span class="text-xs text-surface-500 truncate">
+                  {{
+                    getGroupMembers(route)
+                      .map((m) => formatMemberName(m))
+                      .join(', ')
+                  }}
+                </span>
               </div>
             </button>
           </div>
