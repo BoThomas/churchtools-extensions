@@ -126,18 +126,26 @@
               v-model="formData.maxMembers"
               :min="6"
               :step="1"
-              placeholder="e.g., 30"
+              placeholder="e.g., 18"
               :invalid="!!errors.maxMembers"
             />
             <small v-if="errors.maxMembers" class="text-red-500">{{
               errors.maxMembers
             }}</small>
+            <small class="text-surface-500">
+              💡 For team size {{ formData.preferredGroupSize }}, recommended
+              values are:
+              <strong>{{
+                validParticipantOptions.slice(0, 6).join(', ')
+              }}</strong
+              >, etc. These ensure no team meets another more than once.
+            </small>
           </div>
 
           <!-- Preferred Group Size -->
           <div class="flex flex-col gap-2">
             <label for="group-size" class="font-semibold text-sm">
-              Preferred Group Size <span class="text-red-500">*</span>
+              Preferred Group Size (2-4) <span class="text-red-500">*</span>
             </label>
             <InputNumber
               id="group-size"
@@ -622,7 +630,7 @@ const formData = reactive({
   name: '',
   description: '',
   date: null as Date | null,
-  maxMembers: 30,
+  maxMembers: 18, // Default for team size 2: 9 teams × 2 people
   preferredGroupSize: 2,
   allowPartnerPreferences: false,
   // CT-native registration settings
@@ -676,6 +684,20 @@ const errors = reactive({
 const isVisible = computed({
   get: () => props.visible,
   set: (value) => emit('update:visible', value),
+});
+
+// Computed: list of valid participant counts for the current team size
+// Valid counts are multiples of (3 × teamSize) since we need teams divisible by 3
+const validParticipantOptions = computed(() => {
+  const teamSize = formData.preferredGroupSize;
+  const minTeams = 6; // Minimum 6 teams (2 groups of 3)
+  const options: number[] = [];
+
+  // Generate options: 6, 9, 12, 15... teams × teamSize
+  for (let teams = minTeams; teams <= 30; teams += 3) {
+    options.push(teams * teamSize);
+  }
+  return options;
 });
 
 // Validation schema
@@ -744,7 +766,7 @@ function resetForm() {
   formData.name = '';
   formData.description = '';
   formData.date = null;
-  formData.maxMembers = 30;
+  formData.maxMembers = 18; // Default for team size 2: 9 teams × 2 people
   formData.preferredGroupSize = 2;
   formData.allowPartnerPreferences = false;
   formData.signUpOpeningDate = null;
