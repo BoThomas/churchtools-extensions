@@ -245,26 +245,28 @@ export class GroupConfigService {
         signUpOpeningDate: signUpOpeningDate, // Controls when registration opens (auto-sets isOpenForMembers=true)
         signUpClosingDate: options.signUpClosingDate ?? null, // Auto-close registration at this date
 
-        // Visibility settings - at root level
+        // Visibility settings
         isPublic: false, // Not public to external visitors
         isHidden: false, // Visible in group listings
 
-        // Waitlist settings - at root level
+        // Waitlist settings
         allowWaitinglist: allowWaitinglist,
         automaticMoveUp: automaticMoveUp, // Auto-promote from waitlist when spots open
         waitinglistMaxPersons: options.waitlistMaxPersons ?? null, // null = unlimited
 
-        // Co-registration settings - at root level
+        // Co-registration settings
         allowSpouseRegistration: allowSpouseRegistration,
         allowOtherRegistration: false, // Not needed if using partner preference field
 
-        // Capacity - at root level
+        // Capacity
         maxMembers: options.maxMembers,
         inStatistic: true,
 
+        // Group description (note)
+        note: options.description,
+
         // Only 'information' can be nested
         information: {
-          note: options.description,
           meetingTime: options.date,
           groupCategoryId: null,
           campusId: null,
