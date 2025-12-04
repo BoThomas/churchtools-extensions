@@ -117,9 +117,9 @@ export class GroupConfigService {
         groupData,
       )) as Group;
 
-      // 4. Assign Leiter role to leader (if specified)
+      // 4. Add leader to group with Leiter role
       if (options.leaderPersonId) {
-        await churchtoolsClient.patch(
+        await churchtoolsClient.put(
           `/groups/${createdGroup.id}/members/${options.leaderPersonId}`,
           {
             groupTypeRoleId: leiterRole.id,
@@ -128,10 +128,10 @@ export class GroupConfigService {
         );
       }
 
-      // 5. Assign Co-Leiter role(s) to co-leaders
+      // 5. Add co-leaders to group with Co-Leiter role
       if (coLeiterRole && options.coLeaderPersonIds.length > 0) {
         for (const coLeaderId of options.coLeaderPersonIds) {
-          await churchtoolsClient.patch(
+          await churchtoolsClient.put(
             `/groups/${createdGroup.id}/members/${coLeaderId}`,
             {
               groupTypeRoleId: coLeiterRole.id,
@@ -418,7 +418,7 @@ export class GroupConfigService {
       }
 
       // Add the leader as a member with the Leiter role
-      await churchtoolsClient.patch(
+      await churchtoolsClient.put(
         `/groups/${groupId}/members/${leaderPersonId}`,
         {
           groupTypeRoleId: leiterRole?.id || roles[0]?.id,
@@ -471,9 +471,9 @@ export class GroupConfigService {
         return;
       }
 
-      // Assign each co-leader
+      // Add each co-leader as a member (use PUT to add new members)
       for (const coLeaderId of coLeaderPersonIds) {
-        await churchtoolsClient.patch(
+        await churchtoolsClient.put(
           `/groups/${groupId}/members/${coLeaderId}`,
           {
             groupTypeRoleId: coLeiterRole.id,
