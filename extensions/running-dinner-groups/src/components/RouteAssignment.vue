@@ -407,13 +407,16 @@ async function handleSendNotifications() {
           );
           if (!dinnerGroup) continue;
 
+          // TODO: add intro text input to UI and use here
           const email = emailService.generateRouteEmail(
             props.event.value,
             route,
             dinnerGroup,
             props.dinnerGroups,
             props.members,
-            { allRoutes: savedRoutes },
+            {
+              allRoutes: savedRoutes,
+            },
           );
 
           console.log(email.textBody); // TODO: For debugging

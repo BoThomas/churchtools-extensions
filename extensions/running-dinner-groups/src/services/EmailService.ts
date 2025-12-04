@@ -67,7 +67,7 @@ export class EmailService {
       dinnerGroup.value.memberPersonIds.includes(m.personId),
     );
 
-    // Get event name from group ID (would need to fetch from ChurchTools)
+    // TODO: Get event name from group ID (would need to fetch from ChurchTools)
     const eventName = `Running Dinner Event`;
 
     const subject = `${eventName} - Deine Route`;
@@ -77,19 +77,23 @@ export class EmailService {
       (stop) => stop.hostDinnerGroupId === dinnerGroup.id,
     );
 
-    // Generate HTML body
+    // Generate HTML body with email-compatible inline styles
     let htmlBody = `
-      <h2>${eventName}</h2>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937;">
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 24px; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 600;">🍽️ ${eventName}</h1>
+        </div>
+        <div style="padding: 24px; background-color: #ffffff; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
     `;
 
     // Add optional intro text
     if (options.introText) {
-      htmlBody += `<p>${options.introText}</p>`;
+      htmlBody += `<p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 20px;">${options.introText}</p>`;
     }
 
     htmlBody += `
-      <h3>Deine Gruppe</h3>
-      <ul>
+      <h2 style="font-size: 18px; color: #1f2937; margin: 24px 0 12px 0; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">👥 Deine Gruppe</h2>
+      <ul style="padding-left: 0; list-style: none; margin: 0;">
     `;
 
     groupMembers.forEach((member) => {
@@ -100,7 +104,7 @@ export class EmailService {
           ? member.person.phoneNumbers[0].phoneNumber
           : 'Keine Telefonnummer';
 
-      htmlBody += `<li><strong>${name}</strong><br>E-Mail: ${email}<br>Telefon: ${phone}</li>`;
+      htmlBody += `<li style="padding: 12px; background-color: #f9fafb; border-radius: 8px; margin-bottom: 8px;"><strong style="color: #1f2937;">${name}</strong><br><span style="color: #6b7280; font-size: 14px;">📧 ${email}<br>📞 ${phone}</span></li>`;
     });
 
     htmlBody += `</ul>`;
@@ -174,21 +178,21 @@ export class EmailService {
       const uniqueAllergies = [...new Set(allergies)];
 
       if (uniqueDietaryRestrictions.length > 0 || uniqueAllergies.length > 0) {
-        htmlBody += `<br><strong>Ernährungshinweise:</strong><ul style="margin-bottom: 0;">`;
+        htmlBody += `<div style="margin-top: 12px;"><strong style="color: #1e40af;">⚠️ Ernährungshinweise:</strong><ul style="margin: 8px 0 0 0; padding-left: 20px;">`;
         uniqueDietaryRestrictions.forEach((restriction) => {
-          htmlBody += `<li>${restriction}</li>`;
+          htmlBody += `<li style="color: #374151;">${restriction}</li>`;
         });
         uniqueAllergies.forEach((allergy) => {
-          htmlBody += `<li>Allergie: ${allergy}</li>`;
+          htmlBody += `<li style="color: #dc2626;">Allergie: ${allergy}</li>`;
         });
-        htmlBody += `</ul>`;
+        htmlBody += `</ul></div>`;
       }
 
       htmlBody += `</div>`;
     }
 
     // Add route stops
-    htmlBody += `<h3>Deine Route</h3>`;
+    htmlBody += `<h2 style="font-size: 18px; color: #1f2937; margin: 24px 0 12px 0; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb;">🗺️ Deine Route</h2>`;
 
     // Add full route link
     const fullRouteLink = generateFullRouteLink(
@@ -199,9 +203,9 @@ export class EmailService {
     );
     if (fullRouteLink) {
       htmlBody += `
-        <div style="margin-bottom: 16px;">
-          <a href="${fullRouteLink}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: 500;">
-            🗺️ Route in Google Maps öffnen
+        <div style="margin-bottom: 20px; text-align: center;">
+          <a href="${fullRouteLink}" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+            📍 Gesamte Route in Google Maps öffnen
           </a>
         </div>
       `;
@@ -240,8 +244,10 @@ export class EmailService {
       if (isOwnMeal) {
         // Own meal - just show time and that it's at home
         htmlBody += `
-          <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
-          <p><em>Bei euch zu Hause (siehe oben)</em></p>
+          <div style="padding: 16px; background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; margin-bottom: 12px;">
+            <h4 style="margin: 0 0 8px 0; color: #166534; font-size: 16px;">${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+            <p style="margin: 0; color: #15803d;">🏠 Bei euch zu Hause (siehe oben)</p>
+          </div>
         `;
       } else if (isDessertAtAfterParty) {
         // Dessert is at after party location for everyone
@@ -249,25 +255,29 @@ export class EmailService {
           eventMetadata.afterParty!.location,
         );
         htmlBody += `
-          <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
-          <p>
-            <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyAddress}" style="color: #3b82f6;">${eventMetadata.afterParty!.location}</a> (After Party)<br>
-            <em>Alle Gruppen treffen sich zum Nachtisch am After Party Ort!</em>
-          </p>
+          <div style="padding: 16px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; margin-bottom: 12px;">
+            <h4 style="margin: 0 0 8px 0; color: #92400e; font-size: 16px;">🎉 ${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+            <p style="margin: 0; color: #78350f;">
+              <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyAddress}" style="color: #b45309;">${eventMetadata.afterParty!.location}</a><br>
+              <em>Alle Gruppen treffen sich zum Nachtisch am After Party Ort!</em>
+            </p>
+          </div>
         `;
       } else {
         // Standard home-based meal (visiting another group)
         const addressHtml =
           hostAddress !== 'Adresse nicht angegeben'
-            ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hostAddress)}" style="color: #3b82f6;">${hostAddress}</a>`
+            ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hostAddress)}" style="color: #2563eb; text-decoration: underline;">${hostAddress}</a>`
             : hostAddress;
 
         htmlBody += `
-          <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
-          <p>
-            <strong>Gastgeber:</strong> ${hostName}<br>
-            <strong>Adresse:</strong> ${addressHtml}
-          </p>
+          <div style="padding: 16px; background-color: #f9fafb; border-left: 4px solid #6b7280; border-radius: 0 8px 8px 0; margin-bottom: 12px;">
+            <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px;">${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+            <p style="margin: 0; color: #4b5563;">
+              <strong>Gastgeber:</strong> ${hostName}<br>
+              <strong>Adresse:</strong> ${addressHtml}
+            </p>
+          </div>
         `;
       }
     });
@@ -278,16 +288,23 @@ export class EmailService {
         eventMetadata.afterParty.location,
       );
       htmlBody += `
-        <h3>After Party</h3>
-        <p>
-          <strong>Zeit:</strong> ${formatTime(eventMetadata.afterParty.time)}<br>
-          <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyLocation}" style="color: #3b82f6;">${eventMetadata.afterParty.location}</a><br>
+        <div style="margin-top: 24px; padding: 20px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; text-align: center;">
+          <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 20px;">🎉 After Party</h3>
+          <p style="margin: 0; color: #78350f; font-size: 16px;">
+            <strong>Zeit:</strong> ${formatTime(eventMetadata.afterParty.time)}<br>
+            <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyLocation}" style="color: #b45309;">${eventMetadata.afterParty.location}</a>
       `;
       if (eventMetadata.afterParty.description) {
-        htmlBody += `${eventMetadata.afterParty.description}<br>`;
+        htmlBody += `<br><em>${eventMetadata.afterParty.description}</em>`;
       }
-      htmlBody += `</p>`;
+      htmlBody += `</p></div>`;
     }
+
+    // Close wrapper divs
+    htmlBody += `
+        </div>
+      </div>
+    `;
 
     // Generate plain text version
     let textBody = `${eventName}\n\n`;
