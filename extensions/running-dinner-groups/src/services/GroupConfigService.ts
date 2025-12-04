@@ -554,11 +554,11 @@ export class GroupConfigService {
       if (allowPartnerPreferences) {
         requiredFields.push({
           name: 'partnerPreference',
-          nameInSignupForm: 'Partner Preference',
+          nameInSignupForm: 'Partner Preference ("Firstname Lastname")',
           fieldTypeCode: 'text',
           isRequired: false,
           helpText:
-            'Enter names or emails of people you would like to be grouped with (comma-separated)',
+            'Enter the full name ("Firstname Lastname") of people you would like to be grouped with. Separate multiple names with commas.',
         });
       }
 
