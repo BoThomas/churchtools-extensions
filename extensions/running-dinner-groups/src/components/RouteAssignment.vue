@@ -416,6 +416,8 @@ async function handleSendNotifications() {
             { allRoutes: savedRoutes },
           );
 
+          console.log(email.textBody); // TODO: For debugging
+
           // Send email (uses console fallback for now)
           await emailService.sendEmail(
             dinnerGroup.value.memberPersonIds,

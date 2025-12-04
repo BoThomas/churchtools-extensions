@@ -5,16 +5,29 @@
   >
     <!-- Group Header -->
     <div class="mb-4">
-      <div class="flex items-center gap-2">
-        <span class="font-semibold">Group {{ groupNumber }}</span>
-        <span class="text-surface-400">·</span>
-        <span class="text-sm text-surface-500">
-          {{ getOwnGroupMembers().map(formatMemberName).join(', ') }}
-        </span>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold">Group {{ groupNumber }}</span>
+          <span class="text-surface-400">·</span>
+          <span class="text-sm text-surface-500">
+            {{ getOwnGroupMembers().map(formatMemberName).join(', ') }}
+          </span>
+        </div>
+        <a
+          v-if="fullRouteLink"
+          :href="fullRouteLink"
+          target="_blank"
+          class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
+          title="Open full route in Google Maps"
+        >
+          <i class="pi pi-map text-sm"></i>
+          <span>Full Route</span>
+          <i class="pi pi-external-link text-[10px]"></i>
+        </a>
       </div>
       <div
         v-if="allGroupsToMeet.length > 0"
-        class="text-xs text-surface-400 mt-1 flex flex-wrap items-center gap-1"
+        class="text-xs text-surface-400 mt-3 flex flex-wrap items-center gap-1"
       >
         <span class="text-surface-500">Will meet:</span>
         <button
@@ -189,6 +202,7 @@ import type {
   GroupMember,
 } from '@/types/models';
 import { getMealEmoji, getMealLabelWithoutEmoji } from '@/types/models';
+import { generateFullRouteLink } from '@/utils/googleMaps';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 
 // Scroll to a group's route card and highlight both card and sidebar item
@@ -228,6 +242,16 @@ const dinnerGroup = computed(() =>
 );
 
 const groupNumber = computed(() => dinnerGroup.value?.value.groupNumber ?? 0);
+
+// Generate full route Google Maps link with waypoints
+const fullRouteLink = computed(() =>
+  generateFullRouteLink(
+    props.route.stops,
+    props.event.value,
+    props.dinnerGroups,
+    props.members,
+  ),
+);
 
 // Get all groups this group will meet during the dinner (in order of encounter)
 const allGroupsToMeet = computed(() => {

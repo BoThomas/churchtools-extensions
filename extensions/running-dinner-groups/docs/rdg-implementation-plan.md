@@ -191,19 +191,6 @@
   - Waitlist settings modification
   - Routine configuration UI
 
-#### Testing & Integration
-
-- [ ] End-to-end workflow testing
-- [ ] Parent group creation flow testing
-- [ ] Event creation flow testing
-- [ ] Dinner group algorithm testing
-- [ ] Route assignment algorithm testing
-- [ ] Email generation testing
-- [ ] Routine creation testing (service implemented, needs UI integration)
-- [ ] Archive/delete flow testing (service implemented, needs UI integration)
-- [ ] KV sync on load testing (service implemented, needs UI integration)
-- [ ] SyncService integration into OrganizerView (call syncOnLoad on mount)
-
 ---
 
 ## Overview

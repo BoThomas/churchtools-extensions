@@ -5,6 +5,7 @@ import type {
   GroupMember,
 } from '@/types/models';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
+import { generateFullRouteLink } from '@/utils/googleMaps';
 
 export interface EmailContent {
   subject: string;
@@ -189,6 +190,23 @@ export class EmailService {
     // Add route stops
     htmlBody += `<h3>Deine Route</h3>`;
 
+    // Add full route link
+    const fullRouteLink = generateFullRouteLink(
+      route.value.stops,
+      eventMetadata,
+      allDinnerGroups,
+      members,
+    );
+    if (fullRouteLink) {
+      htmlBody += `
+        <div style="margin-bottom: 16px;">
+          <a href="${fullRouteLink}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: 500;">
+            🗺️ Route in Google Maps öffnen
+          </a>
+        </div>
+      `;
+    }
+
     route.value.stops.forEach((stop, index) => {
       const hostGroup = allDinnerGroups.find(
         (g) => g.id === stop.hostDinnerGroupId,
@@ -227,44 +245,43 @@ export class EmailService {
         `;
       } else if (isDessertAtAfterParty) {
         // Dessert is at after party location for everyone
+        const encodedAfterPartyAddress = encodeURIComponent(
+          eventMetadata.afterParty!.location,
+        );
         htmlBody += `
           <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
           <p>
-            <strong>Ort:</strong> ${eventMetadata.afterParty!.location} (After Party)<br>
-            <em>Alle Gruppen treffen sich zum Nachtisch am After Party Ort!</em><br>
+            <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyAddress}" style="color: #3b82f6;">${eventMetadata.afterParty!.location}</a> (After Party)<br>
+            <em>Alle Gruppen treffen sich zum Nachtisch am After Party Ort!</em>
+          </p>
         `;
-
-        // Add Google Maps link for after party location
-        const encodedAddress = encodeURIComponent(
-          eventMetadata.afterParty!.location,
-        );
-        htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">In Google Maps öffnen</a>`;
-        htmlBody += `</p>`;
       } else {
         // Standard home-based meal (visiting another group)
+        const addressHtml =
+          hostAddress !== 'Adresse nicht angegeben'
+            ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hostAddress)}" style="color: #3b82f6;">${hostAddress}</a>`
+            : hostAddress;
+
         htmlBody += `
           <h4>${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
           <p>
             <strong>Gastgeber:</strong> ${hostName}<br>
-            <strong>Adresse:</strong> ${hostAddress}<br>
+            <strong>Adresse:</strong> ${addressHtml}
+          </p>
         `;
-
-        // Add Google Maps link if address is available
-        if (hostAddress !== 'Adresse nicht angegeben') {
-          const encodedAddress = encodeURIComponent(hostAddress);
-          htmlBody += `<a href="https://www.google.com/maps/search/?api=1&query=${encodedAddress}">In Google Maps öffnen</a>`;
-        }
-        htmlBody += `</p>`;
       }
     });
 
     // Add after party info if available
     if (eventMetadata.afterParty) {
+      const encodedAfterPartyLocation = encodeURIComponent(
+        eventMetadata.afterParty.location,
+      );
       htmlBody += `
         <h3>After Party</h3>
         <p>
           <strong>Zeit:</strong> ${formatTime(eventMetadata.afterParty.time)}<br>
-          <strong>Ort:</strong> ${eventMetadata.afterParty.location}<br>
+          <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyLocation}" style="color: #3b82f6;">${eventMetadata.afterParty.location}</a><br>
       `;
       if (eventMetadata.afterParty.description) {
         htmlBody += `${eventMetadata.afterParty.description}<br>`;
@@ -364,6 +381,17 @@ export class EmailService {
     }
 
     textBody += `\nDeine Route:\n`;
+
+    // Add full route link to plain text
+    const fullRouteLinkText = generateFullRouteLink(
+      route.value.stops,
+      eventMetadata,
+      allDinnerGroups,
+      members,
+    );
+    if (fullRouteLinkText) {
+      textBody += `\n🗺️ Route in Google Maps:\n${fullRouteLinkText}\n`;
+    }
     route.value.stops.forEach((stop, index) => {
       const hostGroup = allDinnerGroups.find(
         (g) => g.id === stop.hostDinnerGroupId,
@@ -444,64 +472,7 @@ export class EmailService {
     // Simulate async operation
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-
-  /**
-   * Send route emails to all groups
-   */
-  async sendRouteEmails(
-    eventMetadata: EventMetadata,
-    routes: CategoryValue<Route>[],
-    dinnerGroups: CategoryValue<DinnerGroup>[],
-    members: GroupMember[],
-    options: EmailOptions = {},
-  ): Promise<{ sent: number; failed: number; errors: string[] }> {
-    const results = { sent: 0, failed: 0, errors: [] as string[] };
-
-    // Ensure allRoutes is available for guest count calculation
-    const optionsWithRoutes: EmailOptions = {
-      ...options,
-      allRoutes: options.allRoutes ?? routes,
-    };
-
-    for (const route of routes) {
-      try {
-        const dinnerGroup = dinnerGroups.find(
-          (g) => g.id === route.value.dinnerGroupId,
-        );
-        if (!dinnerGroup) {
-          results.failed++;
-          results.errors.push(
-            `Dinner group ${route.value.dinnerGroupId} not found`,
-          );
-          continue;
-        }
-
-        const emailContent = this.generateRouteEmail(
-          eventMetadata,
-          route,
-          dinnerGroup,
-          dinnerGroups,
-          members,
-          optionsWithRoutes,
-        );
-
-        await this.sendEmail(
-          dinnerGroup.value.memberPersonIds,
-          emailContent.subject,
-          emailContent.htmlBody,
-        );
-
-        results.sent++;
-      } catch (error) {
-        results.failed++;
-        results.errors.push(
-          `Failed to send email for group ${route.value.dinnerGroupId}: ${error}`,
-        );
-      }
-    }
-
-    return results;
-  }
 }
+
 // Export singleton instance
 export const emailService = new EmailService();
