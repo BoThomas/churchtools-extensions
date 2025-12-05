@@ -55,10 +55,10 @@ Running Dinner Groups helps organizers plan and execute Running Dinner events us
 
 ### 📧 Email Notifications
 
+- Send automated welcome emails
 - Generate personalized route emails
 - Include dietary information for hosts
 - Contact details and addresses
-- Batch sending support
 
 ## How It Works
 
