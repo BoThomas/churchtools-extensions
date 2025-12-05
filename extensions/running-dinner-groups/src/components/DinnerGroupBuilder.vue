@@ -87,6 +87,17 @@
       </div>
     </div>
 
+    <!-- Dessert at After Party Info Banner -->
+    <Message v-if="isDessertAtAfterParty" severity="warn" :closable="false">
+      <template #icon>
+        <span class="text-lg">🍮</span>
+      </template>
+      <span class="font-semibold">Dessert at After Party Location:</span>
+      Dessert groups will prepare their desserts at home and bring them to the
+      after party location. Each dessert group still has assigned guests for
+      dietary planning purposes.
+    </Message>
+
     <!-- Warnings -->
     <Message
       v-if="activeMembers.length < minMembersNeeded"
@@ -429,6 +440,11 @@ const searchQuery = ref('');
 // Computed
 const activeMembers = computed(() =>
   props.members.filter((m) => m.groupMemberStatus === 'active'),
+);
+
+// Check if dessert is served at after party location
+const isDessertAtAfterParty = computed(
+  () => props.event.value.afterParty?.isDessertLocation ?? false,
 );
 
 // Editing is locked only after notifications have been sent

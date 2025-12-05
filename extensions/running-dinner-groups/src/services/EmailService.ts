@@ -156,6 +156,10 @@ export class EmailService {
 
     htmlBody += `</ul>`;
 
+    // Check if dessert is at after party location
+    const isDessertAtAfterParty =
+      eventMetadata.afterParty?.isDessertLocation ?? false;
+
     // Highlight the own hosted meal prominently
     if (ownMealStop) {
       const ownMealName =
@@ -164,6 +168,10 @@ export class EmailService {
           : ownMealStop.meal === 'mainCourse'
             ? 'Hauptgang'
             : 'Nachspeise';
+
+      // Check if this group is preparing dessert for after party
+      const isDessertForAfterParty =
+        ownMealStop.meal === 'dessert' && isDessertAtAfterParty;
 
       // Find visiting groups by checking all routes for groups that visit this host
       const visitingDinnerGroupIds: number[] = [];
@@ -210,15 +218,41 @@ export class EmailService {
           ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ownHostAddress)}" style="color: #2563eb; text-decoration: underline;">${ownHostAddress}</a>`
           : ownHostAddress;
 
-      htmlBody += `
-        <div style="background-color: #f0f7ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 16px 0;">
-          <h3 style="margin-top: 0; color: #1e40af;">🍽️ Ihr bereitet zu: ${ownMealName}</h3>
-          <p style="margin-bottom: 0;">
-            <strong>Zeit:</strong> ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}<br>
-            <strong>Ort:</strong> ${ownHostAddressHtml}<br>
-            <strong>Gäste:</strong> ${guestCount} Personen (${groupCount} Gruppen)
-          </p>
-      `;
+      // Get after party location for dessert groups
+      const afterPartyLocation = isDessertForAfterParty
+        ? (formatAfterPartyAddress(eventMetadata.afterParty!) ?? '')
+        : '';
+      const afterPartyLocationHtml =
+        afterPartyLocation && isDessertForAfterParty
+          ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(afterPartyLocation)}" style="color: #b45309; text-decoration: underline;">${afterPartyLocation}</a>`
+          : '';
+
+      if (isDessertForAfterParty) {
+        // Special styling and messaging for dessert at after party
+        htmlBody += `
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 16px 0;">
+            <h3 style="margin-top: 0; color: #92400e;">🍮 Ihr bereitet zu: ${ownMealName} (am After Party Ort)</h3>
+            <p style="margin-bottom: 8px; color: #78350f; font-style: italic;">
+              Bitte bereitet die Nachspeise zu Hause vor und bringt sie zum After Party Ort mit.
+            </p>
+            <p style="margin-bottom: 0;">
+              <strong>Zeit:</strong> ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}<br>
+              <strong>After Party Ort:</strong> ${afterPartyLocationHtml}<br>
+              <strong>Gäste:</strong> ${guestCount} Personen (${groupCount} Gruppen)
+            </p>
+        `;
+      } else {
+        // Standard hosting section
+        htmlBody += `
+          <div style="background-color: #f0f7ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 16px 0;">
+            <h3 style="margin-top: 0; color: #1e40af;">🍽️ Ihr bereitet zu: ${ownMealName}</h3>
+            <p style="margin-bottom: 0;">
+              <strong>Zeit:</strong> ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}<br>
+              <strong>Ort:</strong> ${ownHostAddressHtml}<br>
+              <strong>Gäste:</strong> ${guestCount} Personen (${groupCount} Gruppen)
+            </p>
+        `;
+      }
 
       // Collect dietary restrictions and allergies from visiting guests (without names)
       const dietaryRestrictions: string[] = [];
@@ -298,28 +332,50 @@ export class EmailService {
             : 'Nachspeise';
 
       // Check if this is dessert at after party location
-      const isDessertAtAfterParty =
-        stop.meal === 'dessert' && eventMetadata.afterParty?.isDessertLocation;
+      const isStopDessertAtAfterParty =
+        stop.meal === 'dessert' && isDessertAtAfterParty;
 
-      if (isOwnMeal) {
-        // Own meal - just show time and that it's at home
+      if (isOwnMeal && isStopDessertAtAfterParty) {
+        // Own dessert at after party - special styling
+        const afterPartyLocation =
+          formatAfterPartyAddress(eventMetadata.afterParty!) ?? '';
+        const encodedAfterPartyAddress = encodeURIComponent(afterPartyLocation);
+        htmlBody += `
+          <div style="padding: 16px; background-color: #fef3c7; border-left: 4px solid #f59e0b; margin-bottom: 12px;">
+            <h4 style="margin: 0 0 8px 0; color: #92400e; font-size: 16px;">🍮 ${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+            <p style="margin: 0; color: #78350f;">
+              <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyAddress}" style="color: #b45309;">${afterPartyLocation}</a><br>
+              <em>Ihr bringt eure Nachspeise hierher mit (siehe oben)</em>
+            </p>
+          </div>
+        `;
+      } else if (isOwnMeal) {
+        // Own meal (not dessert at after party) - just show time and that it's at home
         htmlBody += `
           <div style="padding: 16px; background-color: #f0fdf4; border-left: 4px solid #22c55e; margin-bottom: 12px;">
             <h4 style="margin: 0 0 8px 0; color: #166534; font-size: 16px;">${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
             <p style="margin: 0; color: #15803d;">🏠 Bei euch zu Hause (siehe oben)</p>
           </div>
         `;
-      } else if (isDessertAtAfterParty) {
-        // Dessert is at after party location for everyone
+      } else if (isStopDessertAtAfterParty) {
+        // Dessert is at after party location for everyone (visiting another group's dessert)
         const afterPartyLocation =
           formatAfterPartyAddress(eventMetadata.afterParty!) ?? '';
         const encodedAfterPartyAddress = encodeURIComponent(afterPartyLocation);
+        // Get the dessert host group members
+        const dessertHostMembers = members.filter((m) =>
+          hostGroup.value.memberPersonIds.includes(m.personId),
+        );
+        const dessertHostNames = dessertHostMembers
+          .map((m) => `${m.person.firstName} ${m.person.lastName.charAt(0)}.`)
+          .join(', ');
         htmlBody += `
           <div style="padding: 16px; background-color: #fef3c7; border-left: 4px solid #f59e0b; margin-bottom: 12px;">
-            <h4 style="margin: 0 0 8px 0; color: #92400e; font-size: 16px;">🎉 ${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
+            <h4 style="margin: 0 0 8px 0; color: #92400e; font-size: 16px;">🍮 ${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}</h4>
             <p style="margin: 0; color: #78350f;">
               <strong>Ort:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedAfterPartyAddress}" style="color: #b45309;">${afterPartyLocation}</a><br>
-              <em>Alle Gruppen treffen sich zum Nachtisch am After Party Ort!</em>
+              <strong>Nachspeise von:</strong> ${dessertHostNames}<br>
+              <em>Nachspeise wird am After Party Ort serviert</em>
             </p>
           </div>
         `;
@@ -342,8 +398,8 @@ export class EmailService {
       }
     });
 
-    // Add after party info if available
-    if (eventMetadata.afterParty) {
+    // Add after party info if available (only when dessert is NOT at after party, since it's already shown)
+    if (eventMetadata.afterParty && !isDessertAtAfterParty) {
       const afterPartyLocation =
         formatAfterPartyAddress(eventMetadata.afterParty) ?? '';
       const encodedAfterPartyLocation = encodeURIComponent(afterPartyLocation);
@@ -394,6 +450,10 @@ export class EmailService {
             ? 'Hauptgang'
             : 'Nachspeise';
 
+      // Check if this group is preparing dessert for after party
+      const isDessertForAfterPartyText =
+        ownMealStop.meal === 'dessert' && isDessertAtAfterParty;
+
       // Find visiting groups by checking all routes
       const visitingDinnerGroupIds: number[] = [];
       if (options.allRoutes) {
@@ -431,10 +491,22 @@ export class EmailService {
         ? `${ownHostPersonText.person.addresses[0].street || ''}, ${ownHostPersonText.person.addresses[0].zip || ''} ${ownHostPersonText.person.addresses[0].city || ''}`
         : 'Adresse nicht angegeben';
 
+      // Get after party location for dessert groups
+      const afterPartyLocationText = isDessertForAfterPartyText
+        ? (formatAfterPartyAddress(eventMetadata.afterParty!) ?? '')
+        : '';
+
       textBody += `\n========================================\n`;
-      textBody += `🍽️ IHR BEREITET ZU: ${ownMealName.toUpperCase()}\n`;
-      textBody += `Zeit: ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}\n`;
-      textBody += `Ort: ${ownHostAddressText}\n`;
+      if (isDessertForAfterPartyText) {
+        textBody += `🍮 IHR BEREITET ZU: ${ownMealName.toUpperCase()} (AM AFTER PARTY ORT)\n`;
+        textBody += `Bitte bereitet die Nachspeise zu Hause vor und bringt sie zum After Party Ort mit.\n\n`;
+        textBody += `Zeit: ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}\n`;
+        textBody += `After Party Ort: ${afterPartyLocationText}\n`;
+      } else {
+        textBody += `🍽️ IHR BEREITET ZU: ${ownMealName.toUpperCase()}\n`;
+        textBody += `Zeit: ${formatTimeRange(ownMealStop.startTime, ownMealStop.endTime)}\n`;
+        textBody += `Ort: ${ownHostAddressText}\n`;
+      }
       textBody += `Gäste: ${guestCount} Personen (${groupCount} Gruppen)\n`;
 
       // Collect dietary restrictions and allergies (without names)
@@ -504,19 +576,33 @@ export class EmailService {
             : 'Nachspeise';
 
       // Check if this is dessert at after party location
-      const isDessertAtAfterParty =
-        stop.meal === 'dessert' && eventMetadata.afterParty?.isDessertLocation;
+      const isStopDessertAtAfterPartyText =
+        stop.meal === 'dessert' && isDessertAtAfterParty;
 
       textBody += `\n${index + 1}. ${mealName} - ${formatTimeRange(stop.startTime, stop.endTime)}\n`;
 
-      if (isOwnMeal) {
-        textBody += `   Bei euch zu Hause (siehe oben)\n`;
-      } else if (isDessertAtAfterParty) {
-        // Dessert is at after party location for everyone
+      if (isOwnMeal && isStopDessertAtAfterPartyText) {
+        // Own dessert at after party
         const afterPartyLocation =
           formatAfterPartyAddress(eventMetadata.afterParty!) ?? '';
-        textBody += `   Ort: ${afterPartyLocation} (After Party)\n`;
-        textBody += `   Alle Gruppen treffen sich zum Nachtisch am After Party Ort!\n`;
+        textBody += `   Ort: ${afterPartyLocation}\n`;
+        textBody += `   Ihr bringt eure Nachspeise hierher mit (siehe oben)\n`;
+      } else if (isOwnMeal) {
+        textBody += `   Bei euch zu Hause (siehe oben)\n`;
+      } else if (isStopDessertAtAfterPartyText) {
+        // Dessert is at after party location for everyone (visiting another group's dessert)
+        const afterPartyLocation =
+          formatAfterPartyAddress(eventMetadata.afterParty!) ?? '';
+        // Get the dessert host group members
+        const dessertHostMembers = members.filter((m) =>
+          hostGroup.value.memberPersonIds.includes(m.personId),
+        );
+        const dessertHostNames = dessertHostMembers
+          .map((m) => `${m.person.firstName} ${m.person.lastName.charAt(0)}.`)
+          .join(', ');
+        textBody += `   Ort: ${afterPartyLocation}\n`;
+        textBody += `   Nachspeise von: ${dessertHostNames}\n`;
+        textBody += `   Nachspeise wird am After Party Ort serviert\n`;
       } else {
         // Standard home-based meal
         textBody += `   Gastgeber: ${hostName}\n`;
@@ -524,7 +610,8 @@ export class EmailService {
       }
     });
 
-    if (eventMetadata.afterParty) {
+    // Add after party info (only when dessert is NOT at after party, since it's already included)
+    if (eventMetadata.afterParty && !isDessertAtAfterParty) {
       const afterPartyLocation =
         formatAfterPartyAddress(eventMetadata.afterParty) ?? '';
       textBody += `\nAfter Party:\n`;
