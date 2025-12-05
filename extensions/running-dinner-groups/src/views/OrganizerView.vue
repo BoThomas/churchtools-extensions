@@ -149,8 +149,10 @@ async function handleParentGroupCreated() {
   await loadEventGroups();
 }
 
-async function handleEventCreated(_groupId: number) {
-  await loadAllData();
+async function handleEventCreated() {
+  // Store already updated reactively via eventMetadataStore.create()
+  // Reload groups in background to get the new group data
+  loadEventGroups();
 }
 
 /**
@@ -299,10 +301,11 @@ async function handleDeleteEvent(event: CategoryValue<EventMetadata>) {
           life: 3000,
         });
 
-        // Close detail dialog and refresh data
+        // Close detail dialog
         showDetailDialog.value = false;
         selectedEvent.value = null;
-        await loadAllData();
+        // Reload groups in background to sync cache
+        loadEventGroups();
       } catch (error) {
         toast.add({
           severity: 'error',
