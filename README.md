@@ -43,6 +43,8 @@ This repository is a monorepo containing multiple extensions, each designed to s
 
 ### 🎤 [Translator](./extensions/translator/)
 
+> **Extension Key:** `translator`
+
 Real-time speech-to-text translation for multilingual services.
 
 Perfect for churches with international members who need live translation during services. Uses Microsoft Azure's Speech Services to convert spoken words into translated text displayed on screen/projector or stream. Maybe I will add broadcasting to attendee devices in the future as well as speech-to-speech translation and multi-language-output.
@@ -54,6 +56,8 @@ Perfect for churches with international members who need live translation during
 ---
 
 ### 🍽️ [Running Dinner](./extensions/running-dinner/)
+
+> **Extension Key:** `runningdinner`
 
 > [!CAUTION]
 > Not yet production-ready and may be replaced by the Running Dinner Groups extension which uses ChurchTools' native group management.
@@ -70,6 +74,8 @@ A Running Dinner is a social event where groups host one course (starter, main, 
 
 ### 🍽️ [Running Dinner Groups](./extensions/running-dinner-groups/)
 
+> **Extension Key:** `runningdinnergroups`
+
 > [!CAUTION]
 > Not yet production-ready and under active development.
 
@@ -84,6 +90,8 @@ An alternative version of Running Dinner that uses ChurchTools' native group man
 ---
 
 ### 🎮 [Community Games](./extensions/community-games/)
+
+> **Extension Key:** `communitygames`
 
 Team-based casual games for community events.
 
