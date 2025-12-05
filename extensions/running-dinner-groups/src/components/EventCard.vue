@@ -231,13 +231,13 @@ const registrationLabel = computed(() => {
 
   if (max && max > 0) {
     if (waitlist > 0) {
-      return `${active} / ${max} (+${waitlist} waitlist)`;
+      return `${active} / ${max} (+${waitlist})`;
     }
     return `${active} / ${max}`;
   }
   // No limit set
   if (waitlist > 0) {
-    return `${active} (+${waitlist} waitlist)`;
+    return `${active} (+${waitlist})`;
   }
   return `${active} participants`;
 });
