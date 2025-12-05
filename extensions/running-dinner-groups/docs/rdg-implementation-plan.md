@@ -246,14 +246,15 @@ The extension supports several optional features that organizers can enable per 
    - If enabled: Custom field created, algorithm tries to honor preferences
 
 2. **Dessert at After Party** (`afterParty.isDessertLocation`)
-   - Allows holding dessert at a central venue instead of individual homes
-   - If disabled: Standard 3-location routing (starter → main → dessert at different homes)
-   - If enabled: Simplified 2-location routing (starter → main → all to after party for dessert)
+   - All groups meet at the after party venue for dessert instead of visiting individual dessert hosts' homes
+   - **Routing**: Standard 3-group rotation still applies (each group is assigned to a dessert host)
+   - **Display difference**: The dessert stop shows the after party address instead of the host's home
+   - **Dessert hosts**: Still prepare their desserts at home, but bring them to the after party venue
    - Benefits:
-     - Simplifies logistics (no need for dessert hosts)
-     - Creates unified closing celebration
-     - Easier for large groups
-     - Reduces travel between meals
+     - All dessert groups still contribute (no one is left without hosting duties)
+     - Proper dietary tracking (each dessert host knows their assigned guests' restrictions)
+     - Creates unified closing celebration at a central venue
+     - Clear communication: hosts know to prepare dessert and bring it to the after party
 
 ### Status & Lifecycle Management
 
@@ -438,23 +439,23 @@ When creating a child group for a running dinner event, the extension will autom
 
 ### Event Creation Form Fields
 
-| Field                           | Required | Default             | Notes                                   |
-| ------------------------------- | -------- | ------------------- | --------------------------------------- |
-| Event name                      | ✅       | -                   | e.g., "Running Dinner - Dezember 2025"  |
-| Event date                      | ✅       | -                   | Date of the actual dinner event         |
-| Leiter (Leader)                 | ✅       | Current user        | Required for CT group to accept members |
-| Max participants                | ✅       | 30                  | Limits active members                   |
-| Registration open date          | ❌       | Now                 | When registration opens                 |
-| Registration close date         | ❌       | Event date - 7 days | When registration closes                |
-| Enable waitlist                 | ❌       | true                | Allow waitlist when full                |
-| Waitlist limit                  | ❌       | null (unlimited)    | Max waitlist size                       |
-| Auto move-up                    | ❌       | true                | Auto-promote from waitlist              |
-| Allow spouse registration       | ❌       | true                | CT-native spouse co-registration        |
-| Partner preference field        | ❌       | true                | Custom text field for preferred partner |
-| After-party location            | ❌       | -                   | Optional central venue address          |
-| After-party is dessert location | ❌       | false               | If true, dessert is at after-party      |
-| Menu timings                    | ✅       | -                   | Start/end times for each course         |
-| Preferred group size            | ❌       | 2                   | Target size for dinner groups           |
+| Field                           | Required | Default             | Notes                                                                              |
+| ------------------------------- | -------- | ------------------- | ---------------------------------------------------------------------------------- |
+| Event name                      | ✅       | -                   | e.g., "Running Dinner - Dezember 2025"                                             |
+| Event date                      | ✅       | -                   | Date of the actual dinner event                                                    |
+| Leiter (Leader)                 | ✅       | Current user        | Required for CT group to accept members                                            |
+| Max participants                | ✅       | 30                  | Limits active members                                                              |
+| Registration open date          | ❌       | Now                 | When registration opens                                                            |
+| Registration close date         | ❌       | Event date - 7 days | When registration closes                                                           |
+| Enable waitlist                 | ❌       | true                | Allow waitlist when full                                                           |
+| Waitlist limit                  | ❌       | null (unlimited)    | Max waitlist size                                                                  |
+| Auto move-up                    | ❌       | true                | Auto-promote from waitlist                                                         |
+| Allow spouse registration       | ❌       | true                | CT-native spouse co-registration                                                   |
+| Partner preference field        | ❌       | true                | Custom text field for preferred partner                                            |
+| After-party location            | ❌       | -                   | Optional central venue address                                                     |
+| After-party is dessert location | ❌       | false               | If true, dessert is served at after-party venue (hosts bring their desserts there) |
+| Menu timings                    | ✅       | -                   | Start/end times for each course                                                    |
+| Preferred group size            | ❌       | 2                   | Target size for dinner groups                                                      |
 
 ### Group Member Data Structure
 

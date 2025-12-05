@@ -198,44 +198,45 @@ For dessert hosts, should the email emphasize:
 
 ## Files to Modify
 
-- [ ] **`src/services/RoutingService.ts`**
+- [x] **`src/services/RoutingService.ts`** ✅
   - Remove `assignRoutesWithCentralDessert()` method
   - Use standard routing (`assignRoutesStandard()`) for all cases
   - `isDessertLocation` becomes display-only flag (no routing impact)
 
-- [ ] **`src/components/RouteCard.vue`**
+- [x] **`src/components/RouteCard.vue`** ✅
   - Add hybrid styling for dessert-at-after-party stops (yellow bg + 🍮)
   - Update address logic to use after party venue for dessert when `isDessertLocation`
   - Add explanatory note about dessert location
   - Remove separate after party stop when dessert is at after party (merge into one)
   - Keep guest/host info visible for dietary purposes
 
-- [ ] **`src/services/EmailService.ts`**
+- [x] **`src/services/EmailService.ts`** ✅
   - Update dessert host section: "Ihr bereitet zu: Nachspeise (am After Party Ort)"
   - Add note: "Bitte bereitet die Nachspeise zu Hause vor und bringt sie zum After Party Ort mit"
   - Show guest count and dietary restrictions for assigned groups
-  - Add intro note at top of email explaining dessert-at-after-party setup
-  - Update route stop messaging for dessert
+  - Update route stop messaging for dessert (shows "Nachspeise von: [group]" and "Nachspeise wird am After Party Ort serviert")
+  - After party section only shown when dessert is NOT at after party (to avoid duplication)
 
-- [ ] **`src/components/DinnerGroupCard.vue`**
-  - When `isDessertLocation` is true, show "Prepares Dessert" badge instead of "Host"
-  - Add tooltip explaining they prepare at home and bring to after party
+- [x] **`src/components/DinnerGroupCard.vue`** ✅
+  - When `isDessertLocation` is true, show "@ After Party" badge with tooltip
+  - Added info banner explaining they prepare at home and bring to after party
+  - Changed host icon from 🏠 to ⭐ for dessert groups (with "Prepares dessert for this group" tooltip)
+  - Hide host address section for dessert groups at after party
 
-- [ ] **`src/components/DinnerGroupBuilder.vue`**
+- [x] **`src/components/DinnerGroupBuilder.vue`** ✅
   - Add info banner when `isDessertLocation` is active
   - Explain that dessert groups prepare at home and bring desserts to after party
 
-- [ ] **`src/components/RouteAssignment.vue`**
-  - Update warning message: "Dessert will be served at the after party location. Dessert groups will prepare their desserts at home and bring them there."
+- [x] **`src/components/RouteAssignment.vue`** ✅
+  - Warning message comes from RoutingService: "Dessert will be served at the after party location. Dessert groups will prepare their desserts at home and bring them there."
 
 ---
 
 ## Implementation Checklist
 
-- [ ] 1. **RoutingService refactor** - Remove special central dessert logic, use standard routing
-- [ ] 2. **RouteCard UI** - Hybrid styling, merged dessert/after-party display
-- [ ] 3. **DinnerGroupCard UI** - "Prepares Dessert" badge
-- [ ] 4. **DinnerGroupBuilder UI** - Info banner for dessert-at-after-party mode
-- [ ] 5. **RouteAssignment UI** - Updated warning text
-- [ ] 6. **EmailService** - Updated messaging for dessert hosts and route info
-- [ ] 7. **End-to-end test** - Create event, assign groups, assign routes, verify display/emails
+- [x] 1. **RoutingService refactor** - Remove special central dessert logic, use standard routing
+- [x] 2. **RouteCard UI** - Hybrid styling, merged dessert/after-party display
+- [x] 3. **DinnerGroupCard UI** - "@ After Party" badge, info banner, updated host icon
+- [x] 4. **DinnerGroupBuilder UI** - Info banner for dessert-at-after-party mode
+- [x] 5. **RouteAssignment UI** - Updated warning text (via RoutingService)
+- [x] 6. **EmailService** - Updated messaging for dessert hosts and route info
