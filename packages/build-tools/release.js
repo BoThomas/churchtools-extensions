@@ -215,7 +215,7 @@ async function selectOption(rl, question, options) {
   return options[0];
 }
 
-// Generate changelog entry
+// Generate changelog entry (full version for CHANGELOG.md)
 function generateChangelogEntry(
   packageName,
   version,
@@ -238,6 +238,46 @@ function generateChangelogEntry(
     commits.forEach((commit) => {
       entry += `- ${commit}\n`;
     });
+    entry += '\n';
+  }
+
+  if (githubInfo && previousTag) {
+    entry += `**Full Changelog**: https://github.com/${githubInfo.owner}/${githubInfo.repo}/compare/${previousTag}...${tag}\n`;
+  } else if (githubInfo) {
+    entry += `**Full Changelog**: https://github.com/${githubInfo.owner}/${githubInfo.repo}/commits/${tag}\n`;
+  }
+
+  return entry;
+}
+
+// Generate release notes (shorter version for GitHub releases)
+function generateReleaseNotes(
+  packageName,
+  version,
+  summary,
+  commits,
+  previousTag,
+  githubInfo,
+) {
+  const date = new Date().toISOString().split('T')[0];
+  const tag = `${packageName}@${version}`;
+  const maxCommits = 10;
+
+  let entry = `## ${packageName} v${version} — ${date}\n\n`;
+
+  if (summary) {
+    entry += `${summary}\n\n`;
+  }
+
+  if (commits.length > 0) {
+    entry += `### Changes\n\n`;
+    const displayCommits = commits.slice(0, maxCommits);
+    displayCommits.forEach((commit) => {
+      entry += `- ${commit}\n`;
+    });
+    if (commits.length > maxCommits) {
+      entry += `- ... and ${commits.length - maxCommits} more commits\n`;
+    }
     entry += '\n';
   }
 
@@ -492,8 +532,18 @@ async function main() {
         throw error;
       }
 
-      // Generate changelog entry
+      // Generate changelog entry (for CHANGELOG.md)
       const changelogEntry = generateChangelogEntry(
+        ext.name,
+        newVersion,
+        summary,
+        commits,
+        previousTag,
+        githubInfo,
+      );
+
+      // Generate release notes (shorter version for GitHub releases)
+      const releaseNotes = generateReleaseNotes(
         ext.name,
         newVersion,
         summary,
@@ -528,6 +578,7 @@ async function main() {
         newVersion,
         tag,
         changelogEntry,
+        releaseNotes,
         zipPath: findReleaseZip(monorepoRoot, ext.name, newVersion),
       });
     }
@@ -594,7 +645,7 @@ async function main() {
           const success = createGitHubRelease(
             released.tag,
             title,
-            released.changelogEntry,
+            released.releaseNotes,
             released.zipPath,
           );
 
