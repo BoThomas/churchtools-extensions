@@ -250,6 +250,29 @@
               </p>
             </div>
           </div>
+
+          <!-- Welcome Email -->
+          <div
+            class="flex items-start gap-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded border border-primary-200 dark:border-primary-800"
+          >
+            <Checkbox
+              id="send-welcome-email"
+              v-model="formData.sendWelcomeEmail"
+              binary
+            />
+            <div class="flex-1">
+              <label
+                for="send-welcome-email"
+                class="font-semibold text-sm cursor-pointer"
+              >
+                Send Welcome Email
+              </label>
+              <p class="text-xs text-surface-600 dark:text-surface-400 mt-1">
+                Automatically send a welcome email when participants join the
+                event (or move up from the waitlist).
+              </p>
+            </div>
+          </div>
         </div>
       </Fieldset>
 
@@ -698,6 +721,8 @@ const formData = reactive({
   waitlistMaxPersons: null as number | null,
   // Co-registration settings
   allowSpouseRegistration: true,
+  // Notification settings
+  sendWelcomeEmail: true,
   menu: {
     starter: {
       startTime: createTime(18, 0) as Date | null, // 18:00
@@ -840,6 +865,7 @@ function resetForm() {
   formData.automaticMoveUp = true;
   formData.waitlistMaxPersons = null;
   formData.allowSpouseRegistration = true;
+  formData.sendWelcomeEmail = true;
   formData.menu.starter.startTime = createTime(18, 0);
   formData.menu.starter.endTime = createTime(19, 30);
   formData.menu.mainCourse.startTime = createTime(20, 0);
@@ -984,6 +1010,8 @@ async function handleSubmit() {
       waitlistMaxPersons: formData.waitlistMaxPersons,
       // Co-registration settings
       allowSpouseRegistration: formData.allowSpouseRegistration,
+      // Notification settings
+      sendWelcomeEmail: formData.sendWelcomeEmail,
       menu,
       afterParty,
     });

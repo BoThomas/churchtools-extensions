@@ -2,6 +2,7 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { Group, GroupMember, Person } from '@/types/models';
 import { useEventMetadataStore } from '@/stores/eventMetadata';
 import { addressService } from './AddressService';
+import { routineService } from './RoutineService';
 
 /**
  * Service for configuring ChurchTools groups for Running Dinner events
@@ -181,6 +182,8 @@ export class GroupConfigService {
     waitlistMaxPersons?: number | null; // Max waitlist size (null = unlimited)
     // Co-registration settings
     allowSpouseRegistration?: boolean; // CT-native spouse co-registration
+    // Notification settings
+    sendWelcomeEmail?: boolean; // Send welcome email to new members (default: true)
     menu: {
       starter: { startTime: string; endTime: string };
       mainCourse: { startTime: string; endTime: string };
@@ -370,6 +373,59 @@ export class GroupConfigService {
       } catch (meetingError) {
         // Log but don't fail the group creation if meeting creation fails
         console.warn('Failed to create group meeting (Treffen):', meetingError);
+      }
+
+      // 9. Create ChurchTools Routines for automated notifications (if enabled)
+      // Note: Routine creation failures should not block event creation
+      // CT only allows ONE routine per groupId + roleId + status combination,
+      // so we create a single welcome routine that fires for all new active members
+      // (whether they joined directly or got promoted from the waitlist)
+      const sendWelcomeEmail = options.sendWelcomeEmail ?? true;
+
+      if (sendWelcomeEmail) {
+        let teilnehmerRoleId: number | null = null;
+        try {
+          const rolesResponse = await churchtoolsClient.get('/group/roles');
+          const allRoles = Array.isArray(rolesResponse)
+            ? rolesResponse
+            : (rolesResponse as { data: any[] }).data;
+
+          // Filter roles by group type (Maßnahme) and find Teilnehmer
+          const teilnehmerRole = allRoles.find(
+            (role: any) =>
+              role.groupTypeId === massnahmeType.id &&
+              role.name === 'Teilnehmer',
+          );
+
+          if (teilnehmerRole) {
+            teilnehmerRoleId = teilnehmerRole.id;
+          } else {
+            console.warn(
+              'Teilnehmer role not found for Maßnahme group type, skipping routine creation',
+            );
+          }
+        } catch (roleError) {
+          console.warn(
+            'Failed to fetch roles for routine creation:',
+            roleError,
+          );
+        }
+
+        // Create welcome routine if we have the role ID
+        if (teilnehmerRoleId !== null) {
+          try {
+            await routineService.createWelcomeRoutine(
+              createdGroup.id,
+              options.name,
+              teilnehmerRoleId,
+            );
+            console.log('Welcome routine created for group:', createdGroup.id);
+          } catch (routineError) {
+            console.warn('Failed to create welcome routine:', routineError);
+          }
+        }
+      } else {
+        console.log('Welcome email disabled, skipping routine creation');
       }
 
       console.log(

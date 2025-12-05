@@ -2,20 +2,20 @@
 
 ## Implementation Status
 
-**Last Updated**: November 30, 2025
+**Last Updated**: December 5, 2025
 
 ### Quick Summary
 
-| Category                  | Status                                                                     |
-| ------------------------- | -------------------------------------------------------------------------- |
-| Core Infrastructure       | ✅ Complete                                                                |
-| Pinia Stores              | ✅ Complete (4/4)                                                          |
-| Core Services             | ✅ Complete (7/7)                                                          |
-| Vue Components            | ✅ Complete (9/9 core components)                                          |
-| Main Views                | ✅ Complete (2/2)                                                          |
-| **Service Integration**   | ⚠️ Pending (RoutineService, AddressService, SyncService not wired into UI) |
-| **Additional Components** | ⚠️ Pending (EmailPreview.vue)                                              |
-| **Testing**               | ⚠️ Pending                                                                 |
+| Category                  | Status                                                                 |
+| ------------------------- | ---------------------------------------------------------------------- |
+| Core Infrastructure       | ✅ Complete                                                            |
+| Pinia Stores              | ✅ Complete (4/4)                                                      |
+| Core Services             | ✅ Complete (7/7)                                                      |
+| Vue Components            | ✅ Complete (9/9 core components)                                      |
+| Main Views                | ✅ Complete (2/2)                                                      |
+| **Service Integration**   | ⚠️ Partial (RoutineService ✅, AddressService ✅, SyncService pending) |
+| **Additional Components** | ⚠️ Pending (EmailPreview.vue)                                          |
+| **Testing**               | ⚠️ Pending                                                             |
 
 ### ✅ Completed Components
 
@@ -137,21 +137,22 @@
   - How it works documentation
   - Key features list
 
-#### Additional Services (Implemented, Pending Integration)
+#### Additional Services (Implemented and Integrated)
 
 - [x] `RoutineService.ts` - ChurchTools Routines management
-  - Create routines for waitlist notifications (`createWaitlistPromotionRoutine`)
-  - Welcome email automation (`createWelcomeRoutine`)
-  - Late cancellation alerts (`createLateWithdrawalRoutine`)
-  - API: POST/PATCH/GET `/api/routines`
+  - Welcome email automation (`createWelcomeRoutine`) - triggers for all new active members
+  - **Note:** CT only allows ONE routine per groupId + roleId + status, so we use a single
+    welcome routine that fires for both direct joins AND waitlist promotions
+  - Late cancellation alerts (`createLateWithdrawalRoutine`) - available but not auto-created
+  - API: POST/PATCH/GET `/api/routines` with proper `actionKey` and `actionData` structure
   - Routine management (list, delete, enable/disable)
-  - Email placeholder fetching
-  - **⚠️ Not yet integrated into EventCreator or EventDetail**
+  - HTML email templates with proper formatting (`<p>`, `<strong>`, `<ul>`, `<br>`)
+  - **✅ Integrated into GroupConfigService.createChildGroup()** - welcome routine created after group setup
 - [x] `AddressService.ts` - Group address management
   - After-party location storage via `/api/addresses/group/{groupId}`
   - Replaces deprecated places API
   - Address parsing and formatting utilities
-  - **⚠️ Not yet integrated into EventCreator for after-party address**
+  - **✅ Integrated into GroupConfigService.createChildGroup()** - after-party address set during creation
 - [x] `SyncService.ts` - CT/KV data synchronization
   - Detect deleted CT groups on extension load (`syncOnLoad`)
   - Clean up orphaned KV data (events, dinner groups, routes)
@@ -163,12 +164,15 @@
 
 #### Service Integration Tasks
 
-- [ ] **Integrate RoutineService into EventCreator.vue**
-  - Call `createWelcomeRoutine()` after child group creation
-  - Call `createWaitlistPromotionRoutine()` if waitlist enabled
-  - Handle errors gracefully (routine creation failure shouldn't block event creation)
-- [ ] **Integrate AddressService into EventCreator.vue**
-  - Call `setAfterPartyLocation()` when after-party address is provided
+- [x] **Integrate RoutineService into GroupConfigService**
+  - ✅ Fetches "Teilnehmer" role ID for the Maßnahme group type
+  - ✅ Creates single welcome routine for new active members (handles both direct joins and waitlist promotions)
+  - ✅ Uses proper CT Routines API structure (`actionKey` at step level, `senderId` in actionData)
+  - ✅ HTML email templates with proper formatting
+  - ✅ Errors handled gracefully (routine creation failure doesn't block event creation)
+- [x] **Integrate AddressService into GroupConfigService**
+  - ✅ Call `setAfterPartyLocation()` when after-party address is provided
+  - ✅ Already integrated in step 7 of `createChildGroup()`
 - [ ] **Integrate SyncService into OrganizerView.vue**
   - Call `syncOnLoad()` during initial data loading
   - Display sync results (orphaned data cleaned up)
@@ -189,7 +193,6 @@
 - [ ] `EventSettings.vue` - **FUTURE** Event settings management
   - Edit registration dates after creation
   - Waitlist settings modification
-  - Routine configuration UI
 
 ---
 

@@ -4,16 +4,17 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
  * Email action step configuration
  */
 interface EmailActionData {
-  type: 'send-member-email';
+  senderId: number; // 0 = system sender
   subject: string;
   body: string;
-  isEnabled: boolean;
+  addSignOutUrl: boolean;
 }
 
 /**
  * Routine step configuration
  */
 interface RoutineStep {
+  actionKey: string; // e.g., 'send-member-email'
   actionData: EmailActionData;
   isEnabled: boolean;
 }
@@ -34,27 +35,35 @@ interface Routine {
 /**
  * Service for managing ChurchTools Routines (automated notifications)
  * Based on the CT Routines API documented in lifecycle-and-state.md
+ *
+ * NOTE: ChurchTools only allows ONE routine per groupId + roleId + status combination.
+ * So we create a single "welcome" routine that fires when members become active,
+ * whether they join directly or move up from the waitlist.
  */
 export class RoutineService {
   /**
-   * Create a routine for waitlist promotion notification
-   * Trigger: Member status changes from 'waiting' to 'active'
-   * Action: Send welcome email with instructions
+   * Create a welcome routine for members becoming active
+   * This handles both:
+   * - Direct joins (new member with status 'active')
+   * - Waitlist promotions (member moves from 'waiting' to 'active')
    *
    * @param groupId - The ChurchTools group ID
    * @param groupName - The group name for the email content
+   * @param groupTypeRoleId - The role ID for the target members (e.g., Teilnehmer role)
    */
-  async createWaitlistPromotionRoutine(
+  async createWelcomeRoutine(
     groupId: number,
     groupName: string,
+    groupTypeRoleId: number,
   ): Promise<number> {
     try {
       // 1. Create the routine with domain context
       const routineResponse = (await churchtoolsClient.post('/routines', {
         domainType: 'group_membership',
-        name: `Waitlist Promotion - ${groupName}`,
+        name: `Welcome - ${groupName}`,
         domainContext: {
           groupId: groupId,
+          groupTypeRoleId: groupTypeRoleId,
           groupMemberStatus: 'active', // Triggers when member becomes active
         },
       })) as Routine | { data: Routine };
@@ -64,19 +73,21 @@ export class RoutineService {
 
       // 2. Add email notification step
       const emailStep: RoutineStep = {
+        actionKey: 'send-member-email',
         actionData: {
-          type: 'send-member-email',
-          subject: `Willkommen beim ${groupName}! Du bist jetzt dabei! 🎉`,
-          body: this.getWaitlistPromotionEmailBody(groupName),
-          isEnabled: true,
+          senderId: 0, // System sender
+          subject: `Willkommen beim ${groupName}! 🍽️`,
+          body: this.getWelcomeEmailBody(groupName),
+          addSignOutUrl: true,
         },
         isEnabled: true,
       };
 
       // 3. Validate the step before adding
       await churchtoolsClient.post(`/routines/${routine.id}/steps/validate`, {
+        actionKey: emailStep.actionKey,
         actionData: emailStep.actionData,
-        isEnabled: true,
+        isEnabled: emailStep.isEnabled,
       });
 
       // 4. Add the step to the routine
@@ -85,72 +96,6 @@ export class RoutineService {
       });
 
       // 5. Enable the routine
-      await churchtoolsClient.patch(`/routines/${routine.id}`, {
-        isEnabled: true,
-      });
-
-      console.log(
-        'Waitlist promotion routine created:',
-        routine.id,
-        'for group:',
-        groupId,
-      );
-
-      return routine.id;
-    } catch (error) {
-      console.error('Failed to create waitlist promotion routine:', error);
-      throw new Error('Failed to create waitlist promotion routine');
-    }
-  }
-
-  /**
-   * Create a welcome routine for new active members
-   * Trigger: New member joins with status 'active'
-   * Action: Send welcome email
-   *
-   * @param groupId - The ChurchTools group ID
-   * @param groupName - The group name for the email content
-   */
-  async createWelcomeRoutine(
-    groupId: number,
-    groupName: string,
-  ): Promise<number> {
-    try {
-      // 1. Create the routine
-      const routineResponse = (await churchtoolsClient.post('/routines', {
-        domainType: 'group_membership',
-        name: `Welcome - ${groupName}`,
-        domainContext: {
-          groupId: groupId,
-          groupMemberStatus: 'active',
-        },
-      })) as Routine | { data: Routine };
-
-      const routine =
-        'data' in routineResponse ? routineResponse.data : routineResponse;
-
-      // 2. Add welcome email step
-      const emailStep: RoutineStep = {
-        actionData: {
-          type: 'send-member-email',
-          subject: `Willkommen beim ${groupName}! 🍽️`,
-          body: this.getWelcomeEmailBody(groupName),
-          isEnabled: true,
-        },
-        isEnabled: true,
-      };
-
-      // 3. Validate and add step
-      await churchtoolsClient.post(`/routines/${routine.id}/steps/validate`, {
-        actionData: emailStep.actionData,
-        isEnabled: true,
-      });
-
-      await churchtoolsClient.patch(`/routines/${routine.id}`, {
-        steps: [emailStep],
-      });
-
-      // 4. Enable the routine
       await churchtoolsClient.patch(`/routines/${routine.id}`, {
         isEnabled: true,
       });
@@ -176,11 +121,13 @@ export class RoutineService {
    *
    * @param groupId - The ChurchTools group ID
    * @param groupName - The group name
+   * @param groupTypeRoleId - The role ID for the target members (e.g., Teilnehmer role)
    * @param _organizerEmail - Email of the organizer (reserved for future use)
    */
   async createLateWithdrawalRoutine(
     groupId: number,
     groupName: string,
+    groupTypeRoleId: number,
     _organizerEmail?: string,
   ): Promise<number> {
     try {
@@ -189,6 +136,7 @@ export class RoutineService {
         name: `Late Withdrawal Alert - ${groupName}`,
         domainContext: {
           groupId: groupId,
+          groupTypeRoleId: groupTypeRoleId,
           groupMemberStatus: 'to_delete',
         },
       })) as Routine | { data: Routine };
@@ -200,18 +148,20 @@ export class RoutineService {
       // For organizer notification, we'd need a different approach
       // (CT routines currently only support actions on the triggering member)
       const emailStep: RoutineStep = {
+        actionKey: 'send-member-email',
         actionData: {
-          type: 'send-member-email',
+          senderId: 0,
           subject: `Abmeldung vom ${groupName}`,
           body: this.getWithdrawalConfirmationEmailBody(groupName),
-          isEnabled: true,
+          addSignOutUrl: true,
         },
         isEnabled: true,
       };
 
       await churchtoolsClient.post(`/routines/${routine.id}/steps/validate`, {
+        actionKey: emailStep.actionKey,
         actionData: emailStep.actionData,
-        isEnabled: true,
+        isEnabled: emailStep.isEnabled,
       });
 
       await churchtoolsClient.patch(`/routines/${routine.id}`, {
@@ -307,71 +257,44 @@ export class RoutineService {
 
   // ==================== Email Templates ====================
 
-  private getWaitlistPromotionEmailBody(groupName: string): string {
-    return `
-Hallo {{{person.firstName}}},
-
-großartige Neuigkeiten! 🎉
-
-Du bist von der Warteliste aufgerückt und jetzt offiziell beim **${groupName}** dabei!
-
-**Was passiert als nächstes?**
-Du erhältst rechtzeitig vor dem Event alle wichtigen Informationen:
-- Deine Dinner-Gruppe
-- Die Route mit allen Adressen
-- Die Uhrzeiten für jeden Gang
-
-**Deine Angaben:**
-Falls du deine Essensvorlieben oder andere Angaben noch nicht gemacht hast,
-melde dich bitte in ChurchTools bei der Gruppe an und fülle die Felder aus.
-
-Wir freuen uns auf einen tollen Abend mit dir!
-
-Liebe Grüße,
-Das Running Dinner Team
-    `.trim();
-  }
-
   private getWelcomeEmailBody(groupName: string): string {
-    return `
-Hallo {{{person.firstName}}},
+    return `<p>Hallo {{{person.firstName}}},</p>
 
-herzlich willkommen beim **${groupName}**! 🍽️
+<p>herzlich willkommen beim <strong>${groupName}</strong>! 🍽️</p>
 
-Schön, dass du dabei bist!
+<p>Schön, dass du dabei bist!</p>
 
-**Was passiert als nächstes?**
-Du erhältst rechtzeitig vor dem Event alle wichtigen Informationen:
-- Deine Dinner-Gruppe (mit wem du zusammen kochst)
-- Die Route mit allen Adressen
-- Die Uhrzeiten für jeden Gang
+<p><strong>Was passiert als nächstes?</strong><br>
+Du erhältst rechtzeitig vor dem Event alle wichtigen Informationen:</p>
+<ul>
+<li>Deine Dinner-Gruppe (mit wem du zusammen kochst)</li>
+<li>Die Route mit allen Adressen</li>
+<li>Die Uhrzeiten für jeden Gang</li>
+</ul>
 
-**Wichtig:**
+<p><strong>Wichtig:</strong><br>
 Bitte stelle sicher, dass deine Kontaktdaten und Adresse in ChurchTools aktuell sind.
 Falls du besondere Essensvorlieben oder Allergien hast, trage diese bitte in deinem
-Profil bei der Gruppe ein.
+Profil bei der Gruppe ein.</p>
 
-Wir freuen uns auf einen tollen Abend mit dir!
+<p>Wir freuen uns auf einen tollen Abend mit dir!</p>
 
-Liebe Grüße,
-Das Running Dinner Team
-    `.trim();
+<p>Liebe Grüße,<br>
+Das Running Dinner Team</p>`;
   }
 
   private getWithdrawalConfirmationEmailBody(groupName: string): string {
-    return `
-Hallo {{{person.firstName}}},
+    return `<p>Hallo {{{person.firstName}}},</p>
 
-wir haben deine Abmeldung vom **${groupName}** erhalten.
+<p>wir haben deine Abmeldung vom <strong>${groupName}</strong> erhalten.</p>
 
-Schade, dass du nicht dabei sein kannst! Falls sich deine Pläne ändern und wieder
-Plätze frei werden, kannst du dich gerne erneut anmelden.
+<p>Schade, dass du nicht dabei sein kannst! Falls sich deine Pläne ändern und wieder
+Plätze frei werden, kannst du dich gerne erneut anmelden.</p>
 
-Falls du Fragen hast, melde dich gerne bei uns.
+<p>Falls du Fragen hast, melde dich gerne bei uns.</p>
 
-Liebe Grüße,
-Das Running Dinner Team
-    `.trim();
+<p>Liebe Grüße,<br>
+Das Running Dinner Team</p>`;
   }
 }
 
