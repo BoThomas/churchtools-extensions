@@ -102,8 +102,7 @@ export const useGamesStore = defineStore('games', () => {
 
   async function fetchAllUsers(): Promise<Person[]> {
     try {
-      // ChurchTools API returns persons directly as an array
-      const persons = await churchtoolsClient.get<Person[]>('/persons');
+      const persons = await churchtoolsClient.getAllPages<Person>('/persons');
       return persons || [];
     } catch (e) {
       console.error('Failed to fetch users', e);
