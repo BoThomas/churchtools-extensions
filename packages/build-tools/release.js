@@ -123,6 +123,52 @@ function getCommitsSince(tag, relativePath) {
   }
 }
 
+// Get commits since a tag for multiple paths (extension + its package dependencies)
+function getCommitsSinceForPaths(tag, paths) {
+  try {
+    const range = tag ? `${tag}..HEAD` : 'HEAD';
+    const pathArgs = paths.map((p) => `"${p}"`).join(' ');
+    const commits = execSync(
+      `git log ${range} --oneline --no-merges -- ${pathArgs}`,
+      { encoding: 'utf8' },
+    )
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    return commits;
+  } catch (error) {
+    return [];
+  }
+}
+
+// Get workspace package dependencies for an extension
+function getWorkspacePackagePaths(extensionPath, monorepoRoot) {
+  const pkgPath = path.join(extensionPath, 'package.json');
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+  const allDeps = {
+    ...pkg.dependencies,
+    ...pkg.devDependencies,
+  };
+
+  const workspacePackagePaths = [];
+
+  for (const [depName, depVersion] of Object.entries(allDeps)) {
+    // Check if it's a workspace dependency
+    if (depVersion === 'workspace:*' || depVersion.startsWith('workspace:')) {
+      // Extract the package name suffix (e.g., 'prime-volt' from '@churchtools-extensions/prime-volt')
+      const packageDirName = depName.split('/').pop();
+      const packagePath = path.join(monorepoRoot, 'packages', packageDirName);
+
+      if (fs.existsSync(packagePath)) {
+        workspacePackagePaths.push(`packages/${packageDirName}`);
+      }
+    }
+  }
+
+  return workspacePackagePaths;
+}
+
 // Parse semver version
 function parseSemver(version) {
   const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
@@ -453,14 +499,27 @@ async function main() {
       console.log(c('bold', `📦 Releasing: ${c('cyan', ext.name)}`));
       console.log(c('bold', `${'─'.repeat(60)}`));
 
-      // Get previous tag and commits
+      // Get previous tag and commits (including workspace package dependencies)
       const previousTag = getPreviousTag(ext.name);
-      const commits = getCommitsSince(previousTag, ext.relativePath);
+      const workspacePackagePaths = getWorkspacePackagePaths(
+        ext.path,
+        monorepoRoot,
+      );
+      const allPaths = [ext.relativePath, ...workspacePackagePaths];
+      const commits = getCommitsSinceForPaths(previousTag, allPaths);
 
       if (previousTag) {
         console.log(c('dim', `\n   Previous release: ${previousTag}`));
       } else {
         console.log(c('dim', '\n   No previous releases found'));
+      }
+
+      // Show tracked paths
+      if (workspacePackagePaths.length > 0) {
+        console.log(c('dim', `   Tracking changes in: ${ext.relativePath}`));
+        workspacePackagePaths.forEach((pkgPath) => {
+          console.log(c('dim', `                        ${pkgPath}`));
+        });
       }
 
       // Show commits
