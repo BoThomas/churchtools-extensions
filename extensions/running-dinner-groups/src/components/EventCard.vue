@@ -55,12 +55,12 @@
           </div>
           <!-- Legend for waitlist -->
           <div
-            v-if="(waitlistCount ?? 0) > 0"
+            v-if="waitlistCount > 0"
             class="flex items-center gap-3 text-xs text-surface-500 dark:text-surface-400"
           >
             <span class="flex items-center gap-1">
               <span class="w-2 h-2 rounded-full bg-primary"></span>
-              {{ memberCount ?? 0 }} confirmed
+              {{ memberCount }} confirmed
             </span>
             <span class="flex items-center gap-1">
               <span
@@ -143,8 +143,6 @@ import Menu from '@churchtools-extensions/prime-volt/Menu.vue';
 const props = defineProps<{
   event: CategoryValue<EventMetadata>;
   group?: Group | null;
-  memberCount?: number;
-  waitlistCount?: number;
   actionLoading?: string | null;
 }>();
 
@@ -153,6 +151,12 @@ const menuRef = ref();
 function toggleMenu(event: Event) {
   menuRef.value?.toggle(event);
 }
+
+// Member counts from group statistics
+const memberCount = computed(() => props.group?.memberStatistics?.active ?? 0);
+const waitlistCount = computed(
+  () => props.group?.memberStatistics?.waiting ?? 0,
+);
 
 // Computed properties
 const eventName = computed(
@@ -203,7 +207,7 @@ const maxMembers = computed(() => props.group?.settings?.maxMembers ?? null);
 
 const activePercent = computed(() => {
   const max = maxMembers.value;
-  const active = props.memberCount ?? 0;
+  const active = memberCount.value;
   if (!max || max <= 0) {
     // No limit set - show some progress but cap at 100%
     return Math.min(active * 10, 100); // 10% per person, max 100%
@@ -213,7 +217,7 @@ const activePercent = computed(() => {
 
 const waitlistPercent = computed(() => {
   const max = maxMembers.value;
-  const waitlist = props.waitlistCount ?? 0;
+  const waitlist = waitlistCount.value;
   if (!max || max <= 0 || waitlist === 0) return 0;
   // Waitlist shows as additional percentage (can overflow past 100% visually capped)
   const remaining = Math.max(0, 100 - activePercent.value);
@@ -221,8 +225,8 @@ const waitlistPercent = computed(() => {
 });
 
 const registrationLabel = computed(() => {
-  const active = props.memberCount ?? 0;
-  const waitlist = props.waitlistCount ?? 0;
+  const active = memberCount.value;
+  const waitlist = waitlistCount.value;
   const max = maxMembers.value;
 
   if (max && max > 0) {

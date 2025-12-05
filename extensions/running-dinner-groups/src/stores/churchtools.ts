@@ -79,9 +79,9 @@ export const useChurchtoolsStore = defineStore('churchtools', () => {
     loading.value = true;
     error.value = null;
     try {
-      const group = (await churchtoolsClient.get(
-        `/groups/${groupId}`,
-      )) as Group;
+      const group = (await churchtoolsClient.get(`/groups/${groupId}`, {
+        'include[]': 'memberStatistics',
+      })) as Group;
       return group;
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error';

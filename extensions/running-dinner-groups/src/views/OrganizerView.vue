@@ -54,8 +54,6 @@
             :key="event.id"
             :event="event"
             :group="getGroup(event.value.groupId)"
-            :member-count="getMemberCount(event.value.groupId)"
-            :waitlist-count="getWaitlistCount(event.value.groupId)"
             :action-loading="actionLoading"
             @view="handleViewEvent"
             @archive="handleArchiveEvent"
@@ -80,9 +78,7 @@
       v-model:visible="showDetailDialog"
       :event="selectedEvent"
       :group="selectedEvent ? getGroup(selectedEvent.value.groupId) : null"
-      :initial-members="
-        selectedEvent ? getMembers(selectedEvent.value.groupId) : []
-      "
+      :initial-members="selectedEventMembers"
       :action-loading="actionLoading"
       @toggle-registration="handleToggleRegistration(selectedEvent!)"
       @archive="handleArchiveEvent(selectedEvent!)"
@@ -119,7 +115,7 @@ const showCreateDialog = ref(false);
 const showDetailDialog = ref(false);
 const selectedEvent = ref<CategoryValue<EventMetadata> | null>(null);
 const groupCache = ref<Map<number, Group>>(new Map());
-const memberCache = ref<Map<number, GroupMember[]>>(new Map());
+const selectedEventMembers = ref<GroupMember[]>([]);
 // Track loading state for actions: 'registration-{eventId}' | 'archive-{eventId}' | 'delete-{eventId}' | 'manage-{eventId}'
 const actionLoading = ref<string | null>(null);
 // Track initial data loading (covers all data, not just eventMetadataStore)
@@ -157,30 +153,26 @@ async function handleEventCreated() {
 
 /**
  * Load groups based on event metadata groupIds.
- * This is more reliable than relying on targetGroupId parent-child relationship.
+ * Only loads group data (with memberStatistics), not individual members.
  */
 async function loadEventGroups() {
   try {
     // Get all group IDs from event metadata
     const groupIds = eventMetadataStore.events.map((e) => e.value.groupId);
 
-    // Build new caches first, then swap them in to avoid flickering
+    // Build new cache first, then swap it in to avoid flickering
     const newGroupCache = new Map<number, Group>();
-    const newMemberCache = new Map<number, GroupMember[]>();
 
-    // Load each group and its members
+    // Load each group (includes memberStatistics for counts)
     for (const groupId of groupIds) {
       const group = await churchtoolsStore.getGroup(groupId);
       if (group) {
         newGroupCache.set(groupId, group);
-        const members = await churchtoolsStore.getGroupMembers(groupId);
-        newMemberCache.set(groupId, members);
       }
     }
 
-    // Swap in the new caches atomically
+    // Swap in the new cache atomically
     groupCache.value = newGroupCache;
-    memberCache.value = newMemberCache;
   } catch (error) {
     console.error('Failed to load event groups:', error);
   }
@@ -188,20 +180,6 @@ async function loadEventGroups() {
 
 function getGroup(groupId: number): Group | null {
   return groupCache.value.get(groupId) || null;
-}
-
-function getMembers(groupId: number): GroupMember[] {
-  return memberCache.value.get(groupId) || [];
-}
-
-function getMemberCount(groupId: number): number {
-  const members = memberCache.value.get(groupId) || [];
-  return members.filter((m) => m.groupMemberStatus === 'active').length;
-}
-
-function getWaitlistCount(groupId: number): number {
-  const members = memberCache.value.get(groupId) || [];
-  return members.filter((m) => m.groupMemberStatus === 'waiting').length;
 }
 
 function getGroupUrl(groupId: number): string {
@@ -219,14 +197,14 @@ async function handleViewEvent(event: CategoryValue<EventMetadata>) {
     // Pre-load event data before opening the dialog
     selectedEvent.value = event;
 
-    // Ensure group and member data is fresh
+    // Load group and member data for the detail view
     const groupId = event.value.groupId;
     const group = await churchtoolsStore.getGroup(groupId);
     if (group) {
       groupCache.value.set(groupId, group);
-      const members = await churchtoolsStore.getGroupMembers(groupId);
-      memberCache.value.set(groupId, members);
     }
+    selectedEventMembers.value =
+      await churchtoolsStore.getGroupMembers(groupId);
 
     // Open the dialog after data is loaded
     showDetailDialog.value = true;

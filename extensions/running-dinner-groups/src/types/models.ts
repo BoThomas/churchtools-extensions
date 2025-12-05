@@ -283,6 +283,16 @@ export interface RawPersonDetails {
 export interface Group {
   id: number;
   name: string;
+  currentMemberCount?: number;
+  memberStatistics?: {
+    active: number;
+    leaders: number;
+    participants: number;
+    requested: number;
+    seatsTaken: number;
+    to_delete: number;
+    waiting: number;
+  };
   information?: {
     groupTypeId?: number;
     groupStatusId?: number;
