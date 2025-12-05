@@ -605,18 +605,18 @@ The `allowChildRegistration` feature exists, but handling children at a Running 
 
 ## Final Event Creation Form Fields
 
-| Field                           | Required | Default             | Notes                                   |
-| ------------------------------- | -------- | ------------------- | --------------------------------------- |
-| Event name                      | ✅       | -                   | e.g., "Running Dinner - Dezember 2025"  |
-| Event date                      | ✅       | -                   | Date of the actual dinner event         |
-| Leiter (Leader)                 | ✅       | Current user?       | Required for CT group to accept members |
-| Max participants                | ✅       | 30                  | Limits active members                   |
-| Registration open date          | ❌       | Now                 | When registration opens                 |
-| Registration close date         | ❌       | Event date - 7 days | When registration closes                |
-| Enable waitlist                 | ❌       | true                | Allow waitlist when full                |
-| Waitlist limit                  | ❌       | null (unlimited)    | Max waitlist size                       |
-| Auto move-up                    | ❌       | true                | Auto-promote from waitlist              |
-| Allow spouse registration       | ❌       | true                | CT-native spouse co-registration        |
-| Partner preference field        | ❌       | true                | Custom text field for preferred partner |
-| After-party location            | ❌       | -                   | Optional central venue address          |
-| After-party is dessert location | ❌       | false               | If true, dessert is at after-party      |
+| Field                           | Required | Default             | Notes                                                                              |
+| ------------------------------- | -------- | ------------------- | ---------------------------------------------------------------------------------- |
+| Event name                      | ✅       | -                   | e.g., "Running Dinner - Dezember 2025"                                             |
+| Event date                      | ✅       | -                   | Date of the actual dinner event                                                    |
+| Leiter (Leader)                 | ✅       | Current user?       | Required for CT group to accept members                                            |
+| Max participants                | ✅       | 30                  | Limits active members                                                              |
+| Registration open date          | ❌       | Now                 | When registration opens                                                            |
+| Registration close date         | ❌       | Event date - 7 days | When registration closes                                                           |
+| Enable waitlist                 | ❌       | true                | Allow waitlist when full                                                           |
+| Waitlist limit                  | ❌       | null (unlimited)    | Max waitlist size                                                                  |
+| Auto move-up                    | ❌       | true                | Auto-promote from waitlist                                                         |
+| Allow spouse registration       | ❌       | true                | CT-native spouse co-registration                                                   |
+| Partner preference field        | ❌       | true                | Custom text field for preferred partner                                            |
+| After-party location            | ❌       | -                   | Optional central venue address                                                     |
+| After-party is dessert location | ❌       | false               | If true, dessert is served at after-party venue (hosts bring their desserts there) |

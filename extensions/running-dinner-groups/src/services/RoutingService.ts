@@ -20,6 +20,10 @@ export class RoutingService {
   /**
    * Assign routes to dinner groups
    * Constraint: No group meets another group more than once
+   *
+   * Note: When isDessertLocation is enabled for AfterParty, dessert still uses standard routing
+   * (each group is assigned to a dessert host). The display layer will show the
+   * after party address instead of the host's home address.
    */
   assignRoutes(
     eventMetadata: EventMetadata,
@@ -28,216 +32,22 @@ export class RoutingService {
   ): RoutingResult {
     const warnings: string[] = [];
 
-    // Check if dessert is at after party location
-    const dessertAtAfterParty =
-      eventMetadata.afterParty?.isDessertLocation ?? false;
+    // Always use standard routing - isDessertLocation affects display only
+    const result = this.assignRoutesStandard(
+      eventMetadata,
+      dinnerGroups,
+      warnings,
+    );
 
-    if (dessertAtAfterParty) {
-      // Special case: dessert happens at after party for all groups
-      return this.assignRoutesWithCentralDessert(
-        eventMetadata,
-        dinnerGroups,
-        warnings,
+    // Add info message when dessert is at after party location
+    if (eventMetadata.afterParty?.isDessertLocation) {
+      result.warnings.push(
+        `Dessert will be served at the after party location. ` +
+          `Dessert groups will prepare their desserts at home and bring them there.`,
       );
     }
 
-    // Standard routing: all meals at different homes
-    return this.assignRoutesStandard(eventMetadata, dinnerGroups, warnings);
-  }
-
-  /**
-   * Assign routes when dessert is at a central after party location
-   */
-  private assignRoutesWithCentralDessert(
-    eventMetadata: EventMetadata,
-    dinnerGroups: CategoryValue<DinnerGroup>[],
-    warnings: string[],
-  ): RoutingResult {
-    // Validate that all groups have assigned meals
-    const groupsWithoutMeals = dinnerGroups.filter(
-      (g) => !g.value.assignedMeal,
-    );
-    if (groupsWithoutMeals.length > 0) {
-      throw new Error(
-        `All groups must have an assigned meal. ${groupsWithoutMeals.length} groups are missing meal assignments.`,
-      );
-    }
-
-    // Group dinner groups by meal type
-    const starterGroups = shuffleArray(
-      dinnerGroups.filter((g) => g.value.assignedMeal === 'starter'),
-    );
-    const mainCourseGroups = shuffleArray(
-      dinnerGroups.filter((g) => g.value.assignedMeal === 'mainCourse'),
-    );
-    const dessertGroups = dinnerGroups.filter(
-      (g) => g.value.assignedMeal === 'dessert',
-    );
-
-    // For central dessert, we only need equal starters and main courses
-    // Dessert groups don't host, they just mark the after party venue
-    if (starterGroups.length !== mainCourseGroups.length) {
-      throw new Error(
-        `Need equal number of starter and main course groups. ` +
-          `Starters: ${starterGroups.length}, Main: ${mainCourseGroups.length}`,
-      );
-    }
-
-    warnings.push(
-      `Dessert will be held at the after party location for all groups. ` +
-        `No individual dessert hosts needed.`,
-    );
-
-    // Build lookup maps
-    const groupById = new Map<number, CategoryValue<DinnerGroup>>();
-    dinnerGroups.forEach((g) => {
-      groupById.set(g.id, g);
-    });
-
-    // Shuffle all groups for random processing order
-    const shuffledGroups = shuffleArray([...dinnerGroups]);
-
-    // For central dessert, we need to assign each group to:
-    // 1. A starter host (the starter group they visit OR they host if they're a starter group)
-    // 2. A main course host (the main group they visit OR they host if they're a main group)
-    // 3. After party (same for everyone)
-
-    const routes: Omit<Route, 'id' | 'createdAt' | 'updatedAt'>[] = [];
-
-    // Track how many visitors each host has (each host can have 2 visitors)
-    const starterVisitorCount = new Map<number, number>();
-    const mainVisitorCount = new Map<number, number>();
-    starterGroups.forEach((g) => starterVisitorCount.set(g.id, 0));
-    mainCourseGroups.forEach((g) => mainVisitorCount.set(g.id, 0));
-
-    // Calculate max visitors per host
-    const totalGroups = dinnerGroups.length;
-    const numStarterHosts = starterGroups.length;
-    const numMainHosts = mainCourseGroups.length;
-    const maxStarterVisitors = Math.ceil(
-      (totalGroups - numStarterHosts) / numStarterHosts,
-    );
-    const maxMainVisitors = Math.ceil(
-      (totalGroups - numMainHosts) / numMainHosts,
-    );
-
-    // Track which groups have met
-    const meetCount = new Map<string, number>();
-
-    function getPairKey(id1: number, id2: number): string {
-      return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
-    }
-
-    function getMeetCount(id1: number, id2: number): number {
-      return meetCount.get(getPairKey(id1, id2)) || 0;
-    }
-
-    function addMeeting(id1: number, id2: number): void {
-      if (id1 === id2) return;
-      const key = getPairKey(id1, id2);
-      meetCount.set(key, (meetCount.get(key) || 0) + 1);
-    }
-
-    for (const group of shuffledGroups) {
-      const groupId = group.id;
-      const groupMeal = group.value.assignedMeal;
-      const stops: RouteStop[] = [];
-
-      // Determine starter host
-      let starterHostId: number;
-      if (groupMeal === 'starter') {
-        // This group hosts starter
-        starterHostId = groupId;
-      } else {
-        // Find a starter host with capacity, preferring ones we haven't met
-        const availableHosts = starterGroups
-          .filter(
-            (h) => starterVisitorCount.get(h.id)! < maxStarterVisitors + 1,
-          )
-          .sort(
-            (a, b) => getMeetCount(groupId, a.id) - getMeetCount(groupId, b.id),
-          );
-
-        if (availableHosts.length === 0) {
-          // All hosts full, just pick one randomly
-          starterHostId = shuffleArray([...starterGroups])[0].id;
-        } else {
-          // Add randomness among hosts with same meet count
-          const minMeetCount = getMeetCount(groupId, availableHosts[0].id);
-          const bestHosts = availableHosts.filter(
-            (h) => getMeetCount(groupId, h.id) === minMeetCount,
-          );
-          starterHostId = shuffleArray(bestHosts)[0].id;
-        }
-        starterVisitorCount.set(
-          starterHostId,
-          starterVisitorCount.get(starterHostId)! + 1,
-        );
-      }
-
-      stops.push({
-        meal: 'starter',
-        hostDinnerGroupId: starterHostId,
-        startTime: eventMetadata.menu.starter.startTime,
-        endTime: eventMetadata.menu.starter.endTime,
-      });
-
-      // Determine main course host
-      let mainHostId: number;
-      if (groupMeal === 'mainCourse') {
-        mainHostId = groupId;
-      } else {
-        const availableHosts = mainCourseGroups
-          .filter((h) => mainVisitorCount.get(h.id)! < maxMainVisitors + 1)
-          .sort(
-            (a, b) => getMeetCount(groupId, a.id) - getMeetCount(groupId, b.id),
-          );
-
-        if (availableHosts.length === 0) {
-          mainHostId = shuffleArray([...mainCourseGroups])[0].id;
-        } else {
-          const minMeetCount = getMeetCount(groupId, availableHosts[0].id);
-          const bestHosts = availableHosts.filter(
-            (h) => getMeetCount(groupId, h.id) === minMeetCount,
-          );
-          mainHostId = shuffleArray(bestHosts)[0].id;
-        }
-        mainVisitorCount.set(mainHostId, mainVisitorCount.get(mainHostId)! + 1);
-      }
-
-      stops.push({
-        meal: 'mainCourse',
-        hostDinnerGroupId: mainHostId,
-        startTime: eventMetadata.menu.mainCourse.startTime,
-        endTime: eventMetadata.menu.mainCourse.endTime,
-      });
-
-      // Dessert: use first dessert group as placeholder (represents after party)
-      const dessertPlaceholder = dessertGroups[0] || starterGroups[0];
-
-      stops.push({
-        meal: 'dessert',
-        hostDinnerGroupId: dessertPlaceholder.id,
-        startTime: eventMetadata.menu.dessert.startTime,
-        endTime: eventMetadata.menu.dessert.endTime,
-      });
-
-      // Track meetings
-      if (starterHostId !== groupId) {
-        addMeeting(groupId, starterHostId);
-      }
-      if (mainHostId !== groupId) {
-        addMeeting(groupId, mainHostId);
-      }
-
-      routes.push({
-        eventMetadataId: eventMetadata.id!,
-        dinnerGroupId: groupId,
-        stops,
-      });
-    }
-
-    return { routes, warnings };
+    return result;
   }
 
   /**

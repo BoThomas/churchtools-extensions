@@ -68,7 +68,7 @@
         <div
           class="absolute -left-5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold"
           :class="[
-            getMealColor(stop.meal),
+            getMealColor(stop.meal, isDessertAtAfterParty(stop)),
             isHostingMeal(stop) ? 'ring-2 ring-primary ring-offset-2' : '',
           ]"
         >
@@ -77,13 +77,24 @@
 
         <!-- Content -->
         <div
-          class="ml-4 p-3 bg-surface-0 dark:bg-surface-800 rounded-lg shadow-sm"
-          :class="{
-            'border-2 border-primary': isHostingMeal(stop),
-            'border border-surface-200 dark:border-surface-700 cursor-pointer hover:border-primary/50 transition-colors':
-              !isHostingMeal(stop),
-          }"
-          @click="!isHostingMeal(stop) && scrollToGroup(stop.hostDinnerGroupId)"
+          class="ml-4 p-3 rounded-lg shadow-sm"
+          :class="[
+            isDessertAtAfterParty(stop)
+              ? 'bg-yellow-50 dark:bg-yellow-900/20'
+              : 'bg-surface-0 dark:bg-surface-800',
+            {
+              'border-2 border-primary': isHostingMeal(stop),
+              'border border-yellow-300 dark:border-yellow-700':
+                isDessertAtAfterParty(stop) && !isHostingMeal(stop),
+              'border border-surface-200 dark:border-surface-700 cursor-pointer hover:border-primary/50 transition-colors':
+                !isHostingMeal(stop) && !isDessertAtAfterParty(stop),
+            },
+          ]"
+          @click="
+            !isHostingMeal(stop) &&
+            !isDessertAtAfterParty(stop) &&
+            scrollToGroup(stop.hostDinnerGroupId)
+          "
         >
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
@@ -96,6 +107,12 @@
                 severity="success"
                 class="text-xs"
               />
+              <Badge
+                v-if="isDessertAtAfterParty(stop)"
+                value="@ After Party"
+                severity="warn"
+                class="text-xs"
+              />
             </div>
             <span class="text-sm text-surface-500">
               {{ formatTime(stop.startTime) }} -
@@ -104,11 +121,15 @@
           </div>
 
           <div class="grid gap-2 text-sm">
+            <!-- Show host group members (the group preparing the dessert) -->
             <div class="flex items-center gap-2">
               <i class="pi pi-users text-surface-400"></i>
-              <span>{{
-                getHostGroupMembers(stop).map(formatMemberName).join(', ')
-              }}</span>
+              <span
+                >{{ isDessertAtAfterParty(stop) ? 'Prepared by: ' : ''
+                }}{{
+                  getHostGroupMembers(stop).map(formatMemberName).join(', ')
+                }}</span
+              >
             </div>
             <div v-if="getHostAddress(stop)" class="flex items-center gap-2">
               <i class="pi pi-map-marker text-surface-400"></i>
@@ -119,6 +140,13 @@
               >
                 {{ getHostAddress(stop) }}
               </a>
+            </div>
+            <!-- Note for dessert at after party -->
+            <div
+              v-if="isDessertAtAfterParty(stop)"
+              class="text-xs text-yellow-700 dark:text-yellow-300 italic"
+            >
+              Dessert is served at the after party location
             </div>
           </div>
 
@@ -168,8 +196,13 @@
         </div>
       </div>
 
-      <!-- After Party -->
-      <div v-if="event.value.afterParty" class="relative pt-2">
+      <!-- After Party - only show when dessert is NOT at after party (otherwise it's merged with dessert stop) -->
+      <div
+        v-if="
+          event.value.afterParty && !event.value.afterParty.isDessertLocation
+        "
+        class="relative pt-2"
+      >
         <!-- Timeline dot -->
         <div
           class="absolute -left-5 w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center"
@@ -355,7 +388,11 @@ function formatMemberName(member: GroupMember): string {
 }
 
 // Methods
-function getMealColor(meal: string): string {
+function getMealColor(meal: string, isAtAfterParty: boolean = false): string {
+  // When dessert is at after party, use yellow/amber styling
+  if (meal === 'dessert' && isAtAfterParty) {
+    return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+  }
   const colors: Record<string, string> = {
     starter: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     mainCourse:
