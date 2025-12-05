@@ -1,15 +1,13 @@
-# Running Dinner
+# Running Dinner ⚠️ DEPRECATED
 
 Organize and manage Running Dinner events directly in ChurchTools.
 
+> [!CAUTION]
+> **DEPRECATED** – This extension is no longer maintained and will not receive updates.
+> See the new [Running Dinner Groups](../running-dinner-groups/README.md) extension for a more ChurchTools-native implementation.
+
 > [!IMPORTANT]
 > **Extension Key:** `runningdinner` — You'll need this key when installing the extension in ChurchTools.
-
-→ [Download Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner)
-
-> [!CAUTION]
-> This Extension is in exploratory development and not yet ready for production use.
-> It may be replaced by the [Running Dinner Groups](../running-dinner-groups/README.md) extension which offers deeper ChurchTools integration.
 
 ## What is a Running Dinner?
 

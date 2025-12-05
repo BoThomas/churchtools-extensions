@@ -10,7 +10,6 @@ A collection of extensions for [ChurchTools](https://church.tools/) – the chur
 - [What are ChurchTools Extensions?](#what-are-churchtools-extensions)
 - [Available Extensions](#available-extensions)
   - [🎤 Translator](#-translator)
-  - [🍽️ Running Dinner](#️-running-dinner)
   - [🍽️ Running Dinner Groups](#️-running-dinner-groups)
   - [🎮 Community Games](#-community-games)
 - [Releases](#releases)
@@ -55,29 +54,12 @@ Perfect for churches with international members who need live translation during
 
 ---
 
-### 🍽️ [Running Dinner](./extensions/running-dinner/)
-
-> **Extension Key:** `runningdinner`
-
-> [!CAUTION]
-> Not yet production-ready and may be replaced by the Running Dinner Groups extension which uses ChurchTools' native group management.
-
-Organize progressive dinner events where participants travel between homes for each course.
-
-A Running Dinner is a social event where groups host one course (starter, main, or dessert) at their home while visiting other homes for the remaining courses. Great for building community connections!
-
-**Features**: Event management • Participant registration • Smart group creation • Route optimization • Communication tools
-
-→ [Read more](./extensions/running-dinner/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner)
-
----
-
 ### 🍽️ [Running Dinner Groups](./extensions/running-dinner-groups/)
 
 > **Extension Key:** `runningdinnergroups`
 
 > [!CAUTION]
-> Not yet production-ready and under active development.
+> This is in BETA and not fully tested yet.
 
 Running Dinner with deep ChurchTools group integration.
 
@@ -104,6 +86,28 @@ Bring your community together with interactive games! Teams vote on moves togeth
 
 ---
 
+### 🍽️ [Running Dinner](./extensions/running-dinner/) ⚠️ DEPRECATED
+
+> [!CAUTION]
+> **DEPRECATED** – This extension is no longer maintained and will not receive updates.
+
+<details>
+<summary>Details</summary>
+
+> **Extension Key:** `runningdinner`
+
+Organize progressive dinner events where participants travel between homes for each course.
+
+A Running Dinner is a social event where groups host one course (starter, main, or dessert) at their home while visiting other homes for the remaining courses. Great for building community connections!
+
+**Features**: Event management • Participant registration • Smart group creation • Route optimization • Communication tools
+
+→ [Read more](./extensions/running-dinner/README.md)
+
+</details>
+
+---
+
 ## Releases
 
 Download ready-to-install extension packages from the [GitHub Releases](https://github.com/BoThomas/churchtools-extensions/releases) page.
@@ -113,7 +117,6 @@ Download ready-to-install extension packages from the [GitHub Releases](https://
 | Extension             | Releases                                                                                                                    |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Translator            | [ct-translator releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-translator)                       |
-| Running Dinner        | [ct-running-dinner releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner)               |
 | Running Dinner Groups | [ct-running-dinner-groups releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner-groups) |
 | Community Games       | [ct-community-games releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-community-games)             |
 
@@ -129,8 +132,8 @@ This is a **pnpm monorepo** using **Turborepo** for build orchestration. Extensi
 churchtools-extensions/
 ├── extensions/                # Extension applications
 │   ├── translator/            # Speech-to-text translation
-│   ├── running-dinner/        # Running Dinner (standalone)
-│   ├── running-dinner-groups/ # Running Dinner (CT groups)
+│   ├── running-dinner/        # Running Dinner (DEPRECATED)
+│   ├── running-dinner-groups/ # Running Dinner Groups
 │   └── community-games/       # Interactive games
 ├── packages/                  # Shared internal packages
 │   ├── ct-utils/              # ChurchTools API utilities
