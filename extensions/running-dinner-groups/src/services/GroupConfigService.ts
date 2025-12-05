@@ -264,9 +264,13 @@ export class GroupConfigService {
         automaticMoveUp: automaticMoveUp, // Auto-promote from waitlist when spots open
         waitinglistMaxPersons: options.waitlistMaxPersons ?? null, // null = unlimited
 
-        // Co-registration settings
+        // Co-registration settings - all four must be set together
+        // When enabled: allows spouse, children, same email, and arbitrary person co-registration
+        // When disabled: disables all co-registration options
         allowSpouseRegistration: allowSpouseRegistration,
-        allowOtherRegistration: false, // Not needed if using partner preference field
+        allowChildRegistration: allowSpouseRegistration,
+        allowSameEmailRegistration: allowSpouseRegistration,
+        allowOtherRegistration: allowSpouseRegistration,
 
         // Capacity
         maxMembers: options.maxMembers,
