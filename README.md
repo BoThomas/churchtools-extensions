@@ -88,12 +88,12 @@ Bring your community together with interactive games! Teams vote on moves togeth
 
 ### 🍽️ [Running Dinner](./extensions/running-dinner/) ⚠️ DEPRECATED
 
-> [!CAUTION]
-> **DEPRECATED** – This extension is no longer maintained and will not receive updates.
-
 <details>
 <summary>Details</summary>
 
+
+> **DEPRECATED** – This extension is no longer maintained and will not receive updates.
+>
 > **Extension Key:** `runningdinner`
 
 Organize progressive dinner events where participants travel between homes for each course.
