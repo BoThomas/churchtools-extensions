@@ -1,0 +1,104 @@
+# Changelog
+
+
+## ct-running-dinner-groups v1.0.1 — 2025-12-05
+
+🍽️ Initial release of Running Dinner Groups!
+
+### Changes
+
+- 4ba2a42 chore: reset changelog files
+- 8df5943 feat: update .env.example files and add corresponding .env files for extension-keys
+- 090ac79 fix: update registration open status color
+- 7bb0bf7 feat: add type declaration for importing .vue Single File Components
+- 7c4c309 chore(running-dinner-groups): release v1.0.0
+- 8c8611a docs: mention automated welcome email feature
+- 2016e41 fix: remove redundant 'waitlist' label from registration progress display
+- 5f49e50 feat: enhance group member statistics handling and optimize data loading in EventCard and OrganizerView
+- 4eddd7c feat: enhance co-registration options for child and spouse registrations
+- 99771e2 fix: optimize event handling by reloading groups in the background instead of loading all data
+- ac3e67e feat: add welcome email option and integrate routine creation for new members
+- e2143f8 feat: restructure after party address handling and enhance related components
+- e4f08ac feat: update maxMembers default and add guidance for team size recommendations
+- ace501b fix: child group description
+- 0430b13 style: adjust sidebar button spacing and text size for improved layout
+- 595939e feat: enhance grouping algo
+- ffe93f4 feat: move refresh button to EventDetail and improve MemberList layout
+- a5889fe fix: update group member assignment to use PUT method for leader and co-leaders
+- 79bb522 feat: add event name prop to RouteAssignment and update email service to use it
+- 53cf9bc feat: implement email sending mode with legacy ajax api
+- 92edd49 feat: add optional intro text to email notifications and improve HTML formatting
+- 5702a83 feat: add full route link generation and better email text
+- caed138 feat: update event handling in RouteAssignment and EventDetail components
+- d6f5c43 feat: enhance email service with optional intro text and route details
+- 16f8ae4 feat: move shuffleArray function to a new utility file
+- 3586f20 feat: interactive graph
+- 2e01a79 feat: make warning messages closable in DinnerGroupBuilder and RouteAssignment components
+- 1ba21c6 feat: better group and route algo
+- a13122b refactor: remove unused 'status-changed' event emissions and handler in EventDetail and OrganizerView components
+- 4ff0876 fix: change PUT requests to PATCH for updating group member roles in GroupConfigService
+- 7c9bfa2 feat: add registration statistics card with progress bar in EventDetail and EventCard components
+- 87176db feat: implement local route management in RouteStore and update components to clear unsaved routes on reset
+- 70223e1 feat: implement RouteNetworkGraph component for visualizing dinner group connections and enhance RouteCard with meeting details
+- 4e3bf5d feat: enhance RouteAssignment layout with sidebar navigation and improve scroll functionality
+- f31f48b feat: make routes view nice
+- 4862889 feat: add generic search functionality to DinnerGroupBuilder and MemberList components
+- 59a1367 feat: enhance layout and styling of MemberList and RouteAssignment components
+- 18caf6e fix: integrate event metadata store for reactive event status updates in EventDetail component
+- 62c5642 feat: synchronize local state with store for dinner groups and routes, and implement create/delete functionality in dinner group store
+- e376b7a fix: handle external deletion of dinner groups and routes in state management
+- 175229a feat: implement group and route change management in DinnerGroupBuilder and EventDetail components
+- a672c25 feat: enhance meal display in EventDetail and MemberList components with emojis and improved layout
+- 30f2314 feat: enhance DinnerGroupBuilder with improved layout and new DataTable for group management
+- f5f4030 feat: enhance DinnerGroup and MemberList components with meal selection and display improvements
+- 4fe7a66 feat: enhance member list display and improve field mapping for group members
+- 1be9a95 feat: add future registration scheduling and status handling in event components
+- 6a13e0e feat: add functionality to deactivate unneeded roles for Running Dinner groups
+- 75e199c feat: update implementation plan
+- a403fed fix: get archiving a event/group to work
+- ae36bd9 feat: optimize styling for events
+- d17890f feat: enhance loading states and external data handling in dinner group components
+- 45142db feat: enhance event management with loading states and initial member support
+- 8f2486c feat: add better person data retrieval
+- 0802dc0 feat: implement loading states for registration actions and enhance menu functionality
+- adf8a76 feat: enhance event details and fix opening/closing regestration
+- 69c4f80 feat: enhance event detail component using correct volt dialog
+- 45ea796 feat: simplify event card badges and enhance next step messaging
+- f72f096 feat: refactor group status handling to use correct data structure
+- 0f18fc0 feat: update extension names for consistency in package.json files
+- dafe508 fix: update caution warnings in Running Dinner and Running Dinner Groups README files
+- eec7674 feat: update README files
+- 589ce50 feat(rdg): streamline group creation settings and enhance registration controls
+- 753ad41 feat(rdg): Implement Event Detail, Member List, Route Assignment, and Route Card components
+- 331375c feat(rdg): improve error handling for event creation and group configuration
+- 6627033 feat(rdg): enhance group leader and co-leader assignment with group type ID handling
+- ab8b410 chore: update environment configuration for local development
+- 223c9c5 feat(rdg): enhance error handling and cleanup for child group creation
+- e58acd1 feat(rdg): enhance event creation with co-leader selection and update person handling
+- 6c1e182 feat(rdg): add event leader selection and registration settings
+- 1408559 feat: refactor lifecycle and state documentation for Running Dinner Groups extension
+- d2f1808 feat(rdg): Update lifecycle documentation with resolved questions and API capabilities for routines and addresses
+- 6c45085 feat(rdg): Expand lifecycle documentation with analysis and suggestions for CT group integration
+- e2ab0af feat(rdg): Document ideas about lifecycle and state integration for Running Dinner extension
+- 3d1a84b feat(rdg): Enhance child group creation with group type validation and improved field handling
+- c3c3696 feat(rdg): Refactor time handling in EventCreator component with createTime helper function
+- f9f83d0 feat(rdg): Add support for dessert at after party location and update related components
+- 349a811 feat(rdg): Add partner preferences toggle and update related configurations for event creation
+- 8c7c3f4 feat(rdg): Implement EventCreator component with form validation and integration for event creation
+- 2cbf324 feat(rdg): Update group creation process to include role management and API endpoint details
+- de7c1da feat(rdg): Enhance ParentGroupSetup with loading state and improve member role checks
+- 17a1ff7 feat(rdg): Update terminology from 'Parent Group' to 'Organizer Group' for clarity and consistency
+- 2413cda feat(rdg): Add dataKey attribute to leader and co-leader selection for improved data handling
+- f1ac337 feat(rdg): Add searchPersons function for paginated person search and integrate filtering in ParentGroupSetup
+- d2a9a54 feat(rdg): Refactor ParentGroupSetup and OrganizerView to use SecondaryButton for improved UI consistency
+- 570e3cd feat(rdg): Update OrganizerView with ParentGroupSetup integration and enhance event display
+- 8f3c480 feat(rdg): Implement tabbed navigation and add SettingsView for Running Dinner Groups
+- fb75e63 fix(rdg): Enhance initialization logic and fix import paths in OrganizerView
+- c51bdb7 feat(rdg): Update implementation plan with completed components and in-progress tasks
+- 7547944 feat(rdg): Refactor group configuration and enhance email and routing services for Running Dinner Groups
+- 5448627 feat(rdg): Implement ChurchTools API integration and enhance group configuration service
+- 4a59698 feat(rdg): update EventStatus to reflect extension workflow and lifecycle management
+- 4aa8ea0 feat: add Running Dinner Groups extension with initial setup and core functionality
+- 083593b feat(rdg): add running dinner groups implementation plan
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/commits/ct-running-dinner-groups@1.0.1
