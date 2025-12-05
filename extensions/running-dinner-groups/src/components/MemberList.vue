@@ -27,12 +27,20 @@
       </div>
       <div class="relative">
         <i
-          class="pi pi-search absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-400 text-sm"
+          class="pi pi-search text-surface-400 text-sm"
+          style="
+            position: absolute;
+            left: 0.625rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+          "
         ></i>
         <InputText
           v-model="searchQuery"
           placeholder="Search..."
-          class="pl-8 h-8 text-sm w-48"
+          class="h-8 text-sm w-48"
+          style="padding-left: 2rem"
         />
       </div>
     </div>
@@ -40,9 +48,18 @@
     <!-- Empty State -->
     <div
       v-if="members.length === 0"
-      class="text-center py-8 bg-surface-50 dark:bg-surface-800 rounded-lg"
+      class="py-8 bg-surface-50 dark:bg-surface-800 rounded-lg"
+      style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      "
     >
-      <i class="pi pi-users text-4xl text-surface-400 mb-2"></i>
+      <i
+        class="pi pi-users text-4xl text-surface-400"
+        style="margin-bottom: 0.5rem; display: block"
+      ></i>
       <p class="text-surface-600 dark:text-surface-400">
         No members yet. Share the group link to start collecting registrations.
       </p>

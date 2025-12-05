@@ -164,10 +164,22 @@
     <!-- Empty State -->
     <div
       v-else
-      class="text-center py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
+      class="py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
+      style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      "
     >
-      <i class="pi pi-map text-5xl text-surface-400 mb-4"></i>
-      <p class="text-lg text-surface-600 dark:text-surface-400 mb-2">
+      <i
+        class="pi pi-map text-5xl text-surface-400"
+        style="margin-bottom: 1rem; display: block"
+      ></i>
+      <p
+        class="text-lg text-surface-600 dark:text-surface-400"
+        style="margin-bottom: 0.5rem"
+      >
         No routes assigned yet
       </p>
       <p class="text-sm text-surface-500">
