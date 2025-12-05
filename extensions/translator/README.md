@@ -5,6 +5,8 @@ Real-time speech-to-text translation for church services and events, powered by 
 > [!IMPORTANT]
 > **Extension Key:** `translator` — You'll need this key when installing the extension in ChurchTools.
 
+→ [Download Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-translator)
+
 > [!WARNING]
 > As the Presentation Mode is also embedded in the ChurchTools interface, there could be problems with
 > Pop-ups or other conditional overlays not being suppressed. This needs to be tested further.

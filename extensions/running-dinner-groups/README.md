@@ -5,6 +5,8 @@ Organize and manage Running Dinner events directly in ChurchTools using native g
 > [!IMPORTANT]
 > **Extension Key:** `runningdinnergroups` — You'll need this key when installing the extension in ChurchTools.
 
+→ [Download Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner-groups)
+
 > [!CAUTION]
 > This extension is still under active development and not yet ready for production use.
 

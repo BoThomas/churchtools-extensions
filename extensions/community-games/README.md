@@ -5,6 +5,8 @@ Play interactive team-based games with your church community directly in ChurchT
 > [!IMPORTANT]
 > **Extension Key:** `communitygames` — You'll need this key when installing the extension in ChurchTools.
 
+→ [Download Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-community-games)
+
 ## What is it?
 
 Community Games brings casual gaming to your church community. Create game sessions where church members can join teams and play classic games together – perfect for youth groups, community events, or just some friendly competition!
