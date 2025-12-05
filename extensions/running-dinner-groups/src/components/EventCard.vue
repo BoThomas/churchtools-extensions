@@ -84,7 +84,7 @@
           <span
             :class="
               isRegistrationOpen
-                ? 'text-green-600'
+                ? 'text-green-700 dark:text-green-300'
                 : 'text-surface-600 dark:text-surface-400'
             "
           >
