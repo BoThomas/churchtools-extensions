@@ -85,7 +85,8 @@ export class PersistanceCategory<T = unknown> {
     id: number,
   ): Promise<CategoryValue<TOut> | undefined> {
     const vals = await this.list<TOut>();
-    return vals.find((v) => v.id === id);
+    // Compare as numbers since the parsed JSON value may have id as string
+    return vals.find((v) => Number(v.id) === id);
   }
 
   async create<TIn = T>(value: TIn) {
