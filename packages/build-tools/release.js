@@ -387,6 +387,26 @@ async function main() {
 
     const releasedPackages = [];
 
+    // Run type check for all selected extensions first
+    for (const ext of selectedExtensions) {
+      console.log(c('cyan', `\n   Checking types for ${ext.name}...`));
+      try {
+        execSync(`pnpm --filter=${ext.name} run type-check`, {
+          cwd: monorepoRoot,
+          stdio: 'pipe',
+        });
+        console.log(c('green', `   ✓ ${ext.name} type check passed`));
+      } catch (error) {
+        console.log(c('red', `   ✗ ${ext.name} type check failed`));
+        // Show the error output
+        if (error.stdout) console.log(error.stdout.toString());
+        if (error.stderr) console.log(error.stderr.toString());
+        throw new Error(
+          `Type check failed for ${ext.name}. Fix the errors before releasing.`,
+        );
+      }
+    }
+
     // Process each selected extension
     for (const ext of selectedExtensions) {
       console.log(c('bold', `\n${'─'.repeat(60)}`));
