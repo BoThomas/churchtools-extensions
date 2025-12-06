@@ -2,6 +2,20 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2025-12-06 — ct-translator v1.1.0
+
+New chinese input languages
+
+### Changes
+
+- 2a480e7 feat(translator): add Chinese (Mandarin) and Chinese (Cantonese) to input languages
+- 85e100d docs: reformat some images
+- 770c1a3 docs: add screenshots to READMEs
+- 5b67ddd docs: add new images
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2025-12-06-ct-translator-v1.0.0...2025-12-06-ct-translator-v1.1.0
+
+---
 ## 2025-12-06 — ct-translator v1.0.0
 
 🎤 Initial release of Translator!
