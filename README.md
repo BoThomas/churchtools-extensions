@@ -50,6 +50,14 @@ Perfect for churches with international members who need live translation during
 
 **Features**: Real-time transcription • Lots of customization options • Presentation mode • Session logging
 
+<table>
+  <tr>
+    <td><img src="./extensions/translator/docs/images/translator-control-and-test.webp" height="220" alt="Control and Test"></td>
+    <td><img src="./extensions/translator/docs/images/translator-presentation.webp" height="220" alt="Presentation Mode"></td>
+    <td><img src="./extensions/translator/docs/images/translator-report-1.webp" height="220" alt="Report"></td>
+  </tr>
+</table>
+
 → [Read more](./extensions/translator/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-translator)
 
 ---
@@ -67,6 +75,14 @@ An alternative version of Running Dinner that uses ChurchTools' native group man
 
 **Features**: ChurchTools group integration • Custom field-based registration • Email notifications • Same powerful grouping and routing algorithms
 
+<table>
+  <tr>
+    <td><img src="./extensions/running-dinner-groups/docs/images/rdg-organize.webp" height="220" alt="Organize"></td>
+    <td><img src="./extensions/running-dinner-groups/docs/images/rdg-form.webp" height="220" alt="Form"></td>
+    <td><img src="./extensions/running-dinner-groups/docs/images/rdg-routes.webp" height="220" alt="Routes"></td>
+  </tr>
+</table>
+
 → [Read more](./extensions/running-dinner-groups/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner-groups)
 
 ---
@@ -82,6 +98,14 @@ Bring your community together with interactive games! Teams vote on moves togeth
 **Games**: TicTacToe • Connect Four • More to come...
 **Features**: Team voting • Multiple simultaneous games • Live updates • Works on mobile
 
+<table>
+  <tr>
+    <td><img src="./extensions/community-games/docs/images/community-games-lobby.webp" height="220" alt="Game Lobby"></td>
+    <td><img src="./extensions/community-games/docs/images/community-games-ttt.webp" height="220" alt="TicTacToe"></td>
+    <td><img src="./extensions/community-games/docs/images/community-games-c4.webp" height="220" alt="Connect Four"></td>
+  </tr>
+</table>
+
 → [Read more](./extensions/community-games/README.md) • [Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-community-games)
 
 ---
@@ -90,7 +114,6 @@ Bring your community together with interactive games! Teams vote on moves togeth
 
 <details>
 <summary>Details</summary>
-
 
 > **DEPRECATED** – This extension is no longer maintained and will not receive updates.
 >

@@ -7,6 +7,19 @@ Play interactive team-based games with your church community directly in ChurchT
 
 → [Download Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-community-games)
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="./docs/images/community-games-settings.webp" height="220" alt="Settings"></td>
+    <td><img src="./docs/images/community-games-lobby.webp" height="220" alt="Game Lobby"></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/images/community-games-ttt.webp" height="220" alt="TicTacToe"></td>
+    <td><img src="./docs/images/community-games-c4.webp" height="220" alt="Connect Four"></td>
+  </tr>
+</table>
+
 ## What is it?
 
 Community Games brings casual gaming to your church community. Create game sessions where church members can join teams and play classic games together – perfect for youth groups, community events, or just some friendly competition!

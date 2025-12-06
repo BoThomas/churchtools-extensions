@@ -13,6 +13,26 @@ Organize and manage Running Dinner events directly in ChurchTools using native g
 
 → [Download Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-running-dinner-groups)
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="./docs/images/rdg-settings.webp" height="220" alt="Settings"></td>
+    <td><img src="./docs/images/rdg-organize.webp" height="220" alt="Organize"></td>
+    <td><img src="./docs/images/rdg-form.webp" height="220" alt="Form"></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/images/rdg-overview.webp" height="220" alt="Overview"></td>
+    <td><img src="./docs/images/rdg-route-graph.webp" height="220" alt="Route Graph"></td>
+    <td><img src="./docs/images/rdg-routes.webp" height="220" alt="Routes"></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/images/rdg-email.webp" height="220" alt="Email"></td>
+    <td><img src="./docs/images/rdg-ct-form.webp" height="220" alt="ChurchTools Form"></td>
+    <td><img src="./docs/images/rdg-ct-routine.webp" height="220" alt="ChurchTools Routine"></td>
+  </tr>
+</table>
+
 ## What is a Running Dinner?
 
 A Running Dinner (also known as a Progressive Dinner) is a social dining event where participants travel between different locations for each course of a meal. Each group hosts one course and visits other groups for the remaining courses – a fun way to meet new people and share food together!

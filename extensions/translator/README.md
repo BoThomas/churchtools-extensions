@@ -11,6 +11,21 @@ Real-time speech-to-text translation for church services and events, powered by 
 
 → [Download Releases](https://github.com/BoThomas/churchtools-extensions/releases?q=ct-translator)
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="./docs/images/translator-settings.webp" height="220" alt="Settings"></td>
+    <td><img src="./docs/images/translator-options.webp" height="220" alt="Options"></td>
+    <td><img src="./docs/images/translator-report-2.webp" height="220" alt="Report 2"></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/images/translator-control-and-test.webp" height="220" alt="Control and Test"></td>
+    <td><img src="./docs/images/translator-presentation.webp" height="220" alt="Presentation Mode"></td>
+    <td><img src="./docs/images/translator-report-1.webp" height="220" alt="Report 1"></td>
+  </tr>
+</table>
+
 ## What is it?
 
 The Translator extension enables real-time translation of spoken language during church services. It's perfect for multilingual congregations where members may not understand the primary language of the service.
