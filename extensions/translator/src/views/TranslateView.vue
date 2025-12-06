@@ -798,6 +798,8 @@ const inputLanguages = ref([
   { name: 'Turkish', code: 'tr-TR' },
   { name: 'Arabic (EG)', code: 'ar-EG' },
   { name: 'Tamil', code: 'ta-IN' },
+  { name: 'Chinese (Mandarin)', code: 'zh-CN' },
+  { name: 'Chinese (Cantonese)', code: 'zh-HK' },
 ]);
 
 const outputLanguages = ref([
