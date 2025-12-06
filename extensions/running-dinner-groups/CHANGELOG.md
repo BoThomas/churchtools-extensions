@@ -2,6 +2,20 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2025-12-06 — ct-running-dinner-groups v1.0.1
+
+fix small styling bug when used inside ct
+
+### Changes
+
+- 0f49123 style(rdg): fix layout for no events message in ct
+- 85e100d docs: reformat some images
+- 770c1a3 docs: add screenshots to READMEs
+- 5b67ddd docs: add new images
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2025-12-06-ct-running-dinner-groups-v1.0.0...2025-12-06-ct-running-dinner-groups-v1.0.1
+
+---
 ## 2025-12-06 — ct-running-dinner-groups v1.0.0
 
 🍽️ Initial release of Running Dinner Groups!
