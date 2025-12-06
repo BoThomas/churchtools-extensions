@@ -745,6 +745,7 @@ import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
+import translationOptions from '../translation-options.json';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -791,65 +792,12 @@ const currentLiveTranslationOri = ref('');
 const finalizedParagraphs = ref<string[]>([]);
 const currentLiveTranslation = ref('');
 
-// Language options
-const inputLanguages = ref([
-  { name: 'German', code: 'de-DE' },
-  { name: 'English', code: 'en-US' },
-  { name: 'Spanish', code: 'es-ES' },
-  { name: 'French', code: 'fr-FR' },
-  { name: 'Turkish', code: 'tr-TR' },
-  { name: 'Arabic (EG)', code: 'ar-EG' },
-  { name: 'Tamil', code: 'ta-IN' },
-  { name: 'Chinese (Mandarin)', code: 'zh-CN' },
-  { name: 'Chinese (Cantonese)', code: 'zh-HK' },
-]);
-
-const outputLanguages = ref([
-  { name: 'German', code: 'de' },
-  { name: 'English', code: 'en' },
-  { name: 'Spanish', code: 'es' },
-  { name: 'Portuguese', code: 'pt' },
-  { name: 'French', code: 'fr' },
-  { name: 'Italian', code: 'it' },
-  { name: 'Polish', code: 'pl' },
-  { name: 'Turkish', code: 'tr' },
-  { name: 'Arabic', code: 'ar' },
-  { name: 'Kurdish', code: 'ku' },
-  { name: 'Croatian', code: 'hr' },
-  { name: 'Russian', code: 'ru' },
-  { name: 'Ukrainian', code: 'uk' },
-  { name: 'Tamil', code: 'ta' },
-  { name: 'Chinese (Literary)', code: 'lzh' },
-  { name: 'Chinese (Simplified)', code: 'zh-Hans' },
-  { name: 'Chinese (Traditional)', code: 'zh-Hant' },
-]);
-
-const profanityOptions = ref(['raw', 'remove', 'mask']);
-
-const partialThresholds = ref([
-  '1',
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '10',
-  '11',
-  '12',
-  '13',
-  '14',
-  '15',
-]);
-
-const presentationFonts = ref([
-  'Arial',
-  'Verdana',
-  'Times New Roman',
-  'Palatino',
-]);
+// Language options (imported from JSON config)
+const inputLanguages = translationOptions.inputLanguages;
+const outputLanguages = translationOptions.outputLanguages;
+const profanityOptions = translationOptions.profanityOptions;
+const partialThresholds = translationOptions.partialThresholds;
+const presentationFonts = translationOptions.presentationFonts;
 
 // Computed
 const hasApiCredentials = computed(() => {

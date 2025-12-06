@@ -1,0 +1,51 @@
+{
+  "inputLanguages": [
+    { "name": "🇩🇪 German", "code": "de-DE" },
+    { "name": "🇺🇸 English", "code": "en-US" },
+    { "name": "🇪🇸 Spanish", "code": "es-ES" },
+    { "name": "🇫🇷 French", "code": "fr-FR" },
+    { "name": "🇹🇷 Turkish", "code": "tr-TR" },
+    { "name": "🇪🇬 Arabic (EG)", "code": "ar-EG" },
+    { "name": "🇮🇳 Tamil", "code": "ta-IN" },
+    { "name": "🇨🇳 Chinese (Mandarin)", "code": "zh-CN" },
+    { "name": "🇭🇰 Chinese (Cantonese)", "code": "zh-HK" }
+  ],
+  "outputLanguages": [
+    { "name": "🇩🇪 German", "code": "de" },
+    { "name": "🇬🇧 English", "code": "en" },
+    { "name": "🇪🇸 Spanish", "code": "es" },
+    { "name": "🇵🇹 Portuguese", "code": "pt" },
+    { "name": "🇫🇷 French", "code": "fr" },
+    { "name": "🇮🇹 Italian", "code": "it" },
+    { "name": "🇵🇱 Polish", "code": "pl" },
+    { "name": "🇹🇷 Turkish", "code": "tr" },
+    { "name": "🇸🇦 Arabic", "code": "ar" },
+    { "name": "🌐 Kurdish", "code": "ku" },
+    { "name": "🇭🇷 Croatian", "code": "hr" },
+    { "name": "🇷🇺 Russian", "code": "ru" },
+    { "name": "🇺🇦 Ukrainian", "code": "uk" },
+    { "name": "🇮🇳 Tamil", "code": "ta" },
+    { "name": "🇨🇳 Chinese (Literary)", "code": "lzh" },
+    { "name": "🇨🇳 Chinese (Simplified)", "code": "zh-Hans" },
+    { "name": "🇹🇼 Chinese (Traditional)", "code": "zh-Hant" }
+  ],
+  "profanityOptions": ["raw", "remove", "mask"],
+  "partialThresholds": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15"
+  ],
+  "presentationFonts": ["Arial", "Verdana", "Times New Roman", "Palatino"]
+}
