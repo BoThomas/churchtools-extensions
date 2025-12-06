@@ -43,6 +43,7 @@
                 id="input-lang"
                 v-model="store.settings.inputLanguage"
                 :options="inputLanguages"
+                filter
                 optionLabel="name"
                 :disabled="inputsDisabled"
                 placeholder="Select input language"
@@ -78,6 +79,7 @@
                 id="output-lang"
                 v-model="store.settings.outputLanguage"
                 :options="outputLanguages"
+                filter
                 optionLabel="name"
                 :disabled="inputsDisabled"
                 placeholder="Select output language"
