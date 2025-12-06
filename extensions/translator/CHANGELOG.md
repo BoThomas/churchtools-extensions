@@ -1,7 +1,6 @@
 # Changelog
 
-
-## ct-translator v1.0.2 — 2025-12-05
+## 2025-12-05 — ct-translator v1.0.2
 
 🎤 Initial release of Translator!
 
@@ -66,4 +65,4 @@
 - 30d7ea0 feat(translator): enhance translator extension with presentation mode and UI improvements
 - 1d12bf2 feat(translator): initial commit of ChurchTools Translator extension
 
-**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/commits/ct-translator@1.0.2
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/commits/2025-12-05-ct-translator-v1.0.2

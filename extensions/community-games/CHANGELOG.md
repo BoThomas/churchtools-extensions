@@ -1,7 +1,6 @@
 # Changelog
 
-
-## ct-community-games v1.0.1 — 2025-12-05
+## 2025-12-05 — ct-community-games v1.0.1
 
 🎮 Initial release of Community Games!
 
@@ -37,4 +36,4 @@
 - 08448d8 feat: implement GameManager and TicTacToeManager for improved game management
 - 1cce4e0 feat: add initial Community Games extension with Tic Tac Toe functionality
 
-**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/commits/ct-community-games@1.0.1
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/commits/2025-12-05-ct-community-games-v1.0.1

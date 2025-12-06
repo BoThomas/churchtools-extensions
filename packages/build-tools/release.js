@@ -90,12 +90,15 @@ function discoverExtensions(monorepoRoot) {
   return extensions;
 }
 
-// Get previous tag for a package
+// Get previous tag for a package (format: YYYY-MM-DD-packageName-vVersion)
 function getPreviousTag(packageName) {
   try {
-    const tags = execSync(`git tag -l "${packageName}@*" --sort=-v:refname`, {
-      encoding: 'utf8',
-    })
+    const tags = execSync(
+      `git tag -l "*-${packageName}-v*" --sort=-v:refname`,
+      {
+        encoding: 'utf8',
+      },
+    )
       .trim()
       .split('\n')
       .filter(Boolean);
@@ -269,11 +272,11 @@ function generateChangelogEntry(
   commits,
   previousTag,
   githubInfo,
+  tag,
 ) {
   const date = new Date().toISOString().split('T')[0];
-  const tag = `${packageName}@${version}`;
 
-  let entry = `## ${packageName} v${version} — ${date}\n\n`;
+  let entry = `## ${date} — ${packageName} v${version}\n\n`;
 
   if (summary) {
     entry += `${summary}\n\n`;
@@ -304,12 +307,11 @@ function generateReleaseNotes(
   commits,
   previousTag,
   githubInfo,
+  tag,
 ) {
-  const date = new Date().toISOString().split('T')[0];
-  const tag = `${packageName}@${version}`;
   const maxCommits = 10;
 
-  let entry = `## ${packageName} v${version} — ${date}\n\n`;
+  let entry = '';
 
   if (summary) {
     entry += `${summary}\n\n`;
@@ -591,6 +593,10 @@ async function main() {
         throw error;
       }
 
+      // Create tag name (date-prefixed for chronological sorting in GitHub)
+      const releaseDate = new Date().toISOString().split('T')[0];
+      const tag = `${releaseDate}-${ext.name}-v${newVersion}`;
+
       // Generate changelog entry (for CHANGELOG.md)
       const changelogEntry = generateChangelogEntry(
         ext.name,
@@ -599,6 +605,7 @@ async function main() {
         commits,
         previousTag,
         githubInfo,
+        tag,
       );
 
       // Generate release notes (shorter version for GitHub releases)
@@ -609,6 +616,7 @@ async function main() {
         commits,
         previousTag,
         githubInfo,
+        tag,
       );
 
       // Update changelog
@@ -626,7 +634,6 @@ async function main() {
       console.log(c('green', `   ✓ Updated CHANGELOG.md`));
 
       // Create annotated tag
-      const tag = `${ext.name}@${newVersion}`;
       execSync(`git tag -a "${tag}" -m "Release ${ext.name} v${newVersion}"`, {
         cwd: monorepoRoot,
       });

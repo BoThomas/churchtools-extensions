@@ -1,7 +1,6 @@
 # Changelog
 
-
-## ct-running-dinner-groups v1.0.1 — 2025-12-05
+## 2025-12-05 — ct-running-dinner-groups v1.0.1
 
 🍽️ Initial release of Running Dinner Groups!
 
@@ -101,4 +100,4 @@
 - 4aa8ea0 feat: add Running Dinner Groups extension with initial setup and core functionality
 - 083593b feat(rdg): add running dinner groups implementation plan
 
-**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/commits/ct-running-dinner-groups@1.0.1
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/commits/2025-12-05-ct-running-dinner-groups-v1.0.1
