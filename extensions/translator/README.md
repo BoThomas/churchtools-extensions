@@ -19,6 +19,9 @@ Real-time speech-to-text translation for church services and events, powered by 
     <td><img src="./docs/images/translator-options.webp" height="220" alt="Options"></td>
     <td><img src="./docs/images/translator-report-2.webp" height="220" alt="Report 2"></td>
   </tr>
+</table>
+
+<table>
   <tr>
     <td><img src="./docs/images/translator-control-and-test.webp" height="220" alt="Control and Test"></td>
     <td><img src="./docs/images/translator-presentation.webp" height="220" alt="Presentation Mode"></td>

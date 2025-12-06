@@ -21,11 +21,17 @@ Organize and manage Running Dinner events directly in ChurchTools using native g
     <td><img src="./docs/images/rdg-organize.webp" height="220" alt="Organize"></td>
     <td><img src="./docs/images/rdg-form.webp" height="220" alt="Form"></td>
   </tr>
+</table>
+
+<table>
   <tr>
     <td><img src="./docs/images/rdg-overview.webp" height="220" alt="Overview"></td>
     <td><img src="./docs/images/rdg-route-graph.webp" height="220" alt="Route Graph"></td>
     <td><img src="./docs/images/rdg-routes.webp" height="220" alt="Routes"></td>
   </tr>
+</table>
+
+<table>
   <tr>
     <td><img src="./docs/images/rdg-email.webp" height="220" alt="Email"></td>
     <td><img src="./docs/images/rdg-ct-form.webp" height="220" alt="ChurchTools Form"></td>

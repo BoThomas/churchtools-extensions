@@ -14,6 +14,9 @@ Play interactive team-based games with your church community directly in ChurchT
     <td><img src="./docs/images/community-games-settings.webp" height="220" alt="Settings"></td>
     <td><img src="./docs/images/community-games-lobby.webp" height="220" alt="Game Lobby"></td>
   </tr>
+</table>
+
+<table>
   <tr>
     <td><img src="./docs/images/community-games-ttt.webp" height="220" alt="TicTacToe"></td>
     <td><img src="./docs/images/community-games-c4.webp" height="220" alt="Connect Four"></td>
