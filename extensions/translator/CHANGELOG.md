@@ -2,6 +2,17 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2025-12-06 — ct-translator v1.3.1
+
+Fixes an issue where switching between setting variants would not properly migrate language settings from the old format to the new format, causing invalid language warnings to appear until the page was reloaded. The migration now correctly applies when selecting any variant.
+
+### Changes
+
+- 0fe4626 fix(translator): add settings migration when changing variants
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2025-12-06-ct-translator-v1.3.0...2025-12-06-ct-translator-v1.3.1
+
+---
 ## 2025-12-06 — ct-translator v1.3.0
 
 New input/output languages - a lot of them!
