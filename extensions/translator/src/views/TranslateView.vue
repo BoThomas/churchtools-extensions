@@ -18,6 +18,24 @@
       {{ error }}
     </Message>
 
+    <Message
+      v-if="hasInvalidLanguages"
+      severity="warn"
+      :closable="false"
+      icon="pi pi-exclamation-triangle"
+    >
+      <div class="space-y-2">
+        <p>
+          <strong>Invalid Language Configuration:</strong> One or more selected
+          languages are no longer available in the current options.
+        </p>
+        <p class="text-sm">
+          This may occur after updating the extension. Please select valid
+          languages from the dropdowns below and save your settings.
+        </p>
+      </div>
+    </Message>
+
     <div v-if="hasApiCredentials" class="space-y-6">
       <!-- Translation Options -->
       <Fieldset
@@ -45,6 +63,7 @@
                 :options="inputLanguages"
                 filter
                 optionLabel="name"
+                optionValue="code"
                 :disabled="inputsDisabled"
                 placeholder="Select input language"
                 pt:root="flex-1 rounded-e-none"
@@ -81,6 +100,7 @@
                 :options="outputLanguages"
                 filter
                 optionLabel="name"
+                optionValue="code"
                 :disabled="inputsDisabled"
                 placeholder="Select output language"
                 pt:root="flex-1 rounded-e-none"
@@ -799,6 +819,23 @@ const profanityOptions = translationOptions.profanityOptions;
 const partialThresholds = translationOptions.partialThresholds;
 const presentationFonts = translationOptions.presentationFonts;
 
+// Computed properties for language validation
+const inputLanguageValid = computed(() => {
+  return inputLanguages.some(
+    (lang) => lang.code === store.settings.inputLanguage,
+  );
+});
+
+const outputLanguageValid = computed(() => {
+  return outputLanguages.some(
+    (lang) => lang.code === store.settings.outputLanguage,
+  );
+});
+
+const hasInvalidLanguages = computed(() => {
+  return !inputLanguageValid.value || !outputLanguageValid.value;
+});
+
 // Computed
 const hasApiCredentials = computed(() => {
   return !!store.apiSettings.azureApiKey && !!store.apiSettings.azureRegion;
@@ -985,8 +1022,8 @@ async function startTest() {
         userId: user.value.id!,
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage.code,
-        outputLanguage: store.settings.outputLanguage.code,
+        inputLanguage: store.settings.inputLanguage,
+        outputLanguage: store.settings.outputLanguage,
         mode: 'test',
       });
       const sessionId = await store.startSession(session);
@@ -1345,8 +1382,8 @@ async function startRecording() {
         userId: user.value.id!,
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage.code,
-        outputLanguage: store.settings.outputLanguage.code,
+        inputLanguage: store.settings.inputLanguage,
+        outputLanguage: store.settings.outputLanguage,
         mode: 'presentation',
       });
       const sessionId = await store.startSession(session);
