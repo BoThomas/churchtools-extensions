@@ -817,6 +817,9 @@ const outputLanguages = ref([
   { name: 'Russian', code: 'ru' },
   { name: 'Ukrainian', code: 'uk' },
   { name: 'Tamil', code: 'ta' },
+  { name: 'Chinese (Literary)', code: 'lzh' },
+  { name: 'Chinese (Simplified)', code: 'zh-Hans' },
+  { name: 'Chinese (Traditional)', code: 'zh-Hant' },
 ]);
 
 const profanityOptions = ref(['raw', 'remove', 'mask']);
