@@ -341,42 +341,21 @@ function generateReleaseNotes(
 // Update or create CHANGELOG.md
 function updateChangelog(extensionPath, entry) {
   const changelogPath = path.join(extensionPath, 'CHANGELOG.md');
+  const header =
+    '# Changelog\n\nAll notable changes to this extension will be documented in this file.\n\n';
 
-  let content = '';
+  let existingEntries = '';
   if (fs.existsSync(changelogPath)) {
-    content = fs.readFileSync(changelogPath, 'utf8');
-  } else {
-    content =
-      '# Changelog\n\nAll notable changes to this extension will be documented in this file.\n\n';
-  }
-
-  // Insert new entry after the header
-  const headerEndIndex = content.indexOf(
-    '\n\n',
-    content.indexOf('# Changelog'),
-  );
-  if (headerEndIndex !== -1) {
-    const insertPosition = content.indexOf('\n\n', headerEndIndex + 2);
-    if (
-      insertPosition !== -1 &&
-      content.substring(insertPosition + 2, insertPosition + 5) === '## '
-    ) {
-      // There are existing entries, insert before them
-      content =
-        content.substring(0, insertPosition + 2) +
-        entry +
-        '\n---\n\n' +
-        content.substring(insertPosition + 2);
-    } else {
-      // No existing entries, append after header
-      content = content.substring(0, headerEndIndex + 2) + '\n' + entry;
+    const content = fs.readFileSync(changelogPath, 'utf8');
+    // Find where the first ## starts (existing entries)
+    const firstEntryIndex = content.indexOf('\n## ');
+    if (firstEntryIndex !== -1) {
+      existingEntries = '\n---\n' + content.substring(firstEntryIndex + 1);
     }
-  } else {
-    // No header found, just append
-    content += '\n' + entry;
   }
 
-  fs.writeFileSync(changelogPath, content);
+  const newContent = header + entry + existingEntries;
+  fs.writeFileSync(changelogPath, newContent);
   return changelogPath;
 }
 
@@ -707,7 +686,8 @@ async function main() {
             c('cyan', `\n   Creating GitHub release for ${released.tag}...`),
           );
 
-          const title = `${released.ext.name} v${released.newVersion}`;
+          const releaseDate = released.tag.substring(0, 10); // Extract YYYY-MM-DD from tag
+          const title = `${releaseDate} — ${released.ext.name} v${released.newVersion}`;
           const success = createGitHubRelease(
             released.tag,
             title,
