@@ -2,6 +2,17 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2025-12-06 — ct-translator v1.2.0
+
+Add chinese output languages
+
+### Changes
+
+- 00ffd67 feat(translator): add additional Chinese language options for output
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2025-12-06-ct-translator-v1.1.0...2025-12-06-ct-translator-v1.2.0
+
+---
 ## 2025-12-06 — ct-translator v1.1.0
 
 New chinese input languages
