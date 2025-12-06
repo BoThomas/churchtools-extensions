@@ -377,8 +377,10 @@ export const useTranslatorStore = defineStore('translator', () => {
     }
 
     selectedVariantId.value = variantId;
-    // Deep clone to ensure no shared references
-    settings.value = JSON.parse(JSON.stringify(variant.value.settings));
+    // Deep clone to ensure no shared references and migrate if needed
+    settings.value = migrateSettings(
+      JSON.parse(JSON.stringify(variant.value.settings)),
+    );
     hasUnsavedChanges.value = false;
 
     // Wait for Vue to process watchers before clearing the flag
