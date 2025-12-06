@@ -69,11 +69,13 @@ Perfect for churches with international members who need live translation during
 > [!CAUTION]
 > This is in BETA and not fully tested yet.
 
-Running Dinner with deep ChurchTools group integration.
+Organize Running Dinner events with deep ChurchTools integration.
 
-An alternative version of Running Dinner that uses ChurchTools' native group management. Participants register by joining ChurchTools groups, and all data lives within the ChurchTools ecosystem.
+A Running Dinner (Progressive Dinner) is a social dining event where participants travel between different homes for each course. Each group hosts one course (starter, main, or dessert) and visits other groups for the remaining courses – a fun way to meet new people and share food together!
 
-**Features**: ChurchTools group integration • Custom field-based registration • Email notifications • Same powerful grouping and routing algorithms
+This extension uses ChurchTools' native group management for registration. Participants join a ChurchTools group and fill out custom fields for their preferences, dietary restrictions, and partner choices. The extension then handles group formation, route optimization, and email notifications.
+
+**Features**: ChurchTools group integration • Custom field-based registration • Smart group creation • Route optimization • Email notifications
 
 <table>
   <tr>
