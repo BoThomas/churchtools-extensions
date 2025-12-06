@@ -37,9 +37,18 @@
       <div class="space-y-4">
         <div
           v-if="eventMetadataStore.events.length === 0"
-          class="text-center py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
+          class="py-12 bg-surface-50 dark:bg-surface-800 rounded-lg"
+          style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          "
         >
-          <i class="pi pi-calendar text-4xl text-surface-400 mb-4"></i>
+          <i
+            class="pi pi-calendar text-4xl text-surface-400"
+            style="margin-bottom: 1rem; display: block"
+          ></i>
           <p class="text-surface-600 dark:text-surface-400">
             No events yet. Create your first running dinner event!
           </p>
