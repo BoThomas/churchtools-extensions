@@ -18,6 +18,24 @@
       {{ error }}
     </Message>
 
+    <Message
+      v-if="hasInvalidLanguages"
+      severity="warn"
+      :closable="false"
+      icon="pi pi-exclamation-triangle"
+    >
+      <div class="space-y-2">
+        <p>
+          <strong>Invalid Language Configuration:</strong> One or more selected
+          languages are no longer available in the current options.
+        </p>
+        <p class="text-sm">
+          This may occur after updating the extension. Please select valid
+          languages from the dropdowns below and save your settings.
+        </p>
+      </div>
+    </Message>
+
     <div v-if="hasApiCredentials" class="space-y-6">
       <!-- Translation Options -->
       <Fieldset
@@ -43,7 +61,9 @@
                 id="input-lang"
                 v-model="store.settings.inputLanguage"
                 :options="inputLanguages"
+                filter
                 optionLabel="name"
+                optionValue="code"
                 :disabled="inputsDisabled"
                 placeholder="Select input language"
                 pt:root="flex-1 rounded-e-none"
@@ -78,7 +98,9 @@
                 id="output-lang"
                 v-model="store.settings.outputLanguage"
                 :options="outputLanguages"
+                filter
                 optionLabel="name"
+                optionValue="code"
                 :disabled="inputsDisabled"
                 placeholder="Select output language"
                 pt:root="flex-1 rounded-e-none"
@@ -280,7 +302,10 @@
             </div>
             <Popover ref="fontPopover">
               <div class="max-w-xs">
-                <p class="text-sm">Font used to display the translated text.</p>
+                <p class="text-sm">
+                  Font used to display the translated text. Make sure the font
+                  has all the characters of the selected output language.
+                </p>
               </div>
             </Popover>
           </div>
@@ -743,6 +768,7 @@ import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
+import translationOptions from '../translation-options.json';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -789,65 +815,29 @@ const currentLiveTranslationOri = ref('');
 const finalizedParagraphs = ref<string[]>([]);
 const currentLiveTranslation = ref('');
 
-// Language options
-const inputLanguages = ref([
-  { name: 'German', code: 'de-DE' },
-  { name: 'English', code: 'en-US' },
-  { name: 'Spanish', code: 'es-ES' },
-  { name: 'French', code: 'fr-FR' },
-  { name: 'Turkish', code: 'tr-TR' },
-  { name: 'Arabic (EG)', code: 'ar-EG' },
-  { name: 'Tamil', code: 'ta-IN' },
-  { name: 'Chinese (Mandarin)', code: 'zh-CN' },
-  { name: 'Chinese (Cantonese)', code: 'zh-HK' },
-]);
+// Language options (imported from JSON config)
+const inputLanguages = translationOptions.inputLanguages;
+const outputLanguages = translationOptions.outputLanguages;
+const profanityOptions = translationOptions.profanityOptions;
+const partialThresholds = translationOptions.partialThresholds;
+const presentationFonts = translationOptions.presentationFonts;
 
-const outputLanguages = ref([
-  { name: 'German', code: 'de' },
-  { name: 'English', code: 'en' },
-  { name: 'Spanish', code: 'es' },
-  { name: 'Portuguese', code: 'pt' },
-  { name: 'French', code: 'fr' },
-  { name: 'Italian', code: 'it' },
-  { name: 'Polish', code: 'pl' },
-  { name: 'Turkish', code: 'tr' },
-  { name: 'Arabic', code: 'ar' },
-  { name: 'Kurdish', code: 'ku' },
-  { name: 'Croatian', code: 'hr' },
-  { name: 'Russian', code: 'ru' },
-  { name: 'Ukrainian', code: 'uk' },
-  { name: 'Tamil', code: 'ta' },
-  { name: 'Chinese (Literary)', code: 'lzh' },
-  { name: 'Chinese (Simplified)', code: 'zh-Hans' },
-  { name: 'Chinese (Traditional)', code: 'zh-Hant' },
-]);
+// Computed properties for language validation
+const inputLanguageValid = computed(() => {
+  return inputLanguages.some(
+    (lang) => lang.code === store.settings.inputLanguage,
+  );
+});
 
-const profanityOptions = ref(['raw', 'remove', 'mask']);
+const outputLanguageValid = computed(() => {
+  return outputLanguages.some(
+    (lang) => lang.code === store.settings.outputLanguage,
+  );
+});
 
-const partialThresholds = ref([
-  '1',
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '10',
-  '11',
-  '12',
-  '13',
-  '14',
-  '15',
-]);
-
-const presentationFonts = ref([
-  'Arial',
-  'Verdana',
-  'Times New Roman',
-  'Palatino',
-]);
+const hasInvalidLanguages = computed(() => {
+  return !inputLanguageValid.value || !outputLanguageValid.value;
+});
 
 // Computed
 const hasApiCredentials = computed(() => {
@@ -1035,8 +1025,8 @@ async function startTest() {
         userId: user.value.id!,
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage.code,
-        outputLanguage: store.settings.outputLanguage.code,
+        inputLanguage: store.settings.inputLanguage,
+        outputLanguage: store.settings.outputLanguage,
         mode: 'test',
       });
       const sessionId = await store.startSession(session);
@@ -1395,8 +1385,8 @@ async function startRecording() {
         userId: user.value.id!,
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage.code,
-        outputLanguage: store.settings.outputLanguage.code,
+        inputLanguage: store.settings.inputLanguage,
+        outputLanguage: store.settings.outputLanguage,
         mode: 'presentation',
       });
       const sessionId = await store.startSession(session);

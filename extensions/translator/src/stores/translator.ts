@@ -17,8 +17,8 @@ export interface ApiSettings {
 
 export interface TranslatorSettings {
   // Translation Options
-  inputLanguage: { name: string; code: string };
-  outputLanguage: { name: string; code: string };
+  inputLanguage: string; // Language code (e.g., 'de-DE')
+  outputLanguage: string; // Language code (e.g., 'en')
   profanityOption: 'raw' | 'remove' | 'mask';
   stablePartialResultThreshold: string;
   phraseList: string;
@@ -52,8 +52,8 @@ export interface UsageStats {
 }
 
 const DEFAULT_SETTINGS: TranslatorSettings = {
-  inputLanguage: { name: 'German', code: 'de-DE' },
-  outputLanguage: { name: 'English', code: 'en' },
+  inputLanguage: 'de-DE',
+  outputLanguage: 'en',
   profanityOption: 'raw',
   stablePartialResultThreshold: '5',
   phraseList: '',
@@ -109,6 +109,31 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   // Track initialization to prevent duplicate category creation during parallel calls
   let categoriesInitializing: Promise<void> | null = null;
+
+  /**
+   * Migrate old settings format (object with name/code) to new format (code string only)
+   */
+  function migrateSettings(settings: any): TranslatorSettings {
+    const migrated = { ...settings };
+
+    // Migrate inputLanguage if it's an object
+    if (
+      typeof settings.inputLanguage === 'object' &&
+      settings.inputLanguage?.code
+    ) {
+      migrated.inputLanguage = settings.inputLanguage.code;
+    }
+
+    // Migrate outputLanguage if it's an object
+    if (
+      typeof settings.outputLanguage === 'object' &&
+      settings.outputLanguage?.code
+    ) {
+      migrated.outputLanguage = settings.outputLanguage.code;
+    }
+
+    return migrated as TranslatorSettings;
+  }
 
   /**
    * Initialize categories
@@ -237,8 +262,9 @@ export const useTranslatorStore = defineStore('translator', () => {
           : list[0];
 
         selectedVariantId.value = variantToLoad.id;
-        settings.value = JSON.parse(
-          JSON.stringify(variantToLoad.value.settings),
+        // Migrate settings if they're in old format
+        settings.value = migrateSettings(
+          JSON.parse(JSON.stringify(variantToLoad.value.settings)),
         );
       }
 

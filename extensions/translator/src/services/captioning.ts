@@ -1,8 +1,8 @@
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 
 export interface CaptioningConfig {
-  inputLanguage: { name: string; code: string };
-  outputLanguage: { name: string; code: string };
+  inputLanguage: string; // Language code (e.g., 'de-DE')
+  outputLanguage: string; // Language code (e.g., 'en')
   profanityOption: 'raw' | 'remove' | 'mask';
   stablePartialResultThreshold: string;
   phraseList: string;
@@ -57,8 +57,8 @@ export class CaptioningService {
       this.apiKey,
       this.apiRegion,
     );
-    speechConfig.speechRecognitionLanguage = this.config.inputLanguage.code;
-    speechConfig.addTargetLanguage(this.config.outputLanguage.code);
+    speechConfig.speechRecognitionLanguage = this.config.inputLanguage;
+    speechConfig.addTargetLanguage(this.config.outputLanguage);
 
     // profanity filter
     let profanityOption = sdk.ProfanityOption.Masked;
@@ -120,9 +120,7 @@ export class CaptioningService {
     };
 
     this.recognizer.recognizing = (_s: any, e: any) => {
-      const translation = e.result.translations.get(
-        this.config.outputLanguage.code,
-      );
+      const translation = e.result.translations.get(this.config.outputLanguage);
       if (
         sdk.ResultReason.TranslatingSpeech === e.result.reason &&
         translation &&
@@ -133,9 +131,7 @@ export class CaptioningService {
     };
 
     this.recognizer.recognized = (_s: any, e: any) => {
-      const translation = e.result.translations.get(
-        this.config.outputLanguage.code,
-      );
+      const translation = e.result.translations.get(this.config.outputLanguage);
       if (
         sdk.ResultReason.TranslatedSpeech === e.result.reason &&
         translation &&
