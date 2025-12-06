@@ -302,7 +302,10 @@
             </div>
             <Popover ref="fontPopover">
               <div class="max-w-xs">
-                <p class="text-sm">Font used to display the translated text.</p>
+                <p class="text-sm">
+                  Font used to display the translated text. Make sure the font
+                  has all the characters of the selected output language.
+                </p>
               </div>
             </Popover>
           </div>
