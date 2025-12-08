@@ -1,6 +1,6 @@
 # ChurchTools Translator
 
-Real-time speech-to-text translation for church services and events, powered by Microsoft Azure Cognitive Services.
+Real-time speech-to-text translation for church services and events, powered by Microsoft Foundry (formerly Cognitive Services) "Speech-Service".
 
 > [!IMPORTANT]
 > **Extension Key:** `translator` — You'll need this key when installing the extension in ChurchTools.
@@ -66,14 +66,14 @@ The Translator extension enables real-time translation of spoken language during
 ## Requirements
 
 - A ChurchTools instance with Extension support
-- Microsoft Azure Cognitive Services account (Speech Services)
+- Microsoft Azure account with a ["Speech-Service" Resource](https://azure.microsoft.com/en-us/pricing/details/cognitive-services/speech-services/) (you can start with a free tier for 5h/month of speech-to-text)
 - A microphone for the speaker/translator plugged into the PC running ChurchTools-Website
 - A screen or projector for displaying translations
 
 ## Azure Setup
 
 1. Go to [Azure Portal](https://portal.azure.com)
-2. Create a "Speech Services" resource (part of Cognitive Services)
+2. Create a "Speech Services" resource
 3. Navigate to "Keys and Endpoint" under the resource overview
 4. Copy one of the keys and the region
 5. Enter them in the extension's Settings tab
