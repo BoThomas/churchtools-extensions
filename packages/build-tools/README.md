@@ -38,7 +38,7 @@ pnpm release
 - **Multi-select**: Release multiple extensions in one session
 - **Commit history**: Shows commits since last release for each extension
 - **Semver bumping**: Choose patch/minor/major version bump
-- **Git integration**: Creates commits and annotated tags (`<pkg-name>@<version>`)
+- **Git integration**: Creates commits and annotated tags using a date-prefixed format (`<YYYY-MM-DD>-<pkg-name>-v<version>`), e.g. `2025-12-06-ct-translator-v1.3.1`
 - **Changelog generation**: Automatically creates/updates `CHANGELOG.md`
 - **GitHub releases**: Optionally creates GitHub releases with ZIP attachments
 - **Push control**: Choose whether to push commits and tags
@@ -51,7 +51,7 @@ pnpm release
   gh auth login
   ```
 
-**Tag format:** `<package-name>@<version>` (e.g., `ct-translator@1.0.2`)
+**Tag format:** `YYYY-MM-DD-<package-name>-v<version>` (e.g., `2025-12-06-ct-translator-v1.3.1`)
 
 **Release workflow:**
 

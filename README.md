@@ -296,7 +296,7 @@ The release tool will:
 3. Prompt for semver bump (patch/minor/major)
 4. Prompt for a release summary
 5. Update `package.json` version
-6. Create a git commit and annotated tag (`<pkg-name>@<version>`)
+6. Create a git commit and annotated tag using the date-prefixed format (`YYYY-MM-DD-<pkg-name>-v<version>`) (e.g., `2025-12-06-ct-translator-v1.3.1`)
 7. Build and package the extension
 8. Generate/update `CHANGELOG.md`
 9. Optionally create a GitHub release with the ZIP attached
