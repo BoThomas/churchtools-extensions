@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import archiver from 'archiver';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,38 +68,55 @@ if (!fs.existsSync(distDir)) {
   process.exit(1);
 }
 
-try {
-  // Remove old archive if exists
-  if (fs.existsSync(archivePath)) {
-    fs.unlinkSync(archivePath);
-    console.log('   Removed old archive');
+(async () => {
+  try {
+    // Remove old archive if exists
+    if (fs.existsSync(archivePath)) {
+      fs.unlinkSync(archivePath);
+      console.log('   Removed old archive');
+    }
+
+    // Create ZIP archive using archiver (cross-platform)
+    await new Promise((resolve, reject) => {
+      const output = fs.createWriteStream(archivePath);
+      const archive = archiver('zip', {
+        zlib: { level: 9 }, // Maximum compression
+      });
+
+      output.on('close', () => {
+        console.log('✅ Package created successfully!');
+        console.log(`📁 Location: ${archivePath}`);
+        console.log('');
+        console.log('🚀 Next steps:');
+        console.log('   1. Upload the ZIP file to your ChurchTools instance');
+        console.log('   2. Go to Admin → Extensions → Upload Extension');
+        console.log('   3. Select the ZIP file and install');
+        console.log('');
+
+        // Show file size
+        const stats = fs.statSync(archivePath);
+        const fileSizeInKB = (stats.size / 1024).toFixed(2);
+        const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+        if (stats.size > 1024 * 1024) {
+          console.log(`📊 Package size: ${fileSizeInMB} MB`);
+        } else {
+          console.log(`📊 Package size: ${fileSizeInKB} KB`);
+        }
+
+        resolve();
+      });
+
+      archive.on('error', (err) => {
+        reject(err);
+      });
+
+      archive.pipe(output);
+      archive.directory(distDir, false);
+      archive.finalize();
+    });
+  } catch (error) {
+    console.error('❌ Error creating package:', error.message);
+    process.exit(1);
   }
-
-  // Create ZIP archive using system zip command
-  execSync(`cd "${distDir}" && zip -r "${archivePath}" .`, {
-    stdio: 'inherit',
-  });
-
-  console.log('✅ Package created successfully!');
-  console.log(`📁 Location: ${archivePath}`);
-  console.log('');
-  console.log('🚀 Next steps:');
-  console.log('   1. Upload the ZIP file to your ChurchTools instance');
-  console.log('   2. Go to Admin → Extensions → Upload Extension');
-  console.log('   3. Select the ZIP file and install');
-  console.log('');
-
-  // Show file size
-  const stats = fs.statSync(archivePath);
-  const fileSizeInKB = (stats.size / 1024).toFixed(2);
-  const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
-
-  if (stats.size > 1024 * 1024) {
-    console.log(`📊 Package size: ${fileSizeInMB} MB`);
-  } else {
-    console.log(`📊 Package size: ${fileSizeInKB} KB`);
-  }
-} catch (error) {
-  console.error('❌ Error creating package:', error.message);
-  process.exit(1);
-}
+})();
