@@ -598,6 +598,19 @@
           </div>
         </template>
         <div class="flex flex-col gap-4">
+          <!-- Info about popup blocking in multi-window mode -->
+          <Message
+            v-if="store.settings.presentation.mode === 'multi-window'"
+            severity="info"
+            :closable="true"
+            icon="pi pi-info-circle"
+          >
+            <strong>Browser Popup Blocker:</strong> Multi-window mode opens
+            multiple browser windows. Most browsers block this by default. If
+            windows don't open, look for a popup blocker icon in your browser's
+            address bar and allow popups for this site.
+          </Message>
+
           <!-- Warning for too many languages in split mode -->
           <Message
             v-if="hasTooManyLanguagesForSplit"
