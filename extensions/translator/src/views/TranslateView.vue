@@ -677,7 +677,11 @@
       >
         <Fieldset>
           <template #legend>
-            <span class="font-semibold">Speech to Text</span>
+            <span class="font-semibold">
+              {{
+                getLanguageDisplayName(store.settings.inputLanguage, 'input')
+              }}
+            </span>
           </template>
           <div class="space-y-2 max-h-96 overflow-y-auto">
             <p
@@ -711,10 +715,7 @@
           >
             <template #legend>
               <span class="font-semibold">
-                {{
-                  outputLanguages.find((l) => l.code === langCode)?.name ||
-                  langCode
-                }}
+                {{ getLanguageDisplayName(langCode, 'output') }}
               </span>
             </template>
             <div class="space-y-2 max-h-96 overflow-y-auto">
@@ -801,6 +802,7 @@ import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import translationOptions from '../translation-options.json';
+import { getLanguageDisplayName } from '../utils/languageHelpers';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -1079,7 +1081,7 @@ async function startTest() {
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguages[0], // Use first language for logging
+        outputLanguages: store.settings.outputLanguages,
         mode: 'test',
       });
       const sessionId = await store.startSession(session);
@@ -1439,7 +1441,7 @@ async function startRecording() {
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguages[0], // Use first language for logging
+        outputLanguages: store.settings.outputLanguages,
         mode: 'presentation',
       });
       const sessionId = await store.startSession(session);

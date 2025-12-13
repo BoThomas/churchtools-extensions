@@ -811,10 +811,12 @@ export const useTranslatorStore = defineStore('translator', () => {
 
       const modes: TranslationSession['mode'][] = ['presentation', 'test'];
       const languages = [
-        { in: 'de-DE', out: 'en' },
-        { in: 'en', out: 'de-DE' },
-        { in: 'es', out: 'en' },
-        { in: 'fr', out: 'en' },
+        { in: 'de-DE', out: ['en'] },
+        { in: 'en-GB', out: ['de'] },
+        { in: 'es-ES', out: ['en'] },
+        { in: 'fr-FR', out: ['en', 'de'] },
+        { in: 'de-DE', out: ['en', 'es'] },
+        { in: 'en-US', out: ['de', 'fr', 'es'] },
       ];
 
       const now = new Date();
@@ -885,7 +887,7 @@ export const useTranslatorStore = defineStore('translator', () => {
             pausedDurationMinutes > 0 ? pausedDurationMinutes : undefined,
           durationMinutes: status === 'completed' ? durationMinutes : undefined,
           inputLanguage: lang.in,
-          outputLanguage: lang.out,
+          outputLanguages: lang.out,
           mode,
           status,
         };
