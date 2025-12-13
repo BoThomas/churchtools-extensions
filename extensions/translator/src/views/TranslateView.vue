@@ -533,7 +533,8 @@
                 </p>
                 <p class="text-sm mt-2">
                   <strong>Multi-window:</strong> Opens a separate window for
-                  each output language (coming soon).
+                  each output language. Each window shows translations for one
+                  language only.
                 </p>
                 <p class="text-sm mt-2 text-surface-500">
                   Note: This setting only applies when multiple output languages
@@ -573,8 +574,8 @@
           >
             Split-screen presentation mode supports up to 6 output languages.
             You have {{ store.settings.outputLanguages.length }} selected.
-            Please reduce the number of output languages or use Multi-window
-            mode (coming soon).
+            Please reduce the number of output languages or switch to
+            Multi-window mode.
           </Message>
 
           <!-- Main Flow: Test & Presentation -->
@@ -897,6 +898,7 @@ const state = ref({
   isPresentationRunning: false,
   isPaused: false,
   isRecordingStarted: false, // Tracks if presentation window clicked start
+  presentationSessionId: null as string | null, // Unique ID for this presentation session
 });
 
 const error = ref<string | null>(null);
@@ -929,9 +931,14 @@ const presentationFonts = translationOptions.presentationFonts;
 
 // Presentation mode options
 const presentationModeOptions = [
-  { name: 'Split-screen (up to 6 languages)', value: 'split' },
-  // { name: 'Multi-window (coming soon)', value: 'multi-window' },
+  { name: 'Split-screen (2-6 languages)', value: 'split' },
+  { name: 'Multi-window', value: 'multi-window' },
 ];
+
+// Generate unique session ID for presentation isolation
+function generateSessionId(): string {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
 
 // Computed properties for language validation
 const inputLanguageValid = computed(() => {
@@ -1097,25 +1104,31 @@ function updatePresentationWindow(
   translations: Record<string, string>,
   isLive: boolean,
 ) {
+  if (!state.value.presentationSessionId) return;
+
   const data = {
     translations, // All language translations for current text
     isLive,
     finalized: finalizedParagraphsByLang.value, // All finalized paragraphs per language
     timestamp: Date.now(),
   };
-  localStorage.setItem('translator_presentation', JSON.stringify(data));
+  const key = `translator_presentation_${state.value.presentationSessionId}`;
+  localStorage.setItem(key, JSON.stringify(data));
 }
 
 // Clear presentation data in localStorage (used on pause/start to avoid showing
 // stale content in the presentation window)
 function clearPresentationWindowStorage() {
+  if (!state.value.presentationSessionId) return;
+
   const data = {
     translations: {},
     isLive: false,
     finalized: {},
     timestamp: Date.now(),
   };
-  localStorage.setItem('translator_presentation', JSON.stringify(data));
+  const key = `translator_presentation_${state.value.presentationSessionId}`;
+  localStorage.setItem(key, JSON.stringify(data));
 }
 
 // Start test mode
@@ -1204,31 +1217,56 @@ async function startPresentation() {
   finalizedParagraphsOri.value = [];
   currentLiveTranslationByLang.value = {};
   currentLiveTranslationOri.value = '';
+
+  // Generate unique session ID for this presentation
+  const sessionId = generateSessionId();
+  state.value.presentationSessionId = sessionId;
+
   // Clear any existing presentation data to avoid showing previous session
   clearPresentationWindowStorage();
 
   try {
     state.value.isPresentationRunning = true;
 
-    // Save settings to localStorage for presentation window
-    localStorage.setItem('translator_settings', JSON.stringify(store.settings));
-    localStorage.removeItem('translator_paused');
-    localStorage.removeItem('translator_recording_started');
+    // Save settings to localStorage with session ID
+    localStorage.setItem(
+      `translator_settings_${sessionId}`,
+      JSON.stringify(store.settings),
+    );
+    localStorage.removeItem(`translator_paused_${sessionId}`);
+    localStorage.removeItem(`translator_recording_started_${sessionId}`);
 
-    // Open presentation window - just open the same page which will detect the hash
-    const presentationUrl = `${window.location.origin}${window.location.pathname}?presentation=true`;
-    window.open(presentationUrl, '_blank', 'toolbar=0,location=0,menubar=0');
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
 
-    toast.add({
-      severity: 'success',
-      summary: 'Presentation Started',
-      detail: 'Presentation window opened',
-      life: 3000,
-    });
+    // Open presentation windows based on mode
+    if (store.settings.presentation.mode === 'multi-window') {
+      // Open one window per output language
+      for (const lang of store.settings.outputLanguages) {
+        const url = `${baseUrl}?presentation=true&session=${sessionId}&lang=${lang}`;
+        window.open(url, `_blank_${lang}`, 'toolbar=0,location=0,menubar=0');
+      }
+      toast.add({
+        severity: 'success',
+        summary: 'Presentation Started',
+        detail: `${store.settings.outputLanguages.length} presentation windows opened`,
+        life: 3000,
+      });
+    } else {
+      // Open single window for split-screen mode
+      const url = `${baseUrl}?presentation=true&session=${sessionId}`;
+      window.open(url, '_blank', 'toolbar=0,location=0,menubar=0');
+      toast.add({
+        severity: 'success',
+        summary: 'Presentation Started',
+        detail: 'Presentation window opened',
+        life: 3000,
+      });
+    }
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start presentation';
     console.error('startPresentation failed', e);
     state.value.isPresentationRunning = false;
+    state.value.presentationSessionId = null;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -1254,7 +1292,11 @@ function pauseOrResume() {
       currentLiveTranslationByLang.value = {};
       currentLiveTranslationOri.value = '';
       clearPresentationWindowStorage();
-      localStorage.removeItem('translator_paused');
+      if (state.value.presentationSessionId) {
+        localStorage.removeItem(
+          `translator_paused_${state.value.presentationSessionId}`,
+        );
+      }
       captioningService?.start();
     }
 
@@ -1276,10 +1318,12 @@ function pauseOrResume() {
       currentLiveTranslationByLang.value = {};
       currentLiveTranslationOri.value = '';
       clearPresentationWindowStorage();
-      localStorage.setItem(
-        'translator_paused',
-        JSON.stringify({ isPaused: true }),
-      );
+      if (state.value.presentationSessionId) {
+        localStorage.setItem(
+          `translator_paused_${state.value.presentationSessionId}`,
+          JSON.stringify({ isPaused: true }),
+        );
+      }
     }
 
     // Stop heartbeat and mark session as paused
@@ -1333,13 +1377,27 @@ function stop() {
       },
       accept: () => {
         captioningService?.stop();
-        localStorage.removeItem('translator_settings');
-        localStorage.removeItem('translator_paused');
-        localStorage.removeItem('translator_presentation');
-        localStorage.removeItem('translator_recording_started');
+
+        // Clean up session-based localStorage
+        if (state.value.presentationSessionId) {
+          localStorage.removeItem(
+            `translator_settings_${state.value.presentationSessionId}`,
+          );
+          localStorage.removeItem(
+            `translator_paused_${state.value.presentationSessionId}`,
+          );
+          localStorage.removeItem(
+            `translator_presentation_${state.value.presentationSessionId}`,
+          );
+          localStorage.removeItem(
+            `translator_recording_started_${state.value.presentationSessionId}`,
+          );
+        }
+
         state.value.isPresentationRunning = false;
         state.value.isPaused = false;
         state.value.isRecordingStarted = false;
+        state.value.presentationSessionId = null;
 
         // Stop heartbeat
         stopHeartbeat();
@@ -1601,11 +1659,14 @@ watch(
 
 // Listen for presentation window close via storage events
 function handleStorageEvent(e: StorageEvent) {
-  if (e.key === 'translator_recording_started' && e.newValue) {
+  const sessionId = state.value.presentationSessionId;
+  if (!sessionId) return;
+
+  if (e.key === `translator_recording_started_${sessionId}` && e.newValue) {
     // Presentation window clicked "Start & Fullscreen"
     startRecording();
   } else if (
-    e.key === 'translator_settings' &&
+    e.key === `translator_settings_${sessionId}` &&
     e.newValue === null &&
     state.value.isPresentationRunning
   ) {
@@ -1614,6 +1675,7 @@ function handleStorageEvent(e: StorageEvent) {
     state.value.isPresentationRunning = false;
     state.value.isPaused = false;
     state.value.isRecordingStarted = false;
+    state.value.presentationSessionId = null;
 
     // Stop heartbeat
     stopHeartbeat();

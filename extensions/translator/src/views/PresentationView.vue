@@ -87,14 +87,16 @@ import { getLanguageDisplayName } from '../utils/languageHelpers';
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
 
 const textEl = ref<HTMLDivElement>();
-// Single-language support
-const finalizedParagraphs = ref<string[]>([]);
-const currentLiveTranslation = ref('');
-// Multi-language support
+// Multi-language format (works for single language too)
 const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
 const currentLiveTranslationByLang = ref<Record<string, string>>({});
 const outputLanguages = ref<string[]>([]);
 const languagePaneRefs = ref<Record<string, HTMLDivElement>>({});
+
+// Extract session ID and language from URL
+const urlParams = new URLSearchParams(window.location.search);
+const sessionId = urlParams.get('session') || '';
+const specificLanguage = urlParams.get('lang') || null; // For multi-window mode
 
 const initPhase = ref(true);
 const isTestMode = ref(false);
@@ -133,14 +135,13 @@ const splitViewGridClass = computed(() => {
   return 'grid-cols-1';
 });
 
-// For single language mode, extract the first language's data
+// For single language mode, extract the first language's data from multi-language structure
 const singleLanguageParagraphs = computed(() => {
   if (outputLanguages.value.length === 1) {
     const lang = outputLanguages.value[0];
     return finalizedParagraphsByLang.value[lang] || [];
   }
-  // Fallback to legacy data if no output languages set
-  return finalizedParagraphs.value;
+  return [];
 });
 
 const singleLanguageLiveTranslation = computed(() => {
@@ -148,18 +149,23 @@ const singleLanguageLiveTranslation = computed(() => {
     const lang = outputLanguages.value[0];
     return currentLiveTranslationByLang.value[lang] || '';
   }
-  // Fallback to legacy data if no output languages set
-  return currentLiveTranslation.value;
+  return '';
 });
 
 // Load settings from localStorage
 function loadSettings() {
-  const settingsStr = localStorage.getItem('translator_settings');
+  const settingsStr = localStorage.getItem(`translator_settings_${sessionId}`);
   if (settingsStr) {
     try {
       const settings: TranslatorSettings = JSON.parse(settingsStr);
       presentationSettings.value = settings.presentation;
-      outputLanguages.value = settings.outputLanguages || [];
+
+      // If specific language is set (multi-window mode), only show that language
+      if (specificLanguage) {
+        outputLanguages.value = [specificLanguage];
+      } else {
+        outputLanguages.value = settings.outputLanguages || [];
+      }
     } catch (e) {
       console.error('Failed to load settings from localStorage', e);
     }
@@ -168,35 +174,42 @@ function loadSettings() {
 
 // Listen for storage events (cross-window communication)
 function handleStorageEvent(e: StorageEvent) {
-  if (e.key === 'translator_presentation' && e.newValue) {
+  const presentationKey = `translator_presentation_${sessionId}`;
+  const settingsKey = `translator_settings_${sessionId}`;
+  const pausedKey = `translator_paused_${sessionId}`;
+
+  if (e.key === presentationKey && e.newValue) {
     try {
       const data = JSON.parse(e.newValue);
 
-      // Handle new multi-language format
-      if (data.translations && typeof data.translations === 'object') {
-        if (data.isLive) {
-          currentLiveTranslationByLang.value = data.translations;
+      if (data.isLive) {
+        // Filter to specific language if in multi-window mode
+        if (specificLanguage) {
+          currentLiveTranslationByLang.value = {
+            [specificLanguage]: data.translations[specificLanguage] || '',
+          };
         } else {
-          finalizedParagraphsByLang.value = data.finalized || {};
-          currentLiveTranslationByLang.value = {};
+          currentLiveTranslationByLang.value = data.translations;
         }
       } else {
-        // Fallback to single-language format
-        if (data.isLive) {
-          currentLiveTranslation.value = data.text || '';
+        // Filter to specific language if in multi-window mode
+        if (specificLanguage) {
+          finalizedParagraphsByLang.value = {
+            [specificLanguage]: data.finalized[specificLanguage] || [],
+          };
         } else {
-          finalizedParagraphs.value = data.finalized || [];
-          currentLiveTranslation.value = '';
+          finalizedParagraphsByLang.value = data.finalized || {};
         }
+        currentLiveTranslationByLang.value = {};
       }
       scrollToBottom();
     } catch (err) {
       console.error('Failed to parse presentation data', err);
     }
-  } else if (e.key === 'translator_settings' && e.newValue === null) {
+  } else if (e.key === settingsKey && e.newValue === null) {
     // Settings removed means presentation stopped
     window.close();
-  } else if (e.key === 'translator_paused') {
+  } else if (e.key === pausedKey) {
     if (initPhase.value) {
       return;
     }
@@ -208,8 +221,8 @@ function handleStorageEvent(e: StorageEvent) {
       }
     } else {
       // Paused
-      finalizedParagraphs.value = [];
-      currentLiveTranslation.value = '';
+      finalizedParagraphsByLang.value = {};
+      currentLiveTranslationByLang.value = {};
       if (isTestMode.value) {
         isRunning.value = false;
       }
@@ -243,7 +256,7 @@ function startPresentation() {
 
   // Signal to control window that we're ready to start recording
   localStorage.setItem(
-    'translator_recording_started',
+    `translator_recording_started_${sessionId}`,
     JSON.stringify({ started: true, timestamp: Date.now() }),
   );
 
@@ -262,16 +275,22 @@ function startTestMode() {
   isRunning.value = true;
   isTestMode.value = true;
 
-  // Generate dummy text in an endless loop
+  // Generate dummy text in an endless loop for all languages
   (async function generateLoop() {
     while (isTestMode.value) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (isRunning.value) {
         // If not paused
         const paragraph = lorem.generateParagraphs(1);
-        finalizedParagraphs.value.push(paragraph);
-        currentLiveTranslation.value =
-          finalizedParagraphs.value.length + ' ' + lorem.generateSentences(1);
+        // Add to all output languages
+        for (const lang of outputLanguages.value) {
+          if (!finalizedParagraphsByLang.value[lang]) {
+            finalizedParagraphsByLang.value[lang] = [];
+          }
+          finalizedParagraphsByLang.value[lang].push(paragraph);
+          currentLiveTranslationByLang.value[lang] =
+            finalizedParagraphsByLang.value[lang].length + ' ' + lorem.generateSentences(1);
+        }
         scrollToBottom();
       }
     }
@@ -288,27 +307,36 @@ function startTestMode() {
 
 // Check for existing presentation data on mount
 function checkExistingData() {
-  const presentationStr = localStorage.getItem('translator_presentation');
+  const presentationStr = localStorage.getItem(`translator_presentation_${sessionId}`);
   if (presentationStr) {
     try {
       const data = JSON.parse(presentationStr);
-      // Handle multi-language format
+      // Always expect multi-language format
       if (
         data.finalized &&
         typeof data.finalized === 'object' &&
         !Array.isArray(data.finalized)
       ) {
-        const hasData = Object.values(data.finalized).some(
-          (arr: any) => Array.isArray(arr) && arr.length > 0,
-        );
-        if (hasData) {
-          finalizedParagraphsByLang.value = data.finalized;
-          initPhase.value = false;
+        // Filter to specific language if in multi-window mode
+        if (specificLanguage) {
+          const hasData =
+            data.finalized[specificLanguage] &&
+            data.finalized[specificLanguage].length > 0;
+          if (hasData) {
+            finalizedParagraphsByLang.value = {
+              [specificLanguage]: data.finalized[specificLanguage],
+            };
+            initPhase.value = false;
+          }
+        } else {
+          const hasData = Object.values(data.finalized).some(
+            (arr: any) => Array.isArray(arr) && arr.length > 0,
+          );
+          if (hasData) {
+            finalizedParagraphsByLang.value = data.finalized;
+            initPhase.value = false;
+          }
         }
-      } else if (data.finalized && data.finalized.length > 0) {
-        // Single-language format
-        finalizedParagraphs.value = data.finalized;
-        initPhase.value = false;
       }
     } catch (e) {
       console.error('Failed to load existing presentation data', e);
@@ -339,10 +367,10 @@ onMounted(() => {
     isRunning.value = false;
 
     // Remove settings to signal the control window that presentation closed
-    localStorage.removeItem('translator_settings');
-    localStorage.removeItem('translator_paused');
-    localStorage.removeItem('translator_presentation');
-    localStorage.removeItem('translator_recording_started');
+    localStorage.removeItem(`translator_settings_${sessionId}`);
+    localStorage.removeItem(`translator_paused_${sessionId}`);
+    localStorage.removeItem(`translator_presentation_${sessionId}`);
+    localStorage.removeItem(`translator_recording_started_${sessionId}`);
   });
 });
 
