@@ -11,30 +11,60 @@
       '--presentation-live-color': presentationSettings.liveColor,
     }"
   >
-    <!-- Initialization Phase -->
+    <!-- Fullscreen Instructions -->
     <div
-      v-if="initPhase"
-      class="flex flex-col items-center justify-center gap-8 p-8 h-full w-full bg-black/50"
+      v-if="showFullscreenInstructions"
+      class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-primary text-primary-contrast px-6 py-3 rounded-lg shadow-lg z-50 max-w-2xl"
+      style="font-size: 16px !important"
     >
-      <Button
-        label="Start & Fullscreen"
-        icon="pi pi-video"
-        class="h-32 w-full max-w-2xl text-4xl"
-        severity="success"
-        @click="startPresentation"
-      />
-      <Button
-        label="Test & Fullscreen"
-        icon="pi pi-compass"
-        class="h-24 w-full max-w-2xl text-3xl"
-        severity="secondary"
-        @click="startTestMode"
-      />
+      <div class="flex items-start gap-3">
+        <i
+          class="pi pi-info-circle text-xl mt-0.5"
+          style="font-size: 20px !important"
+        ></i>
+        <div class="flex-1">
+          <p class="font-semibold mb-1" style="font-size: 16px !important">
+            Enter Fullscreen Mode
+          </p>
+          <p class="text-sm" style="font-size: 14px !important">
+            <span v-if="osType === 'mac'"
+              >Press
+              <kbd
+                class="px-2 py-1 bg-white/20 rounded"
+                style="font-size: 14px !important"
+                >⌃⌘F</kbd
+              >
+              or
+              <kbd
+                class="px-2 py-1 bg-white/20 rounded"
+                style="font-size: 14px !important"
+                >Ctrl+Cmd+F</kbd
+              ></span
+            >
+            <span v-else
+              >Press
+              <kbd
+                class="px-2 py-1 bg-white/20 rounded"
+                style="font-size: 14px !important"
+                >F11</kbd
+              ></span
+            >
+            to enter fullscreen mode.
+          </p>
+        </div>
+        <button
+          @click="dismissFullscreenInstructions"
+          class="text-white/70 hover:text-white"
+          style="font-size: 16px !important"
+        >
+          <i class="pi pi-times" style="font-size: 16px !important"></i>
+        </button>
+      </div>
     </div>
 
     <!-- Translation Display - Multi-language Split Screen -->
     <div
-      v-else-if="outputLanguages.length > 1"
+      v-if="outputLanguages.length > 1"
       class="split-view-container"
       :class="splitViewGridClass"
     >
@@ -80,8 +110,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
-import { LoremIpsum } from 'lorem-ipsum';
-import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import type { TranslatorSettings } from '../stores/translator';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
@@ -98,20 +126,27 @@ const urlParams = new URLSearchParams(window.location.search);
 const sessionId = urlParams.get('session') || '';
 const specificLanguage = urlParams.get('lang') || null; // For multi-window mode
 
-const initPhase = ref(true);
-const isTestMode = ref(false);
-const isRunning = ref(false);
+// Fullscreen instructions
+const showFullscreenInstructions = ref(true);
+const osType = ref<'mac' | 'windows' | 'linux'>('windows');
 
-const lorem = new LoremIpsum({
-  sentencesPerParagraph: {
-    max: 5,
-    min: 1,
-  },
-  wordsPerSentence: {
-    max: 20,
-    min: 4,
-  },
-});
+// Detect OS for fullscreen instructions
+function detectOS() {
+  const platform = navigator.platform.toLowerCase();
+  const userAgent = navigator.userAgent.toLowerCase();
+
+  if (platform.includes('mac') || userAgent.includes('mac')) {
+    osType.value = 'mac';
+  } else if (platform.includes('linux') || userAgent.includes('linux')) {
+    osType.value = 'linux';
+  } else {
+    osType.value = 'windows';
+  }
+}
+
+function dismissFullscreenInstructions() {
+  showFullscreenInstructions.value = false;
+}
 
 // Default presentation settings
 const presentationSettings = ref({
@@ -210,22 +245,14 @@ function handleStorageEvent(e: StorageEvent) {
     // Settings removed means presentation stopped
     window.close();
   } else if (e.key === pausedKey) {
-    if (initPhase.value) {
-      return;
-    }
     if (e.newValue === null) {
-      // Resumed
-      initPhase.value = false;
-      if (isTestMode.value) {
-        isRunning.value = true;
-      }
-    } else {
-      // Paused
+      // Resumed - clear to avoid showing stale content
       finalizedParagraphsByLang.value = {};
       currentLiveTranslationByLang.value = {};
-      if (isTestMode.value) {
-        isRunning.value = false;
-      }
+    } else {
+      // Paused - clear display
+      finalizedParagraphsByLang.value = {};
+      currentLiveTranslationByLang.value = {};
     }
   }
 }
@@ -249,65 +276,11 @@ function scrollToBottom() {
   });
 }
 
-// Start presentation and enter fullscreen
-function startPresentation() {
-  initPhase.value = false;
-  isRunning.value = true;
-
-  // Signal to control window that we're ready to start recording
-  localStorage.setItem(
-    `translator_recording_started_${sessionId}`,
-    JSON.stringify({ started: true, timestamp: Date.now() }),
-  );
-
-  // Request fullscreen
-  const elem = document.documentElement;
-  if (elem.requestFullscreen) {
-    elem.requestFullscreen().catch((err) => {
-      console.error('Failed to enter fullscreen', err);
-    });
-  }
-}
-
-// Start test mode with Lorem Ipsum text
-function startTestMode() {
-  initPhase.value = false;
-  isRunning.value = true;
-  isTestMode.value = true;
-
-  // Generate dummy text in an endless loop for all languages
-  (async function generateLoop() {
-    while (isTestMode.value) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      if (isRunning.value) {
-        // If not paused
-        const paragraph = lorem.generateParagraphs(1);
-        // Add to all output languages
-        for (const lang of outputLanguages.value) {
-          if (!finalizedParagraphsByLang.value[lang]) {
-            finalizedParagraphsByLang.value[lang] = [];
-          }
-          finalizedParagraphsByLang.value[lang].push(paragraph);
-          currentLiveTranslationByLang.value[lang] =
-            finalizedParagraphsByLang.value[lang].length + ' ' + lorem.generateSentences(1);
-        }
-        scrollToBottom();
-      }
-    }
-  })();
-
-  // Request fullscreen
-  const elem = document.documentElement;
-  if (elem.requestFullscreen) {
-    elem.requestFullscreen().catch((err) => {
-      console.error('Failed to enter fullscreen', err);
-    });
-  }
-}
-
 // Check for existing presentation data on mount
 function checkExistingData() {
-  const presentationStr = localStorage.getItem(`translator_presentation_${sessionId}`);
+  const presentationStr = localStorage.getItem(
+    `translator_presentation_${sessionId}`,
+  );
   if (presentationStr) {
     try {
       const data = JSON.parse(presentationStr);
@@ -319,23 +292,13 @@ function checkExistingData() {
       ) {
         // Filter to specific language if in multi-window mode
         if (specificLanguage) {
-          const hasData =
-            data.finalized[specificLanguage] &&
-            data.finalized[specificLanguage].length > 0;
-          if (hasData) {
+          if (data.finalized[specificLanguage]) {
             finalizedParagraphsByLang.value = {
               [specificLanguage]: data.finalized[specificLanguage],
             };
-            initPhase.value = false;
           }
         } else {
-          const hasData = Object.values(data.finalized).some(
-            (arr: any) => Array.isArray(arr) && arr.length > 0,
-          );
-          if (hasData) {
-            finalizedParagraphsByLang.value = data.finalized;
-            initPhase.value = false;
-          }
+          finalizedParagraphsByLang.value = data.finalized;
         }
       }
     } catch (e) {
@@ -347,6 +310,7 @@ function checkExistingData() {
 onMounted(() => {
   loadSettings();
   checkExistingData();
+  detectOS();
 
   // Hide the outer navigation element
   const navigation = document.getElementById('navigation');
@@ -360,17 +324,17 @@ onMounted(() => {
   // Listen for storage changes from the control window
   window.addEventListener('storage', handleStorageEvent);
 
+  // Auto-dismiss fullscreen instructions after 5 seconds
+  setTimeout(() => {
+    showFullscreenInstructions.value = false;
+  }, 5000);
+
   // Clean up on window close - signal to control window
   window.addEventListener('beforeunload', () => {
-    // Stop test mode
-    isTestMode.value = false;
-    isRunning.value = false;
-
     // Remove settings to signal the control window that presentation closed
     localStorage.removeItem(`translator_settings_${sessionId}`);
     localStorage.removeItem(`translator_paused_${sessionId}`);
     localStorage.removeItem(`translator_presentation_${sessionId}`);
-    localStorage.removeItem(`translator_recording_started_${sessionId}`);
   });
 });
 
@@ -532,5 +496,15 @@ onUnmounted(() => {
 .language-pane .live-translation {
   margin: var(--presentation-margin) !important;
   font-size: calc(var(--presentation-font-size) * 0.85) !important;
+}
+
+/* Fullscreen instructions keyboard shortcut styling */
+kbd {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.875rem;
 }
 </style>

@@ -590,8 +590,24 @@
                   label="Test in here"
                   icon="pi pi-compass"
                   @click="startTest"
-                  :disabled="state.isPresentationRunning || state.isTestRunning"
+                  :disabled="
+                    state.isPresentationRunning ||
+                    state.isTestRunning ||
+                    state.isTestPresentationRunning
+                  "
                   class="test-button w-full"
+                />
+                <Button
+                  label="Test Presentation"
+                  icon="pi pi-external-link"
+                  @click="startTestPresentation"
+                  :disabled="
+                    state.isPresentationRunning ||
+                    state.isTestRunning ||
+                    state.isTestPresentationRunning ||
+                    hasTooManyLanguagesForSplit
+                  "
+                  severity="secondary"
                 />
               </div>
             </div>
@@ -622,7 +638,8 @@
                     !(
                       (state.isPresentationRunning &&
                         state.isRecordingStarted) ||
-                      state.isTestRunning
+                      state.isTestRunning ||
+                      state.isTestPresentationRunning
                     )
                   "
                 />
@@ -635,7 +652,8 @@
                     !(
                       (state.isPresentationRunning &&
                         state.isRecordingStarted) ||
-                      state.isTestRunning
+                      state.isTestRunning ||
+                      state.isTestPresentationRunning
                     )
                   "
                   severity="warning"
@@ -645,7 +663,11 @@
                   icon="pi pi-stop"
                   @click="stop"
                   :disabled="
-                    !(state.isPresentationRunning || state.isTestRunning)
+                    !(
+                      state.isPresentationRunning ||
+                      state.isTestRunning ||
+                      state.isTestPresentationRunning
+                    )
                   "
                   severity="danger"
                   outlined
@@ -873,6 +895,7 @@ import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import translationOptions from '../translation-options.json';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
+import { LoremIpsum } from 'lorem-ipsum';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -899,6 +922,7 @@ const state = ref({
   isPaused: false,
   isRecordingStarted: false, // Tracks if presentation window clicked start
   presentationSessionId: null as string | null, // Unique ID for this presentation session
+  isTestPresentationRunning: false, // Tracks if test presentation mode is active
 });
 
 const error = ref<string | null>(null);
@@ -914,6 +938,19 @@ const newVariantName = ref('');
 let captioningService: CaptioningService | null = null;
 const sessionLogger = new SessionLogger();
 let heartbeatInterval: NodeJS.Timeout | null = null;
+let testPresentationInterval: NodeJS.Timeout | null = null;
+
+// Lorem Ipsum generator for test presentations
+const lorem = new LoremIpsum({
+  sentencesPerParagraph: {
+    max: 5,
+    min: 1,
+  },
+  wordsPerSentence: {
+    max: 20,
+    min: 4,
+  },
+});
 
 // Test mode output
 const finalizedParagraphsOri = ref<string[]>([]);
@@ -1276,6 +1313,102 @@ async function startPresentation() {
   }
 }
 
+// Start test presentation mode with Lorem Ipsum
+async function startTestPresentation() {
+  // Clear previous output
+  finalizedParagraphsByLang.value = {};
+  finalizedParagraphsOri.value = [];
+  currentLiveTranslationByLang.value = {};
+  currentLiveTranslationOri.value = '';
+
+  // Generate unique session ID for this test presentation
+  const sessionId = generateSessionId();
+  state.value.presentationSessionId = sessionId;
+
+  // Clear any existing presentation data
+  clearPresentationWindowStorage();
+
+  try {
+    state.value.isTestPresentationRunning = true;
+
+    // Save settings to localStorage with session ID
+    localStorage.setItem(
+      `translator_settings_${sessionId}`,
+      JSON.stringify(store.settings),
+    );
+    localStorage.removeItem(`translator_paused_${sessionId}`);
+
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+
+    // Open presentation windows based on mode
+    if (store.settings.presentation.mode === 'multi-window') {
+      // Open one window per output language
+      for (const lang of store.settings.outputLanguages) {
+        const url = `${baseUrl}?presentation=true&session=${sessionId}&lang=${lang}`;
+        window.open(url, `_blank_${lang}`, 'toolbar=0,location=0,menubar=0');
+      }
+      toast.add({
+        severity: 'success',
+        summary: 'Test Presentation Started',
+        detail: `${store.settings.outputLanguages.length} test presentation windows opened`,
+        life: 3000,
+      });
+    } else {
+      // Open single window for split-screen mode
+      const url = `${baseUrl}?presentation=true&session=${sessionId}`;
+      window.open(url, '_blank', 'toolbar=0,location=0,menubar=0');
+      toast.add({
+        severity: 'success',
+        summary: 'Test Presentation Started',
+        detail: 'Test presentation window opened',
+        life: 3000,
+      });
+    }
+
+    // Initialize finalized paragraphs for all languages
+    for (const lang of store.settings.outputLanguages) {
+      finalizedParagraphsByLang.value[lang] = [];
+    }
+
+    // Start generating lorem ipsum content
+    let showLive = true;
+    testPresentationInterval = setInterval(() => {
+      if (!state.value.isPaused) {
+        if (showLive) {
+          // Show live translation (preview) - different text per language
+          for (const lang of store.settings.outputLanguages) {
+            const liveText = lorem.generateSentences(1);
+            currentLiveTranslationByLang.value[lang] = liveText;
+          }
+          updatePresentationWindow(currentLiveTranslationByLang.value, true);
+        } else {
+          // Finalize the paragraph - different text per language with line numbers
+          for (const lang of store.settings.outputLanguages) {
+            const paragraph = lorem.generateParagraphs(1);
+            const lineNumber = finalizedParagraphsByLang.value[lang].length + 1;
+            const numberedParagraph = `${lineNumber}. ${paragraph}`;
+            finalizedParagraphsByLang.value[lang].push(numberedParagraph);
+          }
+          currentLiveTranslationByLang.value = {};
+          updatePresentationWindow({}, false);
+        }
+        showLive = !showLive;
+      }
+    }, 800);
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start test presentation';
+    console.error('startTestPresentation failed', e);
+    state.value.isTestPresentationRunning = false;
+    state.value.presentationSessionId = null;
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value,
+      life: 5000,
+    });
+  }
+}
+
 // Pause or resume
 function pauseOrResume() {
   const sessionId = sessionLogger.getCurrentSessionId();
@@ -1299,6 +1432,14 @@ function pauseOrResume() {
       }
       captioningService?.start();
     }
+    if (state.value.isTestPresentationRunning) {
+      // Resume test presentation - just remove paused flag
+      if (state.value.presentationSessionId) {
+        localStorage.removeItem(
+          `translator_paused_${state.value.presentationSessionId}`,
+        );
+      }
+    }
 
     // Resume heartbeat and session tracking
     if (sessionId) {
@@ -1318,6 +1459,15 @@ function pauseOrResume() {
       currentLiveTranslationByLang.value = {};
       currentLiveTranslationOri.value = '';
       clearPresentationWindowStorage();
+      if (state.value.presentationSessionId) {
+        localStorage.setItem(
+          `translator_paused_${state.value.presentationSessionId}`,
+          JSON.stringify({ isPaused: true }),
+        );
+      }
+    }
+    if (state.value.isTestPresentationRunning) {
+      // Pause test presentation - keep content, just set paused flag
       if (state.value.presentationSessionId) {
         localStorage.setItem(
           `translator_paused_${state.value.presentationSessionId}`,
@@ -1361,6 +1511,37 @@ function stop() {
         currentSession.value = null;
       }
     }
+  }
+
+  if (state.value.isTestPresentationRunning) {
+    // Stop lorem ipsum generation
+    if (testPresentationInterval) {
+      clearInterval(testPresentationInterval);
+      testPresentationInterval = null;
+    }
+
+    // Clean up session-based localStorage
+    if (state.value.presentationSessionId) {
+      localStorage.removeItem(
+        `translator_settings_${state.value.presentationSessionId}`,
+      );
+      localStorage.removeItem(
+        `translator_paused_${state.value.presentationSessionId}`,
+      );
+      localStorage.removeItem(
+        `translator_presentation_${state.value.presentationSessionId}`,
+      );
+    }
+
+    state.value.isTestPresentationRunning = false;
+    state.value.isPaused = false;
+    state.value.presentationSessionId = null;
+
+    toast.add({
+      severity: 'info',
+      summary: 'Test Presentation Stopped',
+      life: 3000,
+    });
   }
 
   if (state.value.isPresentationRunning) {
@@ -1667,42 +1848,60 @@ function handleStorageEvent(e: StorageEvent) {
     startRecording();
   } else if (
     e.key === `translator_settings_${sessionId}` &&
-    e.newValue === null &&
-    state.value.isPresentationRunning
+    e.newValue === null
   ) {
     // Presentation window was closed, stop everything
-    captioningService?.stop();
-    state.value.isPresentationRunning = false;
-    state.value.isPaused = false;
-    state.value.isRecordingStarted = false;
-    state.value.presentationSessionId = null;
+    if (state.value.isPresentationRunning) {
+      captioningService?.stop();
+      state.value.isPresentationRunning = false;
+      state.value.isPaused = false;
+      state.value.isRecordingStarted = false;
+      state.value.presentationSessionId = null;
 
-    // Stop heartbeat
-    stopHeartbeat();
+      // Stop heartbeat
+      stopHeartbeat();
 
-    // End session
-    const sessionId = sessionLogger.getCurrentSessionId();
-    if (sessionId && currentSession.value) {
-      try {
-        const endedSession = sessionLogger.endSession(
-          currentSession.value,
-          'completed',
-        );
-        store.endSession(sessionId, endedSession);
-      } catch (e) {
-        console.error('Failed to end session:', e);
-      } finally {
-        sessionLogger.clearCurrentSession();
-        currentSession.value = null;
+      // End session
+      const sessionId = sessionLogger.getCurrentSessionId();
+      if (sessionId && currentSession.value) {
+        try {
+          const endedSession = sessionLogger.endSession(
+            currentSession.value,
+            'completed',
+          );
+          store.endSession(sessionId, endedSession);
+        } catch (e) {
+          console.error('Failed to end session:', e);
+        } finally {
+          sessionLogger.clearCurrentSession();
+          currentSession.value = null;
+        }
       }
-    }
 
-    toast.add({
-      severity: 'info',
-      summary: 'Presentation Stopped',
-      detail: 'Presentation window was closed',
-      life: 3000,
-    });
+      toast.add({
+        severity: 'info',
+        summary: 'Presentation Stopped',
+        detail: 'Presentation window was closed',
+        life: 3000,
+      });
+    } else if (state.value.isTestPresentationRunning) {
+      // Test presentation window was closed
+      if (testPresentationInterval) {
+        clearInterval(testPresentationInterval);
+        testPresentationInterval = null;
+      }
+
+      state.value.isTestPresentationRunning = false;
+      state.value.isPaused = false;
+      state.value.presentationSessionId = null;
+
+      toast.add({
+        severity: 'info',
+        summary: 'Test Presentation Stopped',
+        detail: 'Presentation window was closed',
+        life: 3000,
+      });
+    }
   }
 }
 
