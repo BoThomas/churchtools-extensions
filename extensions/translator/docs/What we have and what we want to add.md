@@ -62,10 +62,10 @@
 
 ## Next TODOs
 
-- split up TranslateView into smaller components
 - add unit tests with Vitest
 - add report for which language is used for input and output and how often
 - use the way test mode is displaying things optionally for the presentation window as well so the operator can see what is captured in original tone and in the translated languages. this should also work for test presentation with the lorem ipsum in the same way.
+- show an alert on browsers that are not chromium-based as we have only tested those for presentation mode. also metion this in the translator reamdme as an alertbox or sth.
 
 ## Finished TODOs in current branch
 
