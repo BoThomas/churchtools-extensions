@@ -819,11 +819,16 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (!sessionsCategory) return;
 
       const users = [
-        { id: 1, name: 'Alice Example', email: 'alice@example.com' },
-        { id: 2, name: 'Bob Example', email: 'bob@example.com' },
-        { id: 3, name: 'Charlie Example', email: 'charlie@example.com' },
-        { id: 4, name: 'Dana Example', email: 'dana@example.com' },
-        { id: 5, name: 'Eve Example', email: 'eve@example.com' },
+        // Use negative IDs so dummy users can never collide with real ChurchTools user IDs
+        { id: -1001, name: 'Dummy Alice', email: 'dummy-alice@example.com' },
+        { id: -1002, name: 'Dummy Bob', email: 'dummy-bob@example.com' },
+        {
+          id: -1003,
+          name: 'Dummy Charlie',
+          email: 'dummy-charlie@example.com',
+        },
+        { id: -1004, name: 'Dummy Dana', email: 'dummy-dana@example.com' },
+        { id: -1005, name: 'Dummy Eve', email: 'dummy-eve@example.com' },
       ];
 
       const modes: TranslationSession['mode'][] = ['presentation', 'test'];

@@ -9,6 +9,7 @@
         severity="secondary"
       />
       <SecondaryButton
+        v-if="isDev"
         icon="pi pi-database"
         label="Add 100 Dummy Sessions"
         outlined
@@ -349,6 +350,8 @@ import { getLanguageDisplayName } from '../utils/languageHelpers';
 const store = useTranslatorStore();
 const confirm = useConfirm();
 const toast = useToast();
+
+const isDev = import.meta.env.DEV;
 
 // State
 const usageStats = ref<UsageStats[]>([]);
