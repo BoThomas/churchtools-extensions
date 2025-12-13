@@ -24,7 +24,7 @@
       :closable="false"
       icon="pi pi-exclamation-triangle"
     >
-      <div class="ml-2">
+      <div>
         <p>
           <strong>Invalid Language Configuration:</strong> Either you have no
           input/output language selected, or some selected languages are no
@@ -493,6 +493,55 @@
               </div>
             </Popover>
           </div>
+
+          <!-- Presentation Mode -->
+          <div class="flex flex-col gap-2">
+            <label for="presentation-mode" class="font-medium text-sm"
+              >Presentation Mode</label
+            >
+            <div class="flex items-stretch w-full">
+              <Select
+                id="presentation-mode"
+                v-model="store.settings.presentation.mode"
+                :options="presentationModeOptions"
+                optionLabel="name"
+                optionValue="value"
+                :disabled="
+                  inputsDisabled || store.settings.outputLanguages.length <= 1
+                "
+                placeholder="Select presentation mode"
+                pt:root="flex-1 rounded-e-none"
+              />
+              <span
+                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+              >
+                <Button
+                  icon="pi pi-question-circle"
+                  severity="secondary"
+                  text
+                  pt:root="rounded-none"
+                  @click="(e) => presentationModePopover.toggle(e)"
+                  :disabled="inputsDisabled"
+                />
+              </span>
+            </div>
+            <Popover ref="presentationModePopover">
+              <div class="max-w-sm">
+                <p class="text-sm">
+                  <strong>Split-screen:</strong> Shows all output languages in a
+                  single window with split layout (supports 2-6 languages).
+                </p>
+                <p class="text-sm mt-2">
+                  <strong>Multi-window:</strong> Opens a separate window for
+                  each output language (coming soon).
+                </p>
+                <p class="text-sm mt-2 text-surface-500">
+                  Note: This setting only applies when multiple output languages
+                  are selected. Single language always uses full-screen display.
+                </p>
+              </div>
+            </Popover>
+          </div>
         </div>
       </Fieldset>
 
@@ -512,6 +561,22 @@
           </div>
         </template>
         <div class="flex flex-col gap-4">
+          <!-- Warning for too many languages in split mode -->
+          <Message
+            v-if="
+              store.settings.presentation.mode === 'split' &&
+              store.settings.outputLanguages.length > 6
+            "
+            severity="warn"
+            :closable="false"
+            icon="pi pi-exclamation-triangle"
+          >
+            Split-screen presentation mode supports up to 6 output languages.
+            You have {{ store.settings.outputLanguages.length }} selected.
+            Please reduce the number of output languages or use Multi-window
+            mode (coming soon).
+          </Message>
+
           <!-- Main Flow: Test & Presentation -->
           <div class="controls-grid grid grid-cols-1 gap-3 items-stretch">
             <!-- Test in here -->
@@ -540,7 +605,11 @@
                   label="Presentation"
                   icon="pi pi-external-link"
                   @click="startPresentation"
-                  :disabled="state.isPresentationRunning || state.isTestRunning"
+                  :disabled="
+                    state.isPresentationRunning ||
+                    state.isTestRunning ||
+                    hasTooManyLanguagesForSplit
+                  "
                   severity="secondary"
                 />
                 <Button
@@ -820,6 +889,7 @@ const marginPopover = ref();
 const colorPopover = ref();
 const liveColorPopover = ref();
 const backgroundPopover = ref();
+const presentationModePopover = ref();
 
 // State
 const state = ref({
@@ -857,6 +927,12 @@ const profanityOptions = translationOptions.profanityOptions;
 const partialThresholds = translationOptions.partialThresholds;
 const presentationFonts = translationOptions.presentationFonts;
 
+// Presentation mode options
+const presentationModeOptions = [
+  { name: 'Split-screen (up to 6 languages)', value: 'split' },
+  // { name: 'Multi-window (coming soon)', value: 'multi-window' },
+];
+
 // Computed properties for language validation
 const inputLanguageValid = computed(() => {
   return inputLanguages.some(
@@ -878,6 +954,14 @@ const outputLanguagesValid = computed(() => {
 
 const hasInvalidLanguages = computed(() => {
   return !inputLanguageValid.value || !outputLanguagesValid.value;
+});
+
+// Check if split-screen mode has too many languages
+const hasTooManyLanguagesForSplit = computed(() => {
+  return (
+    store.settings.presentation.mode === 'split' &&
+    store.settings.outputLanguages.length > 6
+  );
 });
 
 // Computed
@@ -978,12 +1062,9 @@ function onTranslating(translations: Record<string, string>, original: string) {
   currentLiveTranslationByLang.value = translations;
   currentLiveTranslationOri.value = original;
 
-  // TODO: support multiple languages in presentation window
-  // Update presentation window if running (use first language for now)
+  // Update presentation window if running
   if (state.value.isPresentationRunning) {
-    const firstLang = store.settings.outputLanguages[0];
-    const translation = translations[firstLang] || '';
-    updatePresentationWindow(translation, true);
+    updatePresentationWindow(translations, true);
   }
 }
 
@@ -1000,12 +1081,9 @@ function onTranslated(translations: Record<string, string>, original: string) {
   currentLiveTranslationByLang.value = {};
   currentLiveTranslationOri.value = '';
 
-  // TODO: support multiple languages in presentation window
-  // Update presentation window if running (use first language for now)
+  // Update presentation window if running
   if (state.value.isPresentationRunning) {
-    const firstLang = store.settings.outputLanguages[0];
-    const translation = translations[firstLang] || '';
-    updatePresentationWindow(translation, false);
+    updatePresentationWindow(translations, false);
   }
 }
 
@@ -1015,12 +1093,14 @@ function onError(errorMsg: string) {
 }
 
 // Update presentation window via localStorage
-function updatePresentationWindow(text: string, isLive: boolean) {
-  const firstLang = store.settings.outputLanguages[0];
+function updatePresentationWindow(
+  translations: Record<string, string>,
+  isLive: boolean,
+) {
   const data = {
-    text,
+    translations, // All language translations for current text
     isLive,
-    finalized: finalizedParagraphsByLang.value[firstLang] || [],
+    finalized: finalizedParagraphsByLang.value, // All finalized paragraphs per language
     timestamp: Date.now(),
   };
   localStorage.setItem('translator_presentation', JSON.stringify(data));
@@ -1030,9 +1110,9 @@ function updatePresentationWindow(text: string, isLive: boolean) {
 // stale content in the presentation window)
 function clearPresentationWindowStorage() {
   const data = {
-    text: '',
+    translations: {},
     isLive: false,
-    finalized: [],
+    finalized: {},
     timestamp: Date.now(),
   };
   localStorage.setItem('translator_presentation', JSON.stringify(data));

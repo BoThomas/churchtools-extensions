@@ -31,6 +31,7 @@ export interface TranslatorSettings {
     color: string;
     liveColor: string;
     background: string;
+    mode: 'split' | 'multi-window'; // Split-screen or multiple windows
   };
 }
 
@@ -64,6 +65,7 @@ const DEFAULT_SETTINGS: TranslatorSettings = {
     color: 'white',
     liveColor: '#999',
     background: 'black',
+    mode: 'split',
   },
 };
 
@@ -143,6 +145,11 @@ export const useTranslatorStore = defineStore('translator', () => {
     } else if (!settings.outputLanguages) {
       // No output language set at all, use default
       migrated.outputLanguages = ['en'];
+    }
+
+    // Ensure presentation.mode exists (default to 'split')
+    if (migrated.presentation && !migrated.presentation.mode) {
+      migrated.presentation.mode = 'split';
     }
 
     return migrated as TranslatorSettings;
