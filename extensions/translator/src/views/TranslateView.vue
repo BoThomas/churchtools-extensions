@@ -506,9 +506,7 @@
                 :options="presentationModeOptions"
                 optionLabel="name"
                 optionValue="value"
-                :disabled="
-                  inputsDisabled || store.settings.outputLanguages.length <= 1
-                "
+                :disabled="inputsDisabled || presentationLanguages.length <= 1"
                 placeholder="Select presentation mode"
                 pt:root="flex-1 rounded-e-none"
               />
@@ -528,17 +526,55 @@
             <Popover ref="presentationModePopover">
               <div class="max-w-sm">
                 <p class="text-sm">
-                  <strong>Split-screen:</strong> Shows all output languages in a
-                  single window with split layout (supports 2-6 languages).
+                  <strong>Split-screen:</strong> Shows all languages in a single
+                  window with split layout (supports 2-6 languages total,
+                  including input language if enabled).
                 </p>
                 <p class="text-sm mt-2">
                   <strong>Multi-window:</strong> Opens a separate window for
-                  each output language. Each window shows translations for one
-                  language only.
+                  each language. Each window shows content for one language
+                  only.
                 </p>
                 <p class="text-sm mt-2 text-surface-500">
-                  Note: This setting only applies when multiple output languages
-                  are selected. Single language always uses full-screen display.
+                  Note: Single language always uses full-screen display without
+                  splitting.
+                </p>
+              </div>
+            </Popover>
+          </div>
+
+          <!-- Show Input Language -->
+          <div class="flex flex-col gap-2 md:pl-6">
+            <label class="font-medium text-sm md:block hidden">&nbsp;</label>
+            <div class="flex items-center gap-2 md:h-[42px]">
+              <Checkbox
+                id="show-input-language"
+                v-model="store.settings.presentation.showInputLanguage"
+                :binary="true"
+                :disabled="inputsDisabled"
+              />
+              <label
+                for="show-input-language"
+                class="font-medium text-sm cursor-pointer"
+                >Show Input Language</label
+              >
+              <Button
+                icon="pi pi-question-circle"
+                severity="secondary"
+                text
+                size="small"
+                @click="(e) => showInputLangPopover.toggle(e)"
+                :disabled="inputsDisabled"
+              />
+            </div>
+            <Popover ref="showInputLangPopover">
+              <div class="max-w-sm">
+                <p class="text-sm">
+                  When enabled, the original spoken input will be displayed
+                  alongside the translations in the presentation view. In
+                  split-screen mode, the input will appear as an additional
+                  pane. In multi-window mode, a separate window for the input
+                  language will be opened.
                 </p>
               </div>
             </Popover>
@@ -564,18 +600,26 @@
         <div class="flex flex-col gap-4">
           <!-- Warning for too many languages in split mode -->
           <Message
-            v-if="
-              store.settings.presentation.mode === 'split' &&
-              store.settings.outputLanguages.length > 6
-            "
+            v-if="hasTooManyLanguagesForSplit"
             severity="warn"
             :closable="false"
             icon="pi pi-exclamation-triangle"
           >
-            Split-screen presentation mode supports up to 6 output languages.
-            You have {{ store.settings.outputLanguages.length }} selected.
-            Please reduce the number of output languages or switch to
-            Multi-window mode.
+            <div v-if="store.settings.presentation.showInputLanguage">
+              Split-screen presentation mode supports up to 6 languages total (5
+              output + 1 input). You have
+              {{ presentationLanguages.length }} selected ({{
+                store.settings.outputLanguages.length
+              }}
+              output + 1 input). Please reduce the number of output languages or
+              disable "Show Input Language".
+            </div>
+            <div v-else>
+              Split-screen presentation mode supports up to 6 output languages.
+              You have {{ store.settings.outputLanguages.length }} selected.
+              Please reduce the number of output languages or switch to
+              Multi-window mode.
+            </div>
           </Message>
 
           <!-- Main Flow: Test & Presentation -->
@@ -662,7 +706,8 @@
                       (state.isPresentationRunning &&
                         state.isRecordingStarted) ||
                       state.isTestRunning ||
-                      state.isTestPresentationRunning
+                      (state.isTestPresentationRunning &&
+                        !state.presentationWindowsOpenedButNotStarted)
                     )
                   "
                 />
@@ -676,7 +721,8 @@
                       (state.isPresentationRunning &&
                         state.isRecordingStarted) ||
                       state.isTestRunning ||
-                      state.isTestPresentationRunning
+                      (state.isTestPresentationRunning &&
+                        !state.presentationWindowsOpenedButNotStarted)
                     )
                   "
                   severity="warning"
@@ -753,7 +799,8 @@
                     inputsDisabled ||
                     store.settingsSaving ||
                     !store.hasUnsavedChanges ||
-                    isDefaultVariantSelected
+                    isDefaultVariantSelected ||
+                    hasInvalidLanguages
                   "
                   :loading="store.settingsSaving"
                 />
@@ -762,7 +809,7 @@
                   icon="pi pi-plus"
                   variant="outlined"
                   @click="promptSaveAsNewVariant"
-                  :disabled="inputsDisabled"
+                  :disabled="inputsDisabled || hasInvalidLanguages"
                 />
               </div>
             </div>
@@ -784,85 +831,44 @@
       <!-- Test Mode Output -->
       <div
         v-if="state.isTestRunning"
-        class="grid gap-4"
-        :class="
-          store.settings.outputLanguages.length === 1
-            ? 'grid-cols-1 md:grid-cols-2'
-            : 'grid-cols-1'
-        "
+        class="grid gap-4 grid-cols-1 md:grid-cols-2"
       >
-        <Fieldset>
+        <Fieldset v-for="lang in operatorLanguages" :key="lang.code">
           <template #legend>
             <span class="font-semibold">
               {{
-                getLanguageDisplayName(store.settings.inputLanguage, 'input')
+                getLanguageDisplayName(
+                  lang.code,
+                  lang.isInput ? 'input' : 'output',
+                )
               }}
             </span>
           </template>
           <div
-            ref="testOutputOriRef"
+            :ref="
+              (el) => {
+                if (el) testOutputLangRefs[lang.code] = el as HTMLDivElement;
+              }
+            "
             class="space-y-2 max-h-96 overflow-y-auto"
           >
             <p
-              v-for="(paragraph, index) in finalizedParagraphsOri"
-              :key="'ori-' + index"
+              v-for="(paragraph, index) in finalizedParagraphsByLang[
+                lang.code
+              ] || []"
+              :key="'trans-' + lang.code + '-' + index"
               class="text-sm"
             >
               {{ paragraph }}
             </p>
             <p
-              v-if="currentLiveTranslationOri"
+              v-if="currentLiveTranslationByLang[lang.code]"
               class="text-sm text-surface-500"
             >
-              {{ currentLiveTranslationOri }}
+              {{ currentLiveTranslationByLang[lang.code] }}
             </p>
           </div>
         </Fieldset>
-
-        <!-- Display translations for each selected output language -->
-        <div
-          class="grid gap-4"
-          :class="
-            store.settings.outputLanguages.length === 1
-              ? ''
-              : 'grid-cols-1 md:grid-cols-2'
-          "
-        >
-          <Fieldset
-            v-for="langCode in store.settings.outputLanguages"
-            :key="langCode"
-          >
-            <template #legend>
-              <span class="font-semibold">
-                {{ getLanguageDisplayName(langCode, 'output') }}
-              </span>
-            </template>
-            <div
-              :ref="
-                (el) => {
-                  if (el) testOutputLangRefs[langCode] = el as HTMLDivElement;
-                }
-              "
-              class="space-y-2 max-h-96 overflow-y-auto"
-            >
-              <p
-                v-for="(paragraph, index) in finalizedParagraphsByLang[
-                  langCode
-                ] || []"
-                :key="'trans-' + langCode + '-' + index"
-                class="text-sm"
-              >
-                {{ paragraph }}
-              </p>
-              <p
-                v-if="currentLiveTranslationByLang[langCode]"
-                class="text-sm text-surface-500"
-              >
-                {{ currentLiveTranslationByLang[langCode] }}
-              </p>
-            </div>
-          </Fieldset>
-        </div>
       </div>
     </div>
   </div>
@@ -933,12 +939,18 @@ import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import Multiselect from '@churchtools-extensions/prime-volt/Multiselect.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
+import Checkbox from '@churchtools-extensions/prime-volt/Checkbox.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import translationOptions from '../translation-options.json';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
 import { LoremIpsum } from 'lorem-ipsum';
+
+interface LanguageItem {
+  code: string;
+  isInput: boolean;
+}
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -957,6 +969,7 @@ const colorPopover = ref();
 const liveColorPopover = ref();
 const backgroundPopover = ref();
 const presentationModePopover = ref();
+const showInputLangPopover = ref();
 
 // State
 const state = ref({
@@ -997,14 +1010,12 @@ const lorem = new LoremIpsum({
 });
 
 // Test mode output
-const finalizedParagraphsOri = ref<string[]>([]);
-const currentLiveTranslationOri = ref('');
 // Store translations per language: { languageCode: ['paragraph1', 'paragraph2', ...] }
+// Input language is stored here as well (when showInputLanguage is enabled)
 const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
 const currentLiveTranslationByLang = ref<Record<string, string>>({});
 
 // Refs for scrollable test output containers
-const testOutputOriRef = ref<HTMLDivElement | null>(null);
 const testOutputLangRefs = ref<Record<string, HTMLDivElement>>({});
 
 // Language options (imported from JSON config)
@@ -1048,11 +1059,47 @@ const hasInvalidLanguages = computed(() => {
   return !inputLanguageValid.value || !outputLanguagesValid.value;
 });
 
+// All languages with their roles (input + outputs)
+const allLanguages = computed<LanguageItem[]>(() => {
+  const langs: LanguageItem[] = [];
+
+  // Always add input language first
+  langs.push({
+    code: store.settings.inputLanguage,
+    isInput: true,
+  });
+
+  // Add all output languages
+  for (const langCode of store.settings.outputLanguages) {
+    langs.push({
+      code: langCode,
+      isInput: false,
+    });
+  }
+
+  return langs;
+});
+
+// Languages for operator views (test mode, future monitoring) - always includes input
+const operatorLanguages = computed<LanguageItem[]>(() => {
+  return allLanguages.value;
+});
+
+// Languages for presentation windows (audience view) - respects checkbox
+const presentationLanguages = computed<LanguageItem[]>(() => {
+  return allLanguages.value.filter((lang) => {
+    // Always include output languages
+    if (!lang.isInput) return true;
+    // Only include input if setting is enabled
+    return store.settings.presentation.showInputLanguage;
+  });
+});
+
 // Check if split-screen mode has too many languages
 const hasTooManyLanguagesForSplit = computed(() => {
   return (
     store.settings.presentation.mode === 'split' &&
-    store.settings.outputLanguages.length > 6
+    presentationLanguages.value.length > 6
   );
 });
 
@@ -1151,22 +1198,31 @@ function handleWindowClose() {
 
 // Translation callbacks
 function onTranslating(translations: Record<string, string>, original: string) {
-  currentLiveTranslationByLang.value = translations;
-  currentLiveTranslationOri.value = original;
+  // Build translations for operator (always includes input)
+  const operatorTranslations = { ...translations };
+  operatorTranslations[store.settings.inputLanguage] = original;
+
+  // Store full operator view
+  currentLiveTranslationByLang.value = operatorTranslations;
 
   // Scroll test output to bottom
   if (state.value.isTestRunning) {
     scrollTestOutputToBottom();
   }
 
-  // Update presentation window if running
+  // Update presentation window if running (filter for audience)
   if (state.value.isPresentationRunning) {
-    updatePresentationWindow(translations, true);
+    // Build translations for presentation (respects checkbox)
+    const presentationTranslations = { ...translations };
+    if (store.settings.presentation.showInputLanguage) {
+      presentationTranslations[store.settings.inputLanguage] = original;
+    }
+    updatePresentationWindow(presentationTranslations, true);
   }
 }
 
 function onTranslated(translations: Record<string, string>, original: string) {
-  // Add translations to each language's finalized paragraphs
+  // Add translations to each language's finalized paragraphs (output languages)
   for (const [lang, translation] of Object.entries(translations)) {
     if (!finalizedParagraphsByLang.value[lang]) {
       finalizedParagraphsByLang.value[lang] = [];
@@ -1174,9 +1230,14 @@ function onTranslated(translations: Record<string, string>, original: string) {
     finalizedParagraphsByLang.value[lang].push(translation);
   }
 
-  finalizedParagraphsOri.value.push(original);
+  // Always add input language for operator monitoring
+  if (!finalizedParagraphsByLang.value[store.settings.inputLanguage]) {
+    finalizedParagraphsByLang.value[store.settings.inputLanguage] = [];
+  }
+  finalizedParagraphsByLang.value[store.settings.inputLanguage].push(original);
+
+  // Clear live translations
   currentLiveTranslationByLang.value = {};
-  currentLiveTranslationOri.value = '';
 
   // Scroll test output to bottom
   if (state.value.isTestRunning) {
@@ -1185,7 +1246,12 @@ function onTranslated(translations: Record<string, string>, original: string) {
 
   // Update presentation window if running
   if (state.value.isPresentationRunning) {
-    updatePresentationWindow(translations, false);
+    // Build translations for presentation (respects checkbox)
+    const presentationTranslations = { ...translations };
+    if (store.settings.presentation.showInputLanguage) {
+      presentationTranslations[store.settings.inputLanguage] = original;
+    }
+    updatePresentationWindow(presentationTranslations, false);
   }
 }
 
@@ -1197,11 +1263,7 @@ function onError(errorMsg: string) {
 // Scroll test output containers to bottom
 function scrollTestOutputToBottom() {
   nextTick(() => {
-    // Scroll input language container
-    if (testOutputOriRef.value) {
-      testOutputOriRef.value.scrollTop = testOutputOriRef.value.scrollHeight;
-    }
-    // Scroll each output language container
+    // Scroll all language containers
     Object.values(testOutputLangRefs.value).forEach((element) => {
       if (element) {
         element.scrollTop = element.scrollHeight;
@@ -1251,9 +1313,7 @@ async function startTest() {
 
   // Clear previous test output
   finalizedParagraphsByLang.value = {};
-  finalizedParagraphsOri.value = [];
   currentLiveTranslationByLang.value = {};
-  currentLiveTranslationOri.value = '';
 
   try {
     // Create captioning service
@@ -1316,6 +1376,52 @@ async function startTest() {
   }
 }
 
+// Helper function to open presentation windows and handle common setup
+function openPresentationWindows(
+  sessionId: string,
+  options: {
+    isTest: boolean;
+    multiWindowSummary: string;
+    multiWindowDetail: string;
+    singleWindowSummary: string;
+    singleWindowDetail: string;
+  },
+) {
+  // Save settings to localStorage with session ID
+  localStorage.setItem(
+    `translator_settings_${sessionId}`,
+    JSON.stringify(store.settings),
+  );
+  localStorage.removeItem(`translator_paused_${sessionId}`);
+
+  const baseUrl = `${window.location.origin}${window.location.pathname}`;
+
+  // Open presentation windows based on mode
+  if (store.settings.presentation.mode === 'multi-window') {
+    // Open one window per language (including input if enabled)
+    for (const lang of presentationLanguages.value) {
+      const url = `${baseUrl}?presentation=true&session=${sessionId}&lang=${encodeURIComponent(lang.code)}`;
+      window.open(url, `_blank_${lang.code}`, 'toolbar=0,location=0,menubar=0');
+    }
+    toast.add({
+      severity: 'success',
+      summary: options.multiWindowSummary,
+      detail: options.multiWindowDetail,
+      life: 4000,
+    });
+  } else {
+    // Open single window for split-screen mode
+    const url = `${baseUrl}?presentation=true&session=${sessionId}`;
+    window.open(url, '_blank', 'toolbar=0,location=0,menubar=0');
+    toast.add({
+      severity: 'success',
+      summary: options.singleWindowSummary,
+      detail: options.singleWindowDetail,
+      life: 4000,
+    });
+  }
+}
+
 // Start presentation mode
 async function startPresentation() {
   if (!hasApiCredentials.value) {
@@ -1325,9 +1431,7 @@ async function startPresentation() {
 
   // Clear previous output
   finalizedParagraphsByLang.value = {};
-  finalizedParagraphsOri.value = [];
   currentLiveTranslationByLang.value = {};
-  currentLiveTranslationOri.value = '';
 
   // Generate unique session ID for this presentation
   const sessionId = generateSessionId();
@@ -1340,39 +1444,13 @@ async function startPresentation() {
     state.value.isPresentationRunning = true;
     state.value.presentationWindowsOpenedButNotStarted = true;
 
-    // Save settings to localStorage with session ID
-    localStorage.setItem(
-      `translator_settings_${sessionId}`,
-      JSON.stringify(store.settings),
-    );
-    localStorage.removeItem(`translator_paused_${sessionId}`);
-
-    const baseUrl = `${window.location.origin}${window.location.pathname}`;
-
-    // Open presentation windows based on mode
-    if (store.settings.presentation.mode === 'multi-window') {
-      // Open one window per output language
-      for (const lang of store.settings.outputLanguages) {
-        const url = `${baseUrl}?presentation=true&session=${sessionId}&lang=${lang}`;
-        window.open(url, `_blank_${lang}`, 'toolbar=0,location=0,menubar=0');
-      }
-      toast.add({
-        severity: 'success',
-        summary: 'Presentation Windows Opened',
-        detail: `${store.settings.outputLanguages.length} windows opened. Click "Start Recording" to begin.`,
-        life: 4000,
-      });
-    } else {
-      // Open single window for split-screen mode
-      const url = `${baseUrl}?presentation=true&session=${sessionId}`;
-      window.open(url, '_blank', 'toolbar=0,location=0,menubar=0');
-      toast.add({
-        severity: 'success',
-        summary: 'Presentation Window Opened',
-        detail: 'Click "Start Recording" to begin.',
-        life: 4000,
-      });
-    }
+    openPresentationWindows(sessionId, {
+      isTest: false,
+      multiWindowSummary: 'Presentation Windows Opened',
+      multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Recording" to begin.`,
+      singleWindowSummary: 'Presentation Window Opened',
+      singleWindowDetail: 'Click "Start Recording" to begin.',
+    });
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start presentation';
     console.error('startPresentation failed', e);
@@ -1391,9 +1469,7 @@ async function startPresentation() {
 async function startTestPresentation() {
   // Clear previous output
   finalizedParagraphsByLang.value = {};
-  finalizedParagraphsOri.value = [];
   currentLiveTranslationByLang.value = {};
-  currentLiveTranslationOri.value = '';
 
   // Generate unique session ID for this test presentation
   const sessionId = generateSessionId();
@@ -1406,43 +1482,17 @@ async function startTestPresentation() {
     state.value.isTestPresentationRunning = true;
     state.value.presentationWindowsOpenedButNotStarted = true;
 
-    // Save settings to localStorage with session ID
-    localStorage.setItem(
-      `translator_settings_${sessionId}`,
-      JSON.stringify(store.settings),
-    );
-    localStorage.removeItem(`translator_paused_${sessionId}`);
+    openPresentationWindows(sessionId, {
+      isTest: true,
+      multiWindowSummary: 'Test Presentation Windows Opened',
+      multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Test" to begin.`,
+      singleWindowSummary: 'Test Presentation Window Opened',
+      singleWindowDetail: 'Click "Start Test" to begin.',
+    });
 
-    const baseUrl = `${window.location.origin}${window.location.pathname}`;
-
-    // Open presentation windows based on mode
-    if (store.settings.presentation.mode === 'multi-window') {
-      // Open one window per output language
-      for (const lang of store.settings.outputLanguages) {
-        const url = `${baseUrl}?presentation=true&session=${sessionId}&lang=${lang}`;
-        window.open(url, `_blank_${lang}`, 'toolbar=0,location=0,menubar=0');
-      }
-      toast.add({
-        severity: 'success',
-        summary: 'Test Presentation Windows Opened',
-        detail: `${store.settings.outputLanguages.length} windows opened. Click "Start Test" to begin.`,
-        life: 4000,
-      });
-    } else {
-      // Open single window for split-screen mode
-      const url = `${baseUrl}?presentation=true&session=${sessionId}`;
-      window.open(url, '_blank', 'toolbar=0,location=0,menubar=0');
-      toast.add({
-        severity: 'success',
-        summary: 'Test Presentation Window Opened',
-        detail: 'Click "Start Test" to begin.',
-        life: 4000,
-      });
-    }
-
-    // Initialize finalized paragraphs for all languages
-    for (const lang of store.settings.outputLanguages) {
-      finalizedParagraphsByLang.value[lang] = [];
+    // Initialize finalized paragraphs for all languages (operator gets all)
+    for (const lang of operatorLanguages.value) {
+      finalizedParagraphsByLang.value[lang.code] = [];
     }
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start test presentation';
@@ -1541,19 +1591,36 @@ function startTestGeneration() {
       if (!state.value.isPaused) {
         if (showLive) {
           // Show live translation (preview) - different text per language
-          for (const lang of store.settings.outputLanguages) {
+          const liveTranslations: Record<string, string> = {};
+          // Generate for ALL languages (operator view)
+          for (const lang of operatorLanguages.value) {
             const liveText = lorem.generateSentences(1);
-            currentLiveTranslationByLang.value[lang] = liveText;
+            liveTranslations[lang.code] = liveText;
+            currentLiveTranslationByLang.value[lang.code] = liveText;
           }
-          updatePresentationWindow(currentLiveTranslationByLang.value, true);
+
+          // But only send presentation languages to windows
+          const presentationLiveTranslations: Record<string, string> = {};
+          for (const lang of presentationLanguages.value) {
+            presentationLiveTranslations[lang.code] =
+              liveTranslations[lang.code];
+          }
+          updatePresentationWindow(presentationLiveTranslations, true);
         } else {
           // Finalize the paragraph - different text per language with line numbers
-          for (const lang of store.settings.outputLanguages) {
+          // Generate for ALL languages (operator view)
+          for (const lang of operatorLanguages.value) {
+            // Ensure array exists for this language
+            if (!finalizedParagraphsByLang.value[lang.code]) {
+              finalizedParagraphsByLang.value[lang.code] = [];
+            }
             const paragraph = lorem.generateParagraphs(1);
-            const lineNumber = finalizedParagraphsByLang.value[lang].length + 1;
+            const lineNumber =
+              finalizedParagraphsByLang.value[lang.code].length + 1;
             const numberedParagraph = `${lineNumber}. ${paragraph}`;
-            finalizedParagraphsByLang.value[lang].push(numberedParagraph);
+            finalizedParagraphsByLang.value[lang.code].push(numberedParagraph);
           }
+
           currentLiveTranslationByLang.value = {};
           updatePresentationWindow({}, false);
         }
@@ -1592,9 +1659,7 @@ function pauseOrResume() {
     if (state.value.isPresentationRunning) {
       // Clear presenter's state to avoid showing stale content when resuming
       finalizedParagraphsByLang.value = {};
-      finalizedParagraphsOri.value = [];
       currentLiveTranslationByLang.value = {};
-      currentLiveTranslationOri.value = '';
       clearPresentationWindowStorage();
       if (state.value.presentationSessionId) {
         localStorage.removeItem(
@@ -1626,9 +1691,7 @@ function pauseOrResume() {
       // Clear presentation window and presenter's state to avoid showing
       // stale content when paused
       finalizedParagraphsByLang.value = {};
-      finalizedParagraphsOri.value = [];
       currentLiveTranslationByLang.value = {};
-      currentLiveTranslationOri.value = '';
       clearPresentationWindowStorage();
       if (state.value.presentationSessionId) {
         localStorage.setItem(
@@ -1845,6 +1908,16 @@ function onVariantChange(event: any) {
 }
 
 async function saveCurrentVariant() {
+  if (hasInvalidLanguages.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Invalid Configuration',
+      detail: 'Please select valid input and output languages before saving',
+      life: 3000,
+    });
+    return;
+  }
+
   try {
     await store.saveCurrentVariant(undefined, user.value?.id);
     toast.add({
@@ -1874,6 +1947,16 @@ async function saveAsNewVariant() {
       severity: 'warn',
       summary: 'Name Required',
       detail: 'Please enter a name for the new variant',
+      life: 3000,
+    });
+    return;
+  }
+
+  if (hasInvalidLanguages.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Invalid Configuration',
+      detail: 'Please select valid input and output languages before saving',
       life: 3000,
     });
     return;

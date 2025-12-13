@@ -32,6 +32,7 @@ export interface TranslatorSettings {
     liveColor: string;
     background: string;
     mode: 'split' | 'multi-window'; // Split-screen or multiple windows
+    showInputLanguage: boolean; // Show input language transcription in presentation
   };
 }
 
@@ -66,6 +67,7 @@ const DEFAULT_SETTINGS: TranslatorSettings = {
     liveColor: '#999',
     background: 'black',
     mode: 'split',
+    showInputLanguage: false,
   },
 };
 
@@ -150,6 +152,14 @@ export const useTranslatorStore = defineStore('translator', () => {
     // Ensure presentation.mode exists (default to 'split')
     if (migrated.presentation && !migrated.presentation.mode) {
       migrated.presentation.mode = 'split';
+    }
+
+    // Ensure presentation.showInputLanguage exists (default to false)
+    if (
+      migrated.presentation &&
+      migrated.presentation.showInputLanguage === undefined
+    ) {
+      migrated.presentation.showInputLanguage = false;
     }
 
     return migrated as TranslatorSettings;

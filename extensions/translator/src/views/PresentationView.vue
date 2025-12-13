@@ -167,6 +167,7 @@ const splitViewGridClass = computed(() => {
   if (count === 4) return 'grid-cols-2 grid-rows-2';
   if (count === 5) return 'grid-5-lang';
   if (count === 6) return 'grid-cols-3 grid-rows-2';
+  // Single language uses the non-split view
   return 'grid-cols-1';
 });
 
@@ -195,11 +196,18 @@ function loadSettings() {
       const settings: TranslatorSettings = JSON.parse(settingsStr);
       presentationSettings.value = settings.presentation;
 
+      // Build list of all languages to display (output + input if enabled)
+      const allLanguages = [...settings.outputLanguages];
+      if (settings.presentation.showInputLanguage) {
+        // Prepend input language to show it first
+        allLanguages.unshift(settings.inputLanguage);
+      }
+
       // If specific language is set (multi-window mode), only show that language
       if (specificLanguage) {
         outputLanguages.value = [specificLanguage];
       } else {
-        outputLanguages.value = settings.outputLanguages || [];
+        outputLanguages.value = allLanguages;
       }
     } catch (e) {
       console.error('Failed to load settings from localStorage', e);
