@@ -21,3 +21,5 @@ pnpm-lock.yaml
 
 # Ignore Turborepo cache
 .turbo/
+
+CHANGELOG.md
