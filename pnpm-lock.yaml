@@ -198,6 +198,9 @@ importers:
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1
+      country-flag-emoji-polyfill:
+        specifier: ^0.1.8
+        version: 0.1.8
       lorem-ipsum:
         specifier: ^2.0.8
         version: 2.0.8
@@ -898,6 +901,9 @@ packages:
 
   core-util-is@1.0.3:
     resolution: {integrity: sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==}
+
+  country-flag-emoji-polyfill@0.1.8:
+    resolution: {integrity: sha512-Mbah52sADS3gshUYhK5142gtUuJpHYOXlXtLFI3Ly4RqgkmPMvhX9kMZSTqDM8P7UqtSW99eHKFphhQSGXA3Cg==}
 
   crc-32@1.2.2:
     resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
@@ -2045,6 +2051,8 @@ snapshots:
       is-what: 5.5.0
 
   core-util-is@1.0.3: {}
+
+  country-flag-emoji-polyfill@0.1.8: {}
 
   crc-32@1.2.2: {}
 
