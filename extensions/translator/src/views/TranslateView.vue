@@ -580,14 +580,14 @@
 
           <!-- Main Flow: Test & Presentation -->
           <div class="controls-grid grid grid-cols-1 gap-3 items-stretch">
-            <!-- Test in here -->
+            <!-- Test Modes -->
             <div class="flex flex-col gap-1">
               <span class="text-xs font-medium uppercase text-surface-500">
-                Quick check
+                Testing
               </span>
               <div class="test-button-wrapper flex flex-col gap-2">
-                <Button
-                  label="Test in here"
+                <SecondaryButton
+                  label="Test Translation"
                   icon="pi pi-compass"
                   @click="startTest"
                   :disabled="
@@ -597,7 +597,7 @@
                   "
                   class="test-button w-full"
                 />
-                <Button
+                <SecondaryButton
                   label="Test Presentation"
                   icon="pi pi-external-link"
                   @click="startTestPresentation"
@@ -605,6 +605,7 @@
                     state.isPresentationRunning ||
                     state.isTestRunning ||
                     state.isTestPresentationRunning ||
+                    state.presentationWindowsOpenedButNotStarted ||
                     hasTooManyLanguagesForSplit
                   "
                   severity="secondary"
@@ -625,9 +626,31 @@
                   :disabled="
                     state.isPresentationRunning ||
                     state.isTestRunning ||
+                    state.isTestPresentationRunning ||
+                    state.presentationWindowsOpenedButNotStarted ||
                     hasTooManyLanguagesForSplit
                   "
                   severity="secondary"
+                />
+                <DangerButton
+                  v-if="
+                    state.presentationWindowsOpenedButNotStarted &&
+                    state.isPresentationRunning &&
+                    !state.isRecordingStarted
+                  "
+                  label="Start Recording"
+                  icon="pi pi-microphone"
+                  @click="startRecording"
+                />
+                <DangerButton
+                  v-if="
+                    state.presentationWindowsOpenedButNotStarted &&
+                    state.isTestPresentationRunning &&
+                    !state.isRecordingStarted
+                  "
+                  label="Start Test"
+                  icon="pi pi-microphone"
+                  @click="startTestGeneration"
                 />
                 <Button
                   v-if="state.isPaused"
@@ -666,7 +689,8 @@
                     !(
                       state.isPresentationRunning ||
                       state.isTestRunning ||
-                      state.isTestPresentationRunning
+                      state.isTestPresentationRunning ||
+                      state.presentationWindowsOpenedButNotStarted
                     )
                   "
                   severity="danger"
@@ -677,8 +701,8 @@
           </div>
           <div class="text-xs text-surface-500 flex items-center justify-end">
             <span>
-              Open the presentation window first, then control pause / stop from
-              here.
+              Open the presentation first, enter fullscreen/place window(s),
+              then start & control from here.
             </span>
           </div>
 
@@ -887,6 +911,8 @@ import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import ContrastButton from '@churchtools-extensions/prime-volt/ContrastButton.vue';
+import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import Multiselect from '@churchtools-extensions/prime-volt/Multiselect.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
@@ -920,9 +946,10 @@ const state = ref({
   isTestRunning: false,
   isPresentationRunning: false,
   isPaused: false,
-  isRecordingStarted: false, // Tracks if presentation window clicked start
+  isRecordingStarted: false, // Tracks if recording/generation has started (after Start button clicked)
   presentationSessionId: null as string | null, // Unique ID for this presentation session
   isTestPresentationRunning: false, // Tracks if test presentation mode is active
+  presentationWindowsOpenedButNotStarted: false, // Tracks if presentation windows are opened but not started
 });
 
 const error = ref<string | null>(null);
@@ -1264,6 +1291,7 @@ async function startPresentation() {
 
   try {
     state.value.isPresentationRunning = true;
+    state.value.presentationWindowsOpenedButNotStarted = true;
 
     // Save settings to localStorage with session ID
     localStorage.setItem(
@@ -1271,7 +1299,6 @@ async function startPresentation() {
       JSON.stringify(store.settings),
     );
     localStorage.removeItem(`translator_paused_${sessionId}`);
-    localStorage.removeItem(`translator_recording_started_${sessionId}`);
 
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
 
@@ -1284,9 +1311,9 @@ async function startPresentation() {
       }
       toast.add({
         severity: 'success',
-        summary: 'Presentation Started',
-        detail: `${store.settings.outputLanguages.length} presentation windows opened`,
-        life: 3000,
+        summary: 'Presentation Windows Opened',
+        detail: `${store.settings.outputLanguages.length} windows opened. Click "Start Recording" to begin.`,
+        life: 4000,
       });
     } else {
       // Open single window for split-screen mode
@@ -1294,9 +1321,9 @@ async function startPresentation() {
       window.open(url, '_blank', 'toolbar=0,location=0,menubar=0');
       toast.add({
         severity: 'success',
-        summary: 'Presentation Started',
-        detail: 'Presentation window opened',
-        life: 3000,
+        summary: 'Presentation Window Opened',
+        detail: 'Click "Start Recording" to begin.',
+        life: 4000,
       });
     }
   } catch (e: any) {
@@ -1330,6 +1357,7 @@ async function startTestPresentation() {
 
   try {
     state.value.isTestPresentationRunning = true;
+    state.value.presentationWindowsOpenedButNotStarted = true;
 
     // Save settings to localStorage with session ID
     localStorage.setItem(
@@ -1349,9 +1377,9 @@ async function startTestPresentation() {
       }
       toast.add({
         severity: 'success',
-        summary: 'Test Presentation Started',
-        detail: `${store.settings.outputLanguages.length} test presentation windows opened`,
-        life: 3000,
+        summary: 'Test Presentation Windows Opened',
+        detail: `${store.settings.outputLanguages.length} windows opened. Click "Start Test" to begin.`,
+        life: 4000,
       });
     } else {
       // Open single window for split-screen mode
@@ -1359,9 +1387,9 @@ async function startTestPresentation() {
       window.open(url, '_blank', 'toolbar=0,location=0,menubar=0');
       toast.add({
         severity: 'success',
-        summary: 'Test Presentation Started',
-        detail: 'Test presentation window opened',
-        life: 3000,
+        summary: 'Test Presentation Window Opened',
+        detail: 'Click "Start Test" to begin.',
+        life: 4000,
       });
     }
 
@@ -1369,6 +1397,96 @@ async function startTestPresentation() {
     for (const lang of store.settings.outputLanguages) {
       finalizedParagraphsByLang.value[lang] = [];
     }
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start test presentation';
+    console.error('startTestPresentation failed', e);
+    state.value.isTestPresentationRunning = false;
+    state.value.presentationSessionId = null;
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value,
+      life: 5000,
+    });
+  }
+}
+
+// Start recording for live presentation
+async function startRecording() {
+  if (!hasApiCredentials.value) {
+    error.value = 'Please configure Azure API credentials first';
+    return;
+  }
+
+  try {
+    state.value.isRecordingStarted = true;
+    state.value.presentationWindowsOpenedButNotStarted = false;
+
+    // Create captioning service
+    captioningService = new CaptioningService(
+      {
+        inputLanguage: store.settings.inputLanguage,
+        outputLanguages: store.settings.outputLanguages,
+        profanityOption: store.settings.profanityOption,
+        stablePartialResultThreshold:
+          store.settings.stablePartialResultThreshold,
+        phraseList: store.settings.phraseList,
+      },
+      {
+        onTranslating,
+        onTranslated,
+        onError,
+      },
+      store.apiSettings.azureApiKey,
+      store.apiSettings.azureRegion,
+    );
+
+    captioningService.start();
+
+    // Start session logging
+    if (user.value) {
+      const session = sessionLogger.createSession({
+        userId: user.value.id!,
+        userEmail: user.value.email ?? '',
+        userName: `${user.value.firstName} ${user.value.lastName}`,
+        inputLanguage: store.settings.inputLanguage,
+        outputLanguages: store.settings.outputLanguages,
+        mode: 'presentation',
+      });
+      const sessionId = await store.startSession(session);
+      if (sessionId) {
+        sessionLogger.setCurrentSessionId(sessionId);
+        currentSession.value = session;
+
+        // Start heartbeat updates
+        startHeartbeat();
+      }
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Recording Started',
+      detail: 'Speak into your microphone',
+      life: 3000,
+    });
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start recording';
+    console.error('startRecording failed', e);
+    state.value.isRecordingStarted = false;
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value,
+      life: 5000,
+    });
+  }
+}
+
+// Start lorem ipsum generation for test presentation
+function startTestGeneration() {
+  try {
+    state.value.isRecordingStarted = true;
+    state.value.presentationWindowsOpenedButNotStarted = false;
 
     // Start generating lorem ipsum content
     let showLive = true;
@@ -1395,11 +1513,17 @@ async function startTestPresentation() {
         showLive = !showLive;
       }
     }, 800);
+
+    toast.add({
+      severity: 'success',
+      summary: 'Test Generation Started',
+      detail: 'Lorem ipsum content flowing',
+      life: 3000,
+    });
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to start test presentation';
-    console.error('startTestPresentation failed', e);
-    state.value.isTestPresentationRunning = false;
-    state.value.presentationSessionId = null;
+    error.value = e?.message ?? 'Failed to start test generation';
+    console.error('startTestGeneration failed', e);
+    state.value.isRecordingStarted = false;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -1487,6 +1611,35 @@ function pauseOrResume() {
 
 // Stop
 function stop() {
+  // Handle pre-start state (windows opened but not started)
+  if (state.value.presentationWindowsOpenedButNotStarted) {
+    // Clean up session-based localStorage
+    if (state.value.presentationSessionId) {
+      localStorage.removeItem(
+        `translator_settings_${state.value.presentationSessionId}`,
+      );
+      localStorage.removeItem(
+        `translator_paused_${state.value.presentationSessionId}`,
+      );
+      localStorage.removeItem(
+        `translator_presentation_${state.value.presentationSessionId}`,
+      );
+    }
+
+    state.value.isPresentationRunning = false;
+    state.value.isTestPresentationRunning = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
+    state.value.presentationSessionId = null;
+
+    toast.add({
+      severity: 'info',
+      summary: 'Presentation Aborted',
+      detail: 'Windows will close',
+      life: 3000,
+    });
+    return;
+  }
+
   if (state.value.isTestRunning) {
     captioningService?.stop();
     state.value.isTestRunning = false;
@@ -1535,6 +1688,8 @@ function stop() {
 
     state.value.isTestPresentationRunning = false;
     state.value.isPaused = false;
+    state.value.isRecordingStarted = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
     state.value.presentationSessionId = null;
 
     toast.add({
@@ -1570,14 +1725,12 @@ function stop() {
           localStorage.removeItem(
             `translator_presentation_${state.value.presentationSessionId}`,
           );
-          localStorage.removeItem(
-            `translator_recording_started_${state.value.presentationSessionId}`,
-          );
         }
 
         state.value.isPresentationRunning = false;
         state.value.isPaused = false;
         state.value.isRecordingStarted = false;
+        state.value.presentationWindowsOpenedButNotStarted = false;
         state.value.presentationSessionId = null;
 
         // Stop heartbeat
@@ -1739,80 +1892,6 @@ function confirmDeleteVariant() {
   });
 }
 
-// Start recording (called when presentation window signals ready)
-async function startRecording() {
-  if (!state.value.isPresentationRunning || state.value.isRecordingStarted) {
-    return;
-  }
-
-  try {
-    // Ensure previous output is cleared before starting recording
-    finalizedParagraphsByLang.value = {};
-    finalizedParagraphsOri.value = [];
-    currentLiveTranslationByLang.value = {};
-    currentLiveTranslationOri.value = '';
-    clearPresentationWindowStorage();
-
-    // Start session logging
-    if (user.value) {
-      const session = sessionLogger.createSession({
-        userId: user.value.id!,
-        userEmail: user.value.email ?? '',
-        userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage,
-        outputLanguages: store.settings.outputLanguages,
-        mode: 'presentation',
-      });
-      const sessionId = await store.startSession(session);
-      if (sessionId) {
-        sessionLogger.setCurrentSessionId(sessionId);
-        currentSession.value = session;
-
-        // Start heartbeat updates
-        startHeartbeat();
-      }
-    }
-
-    // Create and start captioning service
-    captioningService = new CaptioningService(
-      {
-        inputLanguage: store.settings.inputLanguage,
-        outputLanguages: store.settings.outputLanguages,
-        profanityOption: store.settings.profanityOption,
-        stablePartialResultThreshold:
-          store.settings.stablePartialResultThreshold,
-        phraseList: store.settings.phraseList,
-      },
-      {
-        onTranslating,
-        onTranslated,
-        onError,
-      },
-      store.apiSettings.azureApiKey,
-      store.apiSettings.azureRegion,
-    );
-
-    captioningService.start();
-    state.value.isRecordingStarted = true;
-
-    toast.add({
-      severity: 'success',
-      summary: 'Recording Started',
-      detail: 'Translation is now active',
-      life: 3000,
-    });
-  } catch (e: any) {
-    error.value = e?.message ?? 'Failed to start recording';
-    console.error('startRecording failed', e);
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error.value,
-      life: 5000,
-    });
-  }
-}
-
 // Initialize
 loadUser();
 
@@ -1843,19 +1922,14 @@ function handleStorageEvent(e: StorageEvent) {
   const sessionId = state.value.presentationSessionId;
   if (!sessionId) return;
 
-  if (e.key === `translator_recording_started_${sessionId}` && e.newValue) {
-    // Presentation window clicked "Start & Fullscreen"
-    startRecording();
-  } else if (
-    e.key === `translator_settings_${sessionId}` &&
-    e.newValue === null
-  ) {
+  if (e.key === `translator_settings_${sessionId}` && e.newValue === null) {
     // Presentation window was closed, stop everything
     if (state.value.isPresentationRunning) {
       captioningService?.stop();
       state.value.isPresentationRunning = false;
       state.value.isPaused = false;
       state.value.isRecordingStarted = false;
+      state.value.presentationWindowsOpenedButNotStarted = false;
       state.value.presentationSessionId = null;
 
       // Stop heartbeat
@@ -1893,6 +1967,8 @@ function handleStorageEvent(e: StorageEvent) {
 
       state.value.isTestPresentationRunning = false;
       state.value.isPaused = false;
+      state.value.isRecordingStarted = false;
+      state.value.presentationWindowsOpenedButNotStarted = false;
       state.value.presentationSessionId = null;
 
       toast.add({
