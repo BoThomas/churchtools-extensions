@@ -799,7 +799,10 @@
               }}
             </span>
           </template>
-          <div class="space-y-2 max-h-96 overflow-y-auto">
+          <div
+            ref="testOutputOriRef"
+            class="space-y-2 max-h-96 overflow-y-auto"
+          >
             <p
               v-for="(paragraph, index) in finalizedParagraphsOri"
               :key="'ori-' + index"
@@ -834,7 +837,14 @@
                 {{ getLanguageDisplayName(langCode, 'output') }}
               </span>
             </template>
-            <div class="space-y-2 max-h-96 overflow-y-auto">
+            <div
+              :ref="
+                (el) => {
+                  if (el) testOutputLangRefs[langCode] = el as HTMLDivElement;
+                }
+              "
+              class="space-y-2 max-h-96 overflow-y-auto"
+            >
               <p
                 v-for="(paragraph, index) in finalizedParagraphsByLang[
                   langCode
@@ -898,7 +908,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+} from 'vue';
 import { useTranslatorStore } from '../stores/translator';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -985,6 +1002,10 @@ const currentLiveTranslationOri = ref('');
 // Store translations per language: { languageCode: ['paragraph1', 'paragraph2', ...] }
 const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
 const currentLiveTranslationByLang = ref<Record<string, string>>({});
+
+// Refs for scrollable test output containers
+const testOutputOriRef = ref<HTMLDivElement | null>(null);
+const testOutputLangRefs = ref<Record<string, HTMLDivElement>>({});
 
 // Language options (imported from JSON config)
 const inputLanguages = translationOptions.inputLanguages;
@@ -1133,6 +1154,11 @@ function onTranslating(translations: Record<string, string>, original: string) {
   currentLiveTranslationByLang.value = translations;
   currentLiveTranslationOri.value = original;
 
+  // Scroll test output to bottom
+  if (state.value.isTestRunning) {
+    scrollTestOutputToBottom();
+  }
+
   // Update presentation window if running
   if (state.value.isPresentationRunning) {
     updatePresentationWindow(translations, true);
@@ -1152,6 +1178,11 @@ function onTranslated(translations: Record<string, string>, original: string) {
   currentLiveTranslationByLang.value = {};
   currentLiveTranslationOri.value = '';
 
+  // Scroll test output to bottom
+  if (state.value.isTestRunning) {
+    scrollTestOutputToBottom();
+  }
+
   // Update presentation window if running
   if (state.value.isPresentationRunning) {
     updatePresentationWindow(translations, false);
@@ -1161,6 +1192,22 @@ function onTranslated(translations: Record<string, string>, original: string) {
 function onError(errorMsg: string) {
   error.value = errorMsg;
   stop();
+}
+
+// Scroll test output containers to bottom
+function scrollTestOutputToBottom() {
+  nextTick(() => {
+    // Scroll input language container
+    if (testOutputOriRef.value) {
+      testOutputOriRef.value.scrollTop = testOutputOriRef.value.scrollHeight;
+    }
+    // Scroll each output language container
+    Object.values(testOutputLangRefs.value).forEach((element) => {
+      if (element) {
+        element.scrollTop = element.scrollHeight;
+      }
+    });
+  });
 }
 
 // Update presentation window via localStorage
