@@ -18,7 +18,7 @@ export interface ApiSettings {
 export interface TranslatorSettings {
   // Translation Options
   inputLanguage: string; // Language code (e.g., 'de-DE')
-  outputLanguage: string; // Language code (e.g., 'en')
+  outputLanguages: string[]; // Array of language codes (e.g., ['en', 'es'])
   profanityOption: 'raw' | 'remove' | 'mask';
   stablePartialResultThreshold: string;
   phraseList: string;
@@ -53,7 +53,7 @@ export interface UsageStats {
 
 const DEFAULT_SETTINGS: TranslatorSettings = {
   inputLanguage: 'de-DE',
-  outputLanguage: 'en',
+  outputLanguages: ['en'],
   profanityOption: 'raw',
   stablePartialResultThreshold: '5',
   phraseList: '',
@@ -112,6 +112,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Migrate old settings format (object with name/code) to new format (code string only)
+   * Also migrates single outputLanguage to outputLanguages array
    */
   function migrateSettings(settings: any): TranslatorSettings {
     const migrated = { ...settings };
@@ -124,12 +125,24 @@ export const useTranslatorStore = defineStore('translator', () => {
       migrated.inputLanguage = settings.inputLanguage.code;
     }
 
-    // Migrate outputLanguage if it's an object
-    if (
-      typeof settings.outputLanguage === 'object' &&
-      settings.outputLanguage?.code
+    // Migrate old outputLanguage (string) to new outputLanguages (array)
+    if (settings.outputLanguage && !settings.outputLanguages) {
+      // Old format: single language as string or object
+      if (typeof settings.outputLanguage === 'string') {
+        migrated.outputLanguages = [settings.outputLanguage];
+      } else if (settings.outputLanguage?.code) {
+        migrated.outputLanguages = [settings.outputLanguage.code];
+      }
+      delete migrated.outputLanguage;
+    } else if (
+      settings.outputLanguages &&
+      !Array.isArray(settings.outputLanguages)
     ) {
-      migrated.outputLanguage = settings.outputLanguage.code;
+      // Ensure outputLanguages is always an array
+      migrated.outputLanguages = [settings.outputLanguages];
+    } else if (!settings.outputLanguages) {
+      // No output language set at all, use default
+      migrated.outputLanguages = ['en'];
     }
 
     return migrated as TranslatorSettings;

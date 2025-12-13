@@ -24,10 +24,11 @@
       :closable="false"
       icon="pi pi-exclamation-triangle"
     >
-      <div class="space-y-2">
+      <div class="ml-2">
         <p>
-          <strong>Invalid Language Configuration:</strong> One or more selected
-          languages are no longer available in the current options.
+          <strong>Invalid Language Configuration:</strong> Either you have no
+          input/output language selected, or some selected languages are no
+          longer available.
         </p>
         <p class="text-sm">
           This may occur after updating the extension. Please select valid
@@ -88,21 +89,22 @@
             </Popover>
           </div>
 
-          <!-- Output Language -->
+          <!-- Output Languages -->
           <div class="flex flex-col gap-2">
-            <label for="output-lang" class="font-medium text-sm"
-              >Written Output Language</label
+            <label for="output-langs" class="font-medium text-sm"
+              >Written Output Languages</label
             >
             <div class="flex items-stretch w-full">
-              <Select
-                id="output-lang"
-                v-model="store.settings.outputLanguage"
+              <Multiselect
+                id="output-langs"
+                v-model="store.settings.outputLanguages"
                 :options="outputLanguages"
                 filter
                 optionLabel="name"
                 optionValue="code"
                 :disabled="inputsDisabled"
-                placeholder="Select output language"
+                placeholder="Select output languages"
+                :maxSelectedLabels="2"
                 pt:root="flex-1 rounded-e-none"
               />
               <span
@@ -121,7 +123,8 @@
             <Popover ref="outputLangPopover">
               <div class="max-w-xs">
                 <p class="text-sm">
-                  The written language to which is translated.
+                  The written languages to which speech is translated. Multiple
+                  languages can be selected.
                 </p>
               </div>
             </Popover>
@@ -665,7 +668,12 @@
       <!-- Test Mode Output -->
       <div
         v-if="state.isTestRunning"
-        class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        class="grid gap-4"
+        :class="
+          store.settings.outputLanguages.length === 1
+            ? 'grid-cols-1 md:grid-cols-2'
+            : 'grid-cols-1'
+        "
       >
         <Fieldset>
           <template #legend>
@@ -688,23 +696,46 @@
           </div>
         </Fieldset>
 
-        <Fieldset>
-          <template #legend>
-            <span class="font-semibold">Translation</span>
-          </template>
-          <div class="space-y-2 max-h-96 overflow-y-auto">
-            <p
-              v-for="(paragraph, index) in finalizedParagraphs"
-              :key="'trans-' + index"
-              class="text-sm"
-            >
-              {{ paragraph }}
-            </p>
-            <p v-if="currentLiveTranslation" class="text-sm text-surface-500">
-              {{ currentLiveTranslation }}
-            </p>
-          </div>
-        </Fieldset>
+        <!-- Display translations for each selected output language -->
+        <div
+          class="grid gap-4"
+          :class="
+            store.settings.outputLanguages.length === 1
+              ? ''
+              : 'grid-cols-1 md:grid-cols-2'
+          "
+        >
+          <Fieldset
+            v-for="langCode in store.settings.outputLanguages"
+            :key="langCode"
+          >
+            <template #legend>
+              <span class="font-semibold">
+                {{
+                  outputLanguages.find((l) => l.code === langCode)?.name ||
+                  langCode
+                }}
+              </span>
+            </template>
+            <div class="space-y-2 max-h-96 overflow-y-auto">
+              <p
+                v-for="(paragraph, index) in finalizedParagraphsByLang[
+                  langCode
+                ] || []"
+                :key="'trans-' + langCode + '-' + index"
+                class="text-sm"
+              >
+                {{ paragraph }}
+              </p>
+              <p
+                v-if="currentLiveTranslationByLang[langCode]"
+                class="text-sm text-surface-500"
+              >
+                {{ currentLiveTranslationByLang[langCode] }}
+              </p>
+            </div>
+          </Fieldset>
+        </div>
       </div>
     </div>
   </div>
@@ -764,6 +795,7 @@ import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
 import ContrastButton from '@churchtools-extensions/prime-volt/ContrastButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
+import Multiselect from '@churchtools-extensions/prime-volt/Multiselect.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
@@ -812,8 +844,9 @@ let heartbeatInterval: NodeJS.Timeout | null = null;
 // Test mode output
 const finalizedParagraphsOri = ref<string[]>([]);
 const currentLiveTranslationOri = ref('');
-const finalizedParagraphs = ref<string[]>([]);
-const currentLiveTranslation = ref('');
+// Store translations per language: { languageCode: ['paragraph1', 'paragraph2', ...] }
+const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+const currentLiveTranslationByLang = ref<Record<string, string>>({});
 
 // Language options (imported from JSON config)
 const inputLanguages = translationOptions.inputLanguages;
@@ -829,14 +862,20 @@ const inputLanguageValid = computed(() => {
   );
 });
 
-const outputLanguageValid = computed(() => {
-  return outputLanguages.some(
-    (lang) => lang.code === store.settings.outputLanguage,
+const outputLanguagesValid = computed(() => {
+  if (
+    !store.settings.outputLanguages ||
+    store.settings.outputLanguages.length === 0
+  ) {
+    return false;
+  }
+  return store.settings.outputLanguages.every((code) =>
+    outputLanguages.some((lang) => lang.code === code),
   );
 });
 
 const hasInvalidLanguages = computed(() => {
-  return !inputLanguageValid.value || !outputLanguageValid.value;
+  return !inputLanguageValid.value || !outputLanguagesValid.value;
 });
 
 // Computed
@@ -933,24 +972,37 @@ function handleWindowClose() {
 }
 
 // Translation callbacks
-function onTranslating(translation: string, original: string) {
-  currentLiveTranslation.value = translation;
+function onTranslating(translations: Record<string, string>, original: string) {
+  currentLiveTranslationByLang.value = translations;
   currentLiveTranslationOri.value = original;
 
-  // Update presentation window if running
+  // TODO: support multiple languages in presentation window
+  // Update presentation window if running (use first language for now)
   if (state.value.isPresentationRunning) {
+    const firstLang = store.settings.outputLanguages[0];
+    const translation = translations[firstLang] || '';
     updatePresentationWindow(translation, true);
   }
 }
 
-function onTranslated(translation: string, original: string) {
-  finalizedParagraphs.value.push(translation);
+function onTranslated(translations: Record<string, string>, original: string) {
+  // Add translations to each language's finalized paragraphs
+  for (const [lang, translation] of Object.entries(translations)) {
+    if (!finalizedParagraphsByLang.value[lang]) {
+      finalizedParagraphsByLang.value[lang] = [];
+    }
+    finalizedParagraphsByLang.value[lang].push(translation);
+  }
+
   finalizedParagraphsOri.value.push(original);
-  currentLiveTranslation.value = '';
+  currentLiveTranslationByLang.value = {};
   currentLiveTranslationOri.value = '';
 
-  // Update presentation window if running
+  // TODO: support multiple languages in presentation window
+  // Update presentation window if running (use first language for now)
   if (state.value.isPresentationRunning) {
+    const firstLang = store.settings.outputLanguages[0];
+    const translation = translations[firstLang] || '';
     updatePresentationWindow(translation, false);
   }
 }
@@ -962,10 +1014,11 @@ function onError(errorMsg: string) {
 
 // Update presentation window via localStorage
 function updatePresentationWindow(text: string, isLive: boolean) {
+  const firstLang = store.settings.outputLanguages[0];
   const data = {
     text,
     isLive,
-    finalized: finalizedParagraphs.value,
+    finalized: finalizedParagraphsByLang.value[firstLang] || [],
     timestamp: Date.now(),
   };
   localStorage.setItem('translator_presentation', JSON.stringify(data));
@@ -991,9 +1044,9 @@ async function startTest() {
   }
 
   // Clear previous test output
-  finalizedParagraphs.value = [];
+  finalizedParagraphsByLang.value = {};
   finalizedParagraphsOri.value = [];
-  currentLiveTranslation.value = '';
+  currentLiveTranslationByLang.value = {};
   currentLiveTranslationOri.value = '';
 
   try {
@@ -1001,7 +1054,7 @@ async function startTest() {
     captioningService = new CaptioningService(
       {
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
+        outputLanguages: store.settings.outputLanguages,
         profanityOption: store.settings.profanityOption,
         stablePartialResultThreshold:
           store.settings.stablePartialResultThreshold,
@@ -1026,7 +1079,7 @@ async function startTest() {
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
+        outputLanguage: store.settings.outputLanguages[0], // Use first language for logging
         mode: 'test',
       });
       const sessionId = await store.startSession(session);
@@ -1065,9 +1118,9 @@ async function startPresentation() {
   }
 
   // Clear previous output
-  finalizedParagraphs.value = [];
+  finalizedParagraphsByLang.value = {};
   finalizedParagraphsOri.value = [];
-  currentLiveTranslation.value = '';
+  currentLiveTranslationByLang.value = {};
   currentLiveTranslationOri.value = '';
   // Clear any existing presentation data to avoid showing previous session
   clearPresentationWindowStorage();
@@ -1114,9 +1167,9 @@ function pauseOrResume() {
     }
     if (state.value.isPresentationRunning) {
       // Clear presenter's state to avoid showing stale content when resuming
-      finalizedParagraphs.value = [];
+      finalizedParagraphsByLang.value = {};
       finalizedParagraphsOri.value = [];
-      currentLiveTranslation.value = '';
+      currentLiveTranslationByLang.value = {};
       currentLiveTranslationOri.value = '';
       clearPresentationWindowStorage();
       localStorage.removeItem('translator_paused');
@@ -1136,9 +1189,9 @@ function pauseOrResume() {
     if (state.value.isPresentationRunning) {
       // Clear presentation window and presenter's state to avoid showing
       // stale content when paused
-      finalizedParagraphs.value = [];
+      finalizedParagraphsByLang.value = {};
       finalizedParagraphsOri.value = [];
-      currentLiveTranslation.value = '';
+      currentLiveTranslationByLang.value = {};
       currentLiveTranslationOri.value = '';
       clearPresentationWindowStorage();
       localStorage.setItem(
@@ -1373,9 +1426,9 @@ async function startRecording() {
 
   try {
     // Ensure previous output is cleared before starting recording
-    finalizedParagraphs.value = [];
+    finalizedParagraphsByLang.value = {};
     finalizedParagraphsOri.value = [];
-    currentLiveTranslation.value = '';
+    currentLiveTranslationByLang.value = {};
     currentLiveTranslationOri.value = '';
     clearPresentationWindowStorage();
 
@@ -1386,7 +1439,7 @@ async function startRecording() {
         userEmail: user.value.email ?? '',
         userName: `${user.value.firstName} ${user.value.lastName}`,
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
+        outputLanguage: store.settings.outputLanguages[0], // Use first language for logging
         mode: 'presentation',
       });
       const sessionId = await store.startSession(session);
@@ -1403,7 +1456,7 @@ async function startRecording() {
     captioningService = new CaptioningService(
       {
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
+        outputLanguages: store.settings.outputLanguages,
         profanityOption: store.settings.profanityOption,
         stablePartialResultThreshold:
           store.settings.stablePartialResultThreshold,

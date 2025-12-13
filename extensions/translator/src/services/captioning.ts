@@ -2,7 +2,7 @@ import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 
 export interface CaptioningConfig {
   inputLanguage: string; // Language code (e.g., 'de-DE')
-  outputLanguage: string; // Language code (e.g., 'en')
+  outputLanguages: string[]; // Array of language codes (e.g., ['en', 'es'])
   profanityOption: 'raw' | 'remove' | 'mask';
   stablePartialResultThreshold: string;
   phraseList: string;
@@ -17,10 +17,26 @@ export interface CaptioningConfig {
 }
 
 export interface CaptioningCallbacks {
-  onTranslating: (translation: string, original: string) => void;
-  onTranslated: (translation: string, original: string) => void;
+  onTranslating: (
+    translations: Record<string, string>,
+    original: string,
+  ) => void;
+  onTranslated: (
+    translations: Record<string, string>,
+    original: string,
+  ) => void;
   onError: (error: string) => void;
 }
+
+// Type exports for Speech SDK types
+export type {
+  TranslationRecognizer,
+  SpeechTranslationConfig,
+  AudioConfig,
+  TranslationRecognitionEventArgs,
+  TranslationRecognitionCanceledEventArgs,
+  SessionEventArgs,
+} from 'microsoft-cognitiveservices-speech-sdk';
 
 export class CaptioningService {
   private recognizer: sdk.TranslationRecognizer | null = null;
@@ -58,7 +74,11 @@ export class CaptioningService {
       this.apiRegion,
     );
     speechConfig.speechRecognitionLanguage = this.config.inputLanguage;
-    speechConfig.addTargetLanguage(this.config.outputLanguage);
+
+    // Add all target languages
+    for (const lang of this.config.outputLanguages) {
+      speechConfig.addTargetLanguage(lang);
+    }
 
     // profanity filter
     let profanityOption = sdk.ProfanityOption.Masked;
@@ -99,46 +119,70 @@ export class CaptioningService {
   private setupListeners(): void {
     if (!this.recognizer) return;
 
-    this.recognizer.sessionStopped = () => {
+    this.recognizer.sessionStopped = (
+      _sender: sdk.Recognizer,
+      _event: sdk.SessionEventArgs,
+    ) => {
       console.log('Session stopped.');
       this.stop();
     };
 
-    this.recognizer.canceled = (_s: any, e: any) => {
-      if (sdk.CancellationReason.EndOfStream === e.reason) {
+    this.recognizer.canceled = (
+      _sender: sdk.Recognizer,
+      event: sdk.TranslationRecognitionCanceledEventArgs,
+    ) => {
+      if (sdk.CancellationReason.EndOfStream === event.reason) {
         this.callbacks.onError('End of stream reached.');
-      } else if (sdk.CancellationReason.Error === e.reason) {
+      } else if (sdk.CancellationReason.Error === event.reason) {
         this.callbacks.onError(
-          `Encountered error. Error code: ${e.errorCode}. Error details: ${e.errorDetails}`,
+          `Encountered error. Error code: ${event.errorCode}. Error details: ${event.errorDetails}`,
         );
       } else {
         this.callbacks.onError(
-          `Request was cancelled for an unrecognized reason: ${e.reason}.`,
+          `Request was cancelled for an unrecognized reason: ${event.reason}.`,
         );
       }
       this.stop();
     };
 
-    this.recognizer.recognizing = (_s: any, e: any) => {
-      const translation = e.result.translations.get(this.config.outputLanguage);
-      if (
-        sdk.ResultReason.TranslatingSpeech === e.result.reason &&
-        translation &&
-        translation !== ''
-      ) {
-        this.callbacks.onTranslating(translation, e.result.text);
+    this.recognizer.recognizing = (
+      _sender: sdk.Recognizer,
+      event: sdk.TranslationRecognitionEventArgs,
+    ) => {
+      if (sdk.ResultReason.TranslatingSpeech === event.result.reason) {
+        // Collect all translations for the configured output languages
+        const translations: Record<string, string> = {};
+        for (const lang of this.config.outputLanguages) {
+          const translation = event.result.translations.get(lang);
+          if (translation && translation !== '') {
+            translations[lang] = translation;
+          }
+        }
+
+        if (Object.keys(translations).length > 0) {
+          this.callbacks.onTranslating(translations, event.result.text);
+        }
       }
     };
 
-    this.recognizer.recognized = (_s: any, e: any) => {
-      const translation = e.result.translations.get(this.config.outputLanguage);
-      if (
-        sdk.ResultReason.TranslatedSpeech === e.result.reason &&
-        translation &&
-        translation !== ''
-      ) {
-        this.callbacks.onTranslated(translation, e.result.text);
-      } else if (sdk.ResultReason.NoMatch === e.result.reason) {
+    this.recognizer.recognized = (
+      _sender: sdk.Recognizer,
+      event: sdk.TranslationRecognitionEventArgs,
+    ) => {
+      if (sdk.ResultReason.TranslatedSpeech === event.result.reason) {
+        // Collect all translations for the configured output languages
+        const translations: Record<string, string> = {};
+        for (const lang of this.config.outputLanguages) {
+          const translation = event.result.translations.get(lang);
+          if (translation && translation !== '') {
+            translations[lang] = translation;
+          }
+        }
+
+        if (Object.keys(translations).length > 0) {
+          this.callbacks.onTranslated(translations, event.result.text);
+        }
+      } else if (sdk.ResultReason.NoMatch === event.result.reason) {
         console.log('NOMATCH: Speech could not be recognized.');
       }
     };
