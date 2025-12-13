@@ -26,6 +26,13 @@
           <p class="font-semibold mb-1" style="font-size: 16px !important">
             Enter Fullscreen Mode
           </p>
+          <p
+            v-if="specificLanguage"
+            class="text-sm font-medium mb-1"
+            style="font-size: 14px !important"
+          >
+            Language: {{ getLanguageDisplayName(specificLanguage) }}
+          </p>
           <p class="text-sm" style="font-size: 14px !important">
             <span v-if="osType === 'mac'"
               >Press
@@ -332,10 +339,10 @@ onMounted(() => {
   // Listen for storage changes from the control window
   window.addEventListener('storage', handleStorageEvent);
 
-  // Auto-dismiss fullscreen instructions after 5 seconds
+  // Auto-dismiss fullscreen instructions after 10 seconds
   setTimeout(() => {
     showFullscreenInstructions.value = false;
-  }, 5000);
+  }, 10000);
 
   // Clean up on window close - signal to control window
   window.addEventListener('beforeunload', () => {
