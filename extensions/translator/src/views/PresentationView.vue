@@ -455,14 +455,13 @@ onUnmounted(() => {
   flex-direction: column !important;
   height: 100% !important;
   overflow: hidden !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-sizing: border-box !important;
 }
 
 /* Language header */
 .language-header {
   flex-shrink: 0 !important;
-  background: rgba(0, 0, 0, 0.8) !important;
+  background: rgba(0, 0, 0, 0.5) !important;
   color: var(--presentation-color) !important;
   /* Prepend Twemoji Country Flags for flag emoji support */
   font-family: 'Twemoji Country Flags', var(--presentation-font) !important;

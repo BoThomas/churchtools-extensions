@@ -649,7 +649,7 @@
                     !state.isRecordingStarted
                   "
                   label="Start Test"
-                  icon="pi pi-microphone"
+                  icon="pi pi-compass"
                   @click="startTestGeneration"
                 />
                 <Button
