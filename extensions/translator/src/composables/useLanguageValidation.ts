@@ -30,6 +30,12 @@ export function useLanguageValidation() {
     return !inputLanguageValid.value || !outputLanguagesValid.value;
   });
 
+  // Show warning when loading/switching variants with invalid languages,
+  // and keep showing it after loading if languages are still invalid
+  const shouldShowInvalidLanguageWarning = computed(() => {
+    return hasInvalidLanguages.value;
+  });
+
   const allLanguages = computed<LanguageConfig[]>(() => {
     const languages: LanguageConfig[] = [];
 
@@ -72,6 +78,7 @@ export function useLanguageValidation() {
     inputLanguageValid,
     outputLanguagesValid,
     hasInvalidLanguages,
+    shouldShowInvalidLanguageWarning,
     allLanguages,
     operatorLanguages,
     presentationLanguages,

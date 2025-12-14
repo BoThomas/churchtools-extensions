@@ -12,6 +12,7 @@
         :disabled="disabled"
         placeholder="Select input language"
         input-id="input-lang"
+        :invalid="inputLanguageValid === false"
       >
         <template #info>
           <p class="text-sm">The spoken language to be translated.</p>
@@ -29,6 +30,7 @@
         :disabled="disabled"
         placeholder="Select output languages"
         input-id="output-langs"
+        :invalid="outputLanguagesValid === false"
         multiple
       >
         <template #info>
@@ -141,6 +143,8 @@ import type { TranslatorSettings } from '../../stores/translator';
 interface Props {
   modelValue: TranslatorSettings;
   disabled?: boolean;
+  inputLanguageValid?: boolean;
+  outputLanguagesValid?: boolean;
 }
 
 const props = defineProps<Props>();

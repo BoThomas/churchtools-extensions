@@ -39,7 +39,7 @@
     </Message>
 
     <Message
-      v-if="hasInvalidLanguages"
+      v-if="shouldShowInvalidLanguageWarning"
       severity="warn"
       :closable="false"
       icon="pi pi-exclamation-triangle"
@@ -62,6 +62,8 @@
       <TranslationOptionsSection
         v-model="store.settings"
         :disabled="inputsDisabled"
+        :input-language-valid="inputLanguageValid"
+        :output-languages-valid="outputLanguagesValid"
         @change="store.markSettingsChanged()"
       />
 
@@ -206,6 +208,9 @@ const { state, stateText, statusSeverity, inputsDisabled } =
   useTranslationState();
 const {
   hasInvalidLanguages,
+  inputLanguageValid,
+  outputLanguagesValid,
+  shouldShowInvalidLanguageWarning,
   operatorLanguages,
   presentationLanguages,
   hasTooManyLanguagesForSplit,
