@@ -1,3 +1,7 @@
+interface WindowWithChrome extends Window {
+  chrome?: unknown;
+}
+
 /**
  * Detect if the browser is Chromium-based
  * Chromium-based browsers include Chrome, Edge, Brave, Opera, Vivaldi, etc.
@@ -13,7 +17,7 @@ export function isChromiumBrowser(): boolean {
   const isSafari = userAgent.includes('safari') && !hasChrome;
   
   // Check for window.chrome object (exists in Chromium-based browsers)
-  const hasWindowChrome = typeof (window as any).chrome !== 'undefined';
+  const hasWindowChrome = typeof (window as WindowWithChrome).chrome !== 'undefined';
   
   // A browser is Chromium-based if:
   // - It has 'chrome' in user agent AND it's not Firefox or Safari, OR
