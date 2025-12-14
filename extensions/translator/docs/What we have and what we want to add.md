@@ -74,4 +74,4 @@
 - Optimized the flow for starting and testing a presentation session
 - Added support for country-flags under windows (as windows does not support the emoji flags per default)
 - Added autoscroll for translation test outputs
-- Added browser compatibility alert for non-Chromium browsers in presentation mode and documented this in README
+- Added browser compatibility alert for non-Chromium browsers

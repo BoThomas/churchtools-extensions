@@ -71,7 +71,7 @@ The Translator extension enables real-time translation of spoken language during
 - A screen or projector for displaying translations
 
 > [!NOTE]
-> The presentation mode has only been tested on Chromium-based browsers (Chrome, Edge, Brave, Opera, Vivaldi). Other browsers may work but could experience unexpected behavior or display issues.
+> The presentation mode has only been tested on Chromium-based browsers (Chrome, Edge, Brave ...). Other browsers may work but could experience unexpected behavior.
 
 ## Azure Setup
 
