@@ -354,9 +354,21 @@ export const useTranslatorStore = defineStore('translator', () => {
 
       // If saving to "Default" with changes, or no variant name and creating new
       if (variantName) {
+        // Trim the variant name
+        const trimmedName = variantName.trim();
+
+        // Check for duplicate names (check ALL variants since we're creating a new one)
+        const isDuplicate = settingVariants.value.some(
+          (v) => v.value.name === trimmedName,
+        );
+
+        if (isDuplicate) {
+          throw new Error(`A variant named "${trimmedName}" already exists`);
+        }
+
         // Create new variant
         const newVariant: SettingVariant = {
-          name: variantName,
+          name: trimmedName,
           settings: { ...settings.value },
         };
         const { id } = await settingsCategory.create(newVariant);
@@ -430,6 +442,12 @@ export const useTranslatorStore = defineStore('translator', () => {
     try {
       await ensureCategories();
       if (!settingsCategory) return;
+
+      // Prevent deletion of Default variant
+      const variant = settingVariants.value.find((v) => v.id === variantId);
+      if (variant?.value.name === 'Default') {
+        throw new Error('Cannot delete the Default variant');
+      }
 
       await settingsCategory.delete(variantId);
       settingVariants.value = settingVariants.value.filter(
@@ -540,6 +558,14 @@ export const useTranslatorStore = defineStore('translator', () => {
           ...existing.value,
           ...updates,
         };
+
+        // Calculate duration if endTime is provided
+        if (merged.endTime && merged.startTime) {
+          const start = new Date(merged.startTime).getTime();
+          const end = new Date(merged.endTime).getTime();
+          merged.durationMinutes = Math.round((end - start) / (1000 * 60));
+        }
+
         await sessionsCategory.update(sessionId, merged);
       } else {
         // Cache miss - check if updates contain all required fields
@@ -552,11 +578,16 @@ export const useTranslatorStore = defineStore('translator', () => {
           updates.status;
 
         if (hasRequiredFields) {
+          // Calculate duration if endTime is provided
+          const merged = updates as TranslationSession;
+          if (merged.endTime && merged.startTime) {
+            const start = new Date(merged.startTime).getTime();
+            const end = new Date(merged.endTime).getTime();
+            merged.durationMinutes = Math.round((end - start) / (1000 * 60));
+          }
+
           // Updates are complete, use optimistic update
-          await sessionsCategory.update(
-            sessionId,
-            updates as TranslationSession,
-          );
+          await sessionsCategory.update(sessionId, merged);
         } else {
           // Need to fetch to get complete session data
           const allSessions = await sessionsCategory.list<TranslationSession>();
@@ -569,6 +600,14 @@ export const useTranslatorStore = defineStore('translator', () => {
             ...found.value,
             ...updates,
           };
+
+          // Calculate duration if endTime is provided
+          if (merged.endTime && merged.startTime) {
+            const start = new Date(merged.startTime).getTime();
+            const end = new Date(merged.endTime).getTime();
+            merged.durationMinutes = Math.round((end - start) / (1000 * 60));
+          }
+
           await sessionsCategory.update(sessionId, merged);
         }
       }
