@@ -4,6 +4,7 @@ import {
   CaptioningService,
   type CaptioningCallbacks,
 } from '../../src/services/captioning';
+import { waitUntil } from './waitUntil';
 
 /**
  * Integration Tests: Translation Workflow
@@ -45,8 +46,9 @@ describe('Translation Workflow Integration', () => {
 
       service.start();
 
-      // Wait for translation events
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation event',
+      });
 
       expect(translations.length).toBeGreaterThan(0);
       expect(translations[translations.length - 1].en).toBeDefined();
@@ -80,7 +82,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation event',
+      });
 
       const lastTranslation = translations[translations.length - 1];
       expect(lastTranslation.en).toBeDefined();
@@ -120,7 +125,11 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      await waitUntil(
+        () => recognizingEvents.length > 0 && recognizedEvents.length > 0,
+        { message: 'Expected both live and finalized translations' },
+      );
 
       // Should have both recognizing (live) and recognized (finalized) events
       expect(recognizingEvents.length).toBeGreaterThan(0);
@@ -155,7 +164,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await waitUntil(() => originalText.length > 0, {
+        message: 'Expected original text to be set',
+      });
 
       expect(originalText).toBeTruthy();
       expect(originalText.length).toBeGreaterThan(0);
@@ -193,7 +205,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await waitUntil(() => errorCalled, {
+        message: 'Expected onError to be called',
+      });
 
       expect(errorCalled).toBe(true);
       expect(errorMessage).toBeTruthy();
@@ -225,7 +240,15 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      // Ensure the scenario has emitted its recognized NoMatch event
+      await waitUntil(
+        () =>
+          mockAzureSpeech
+            .getRecognizerState()
+            .eventsEmitted.some((e) => e.type === 'recognized'),
+        { message: 'Expected a recognized event (NoMatch) to be emitted' },
+      );
 
       // With NoMatch result, no translations should be emitted
       expect(recognizedEvents.length).toBe(0);
@@ -259,7 +282,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      await waitUntil(() => errorMessage.length > 0, {
+        message: 'Expected an authentication error message',
+      });
 
       expect(errorMessage).toContain('Authentication');
     });
@@ -338,7 +364,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation event',
+      });
 
       expect(translations.length).toBeGreaterThan(0);
 
@@ -371,7 +400,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation event',
+      });
 
       expect(translations.length).toBeGreaterThan(0);
 
@@ -404,7 +436,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation event',
+      });
 
       expect(translations.length).toBeGreaterThan(0);
 
@@ -439,7 +474,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation event',
+      });
 
       expect(translations.length).toBeGreaterThan(0);
 
@@ -472,7 +510,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation event',
+      });
 
       expect(translations.length).toBeGreaterThan(0);
 
@@ -597,8 +638,9 @@ describe('Translation Workflow Integration', () => {
 
       service.start();
 
-      // Let it run for continuous events
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await waitUntil(() => translations.length > 1, {
+        message: 'Expected multiple translation events',
+      });
 
       // Should have received multiple translations
       expect(translations.length).toBeGreaterThan(1);
@@ -632,7 +674,17 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      await waitUntil(() => translations.length > 0, {
+        message: 'Expected at least one translation before session stop',
+      });
+
+      await waitUntil(
+        () => mockAzureSpeech.getRecognizerState().isRunning === false,
+        {
+          message: 'Expected service to auto-stop after sessionStopped',
+        },
+      );
 
       // Should receive translations before session stops
       expect(translations.length).toBeGreaterThan(0);
@@ -669,7 +721,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      await waitUntil(() => recognizingEvents.length > 0, {
+        message: 'Expected at least one partial (recognizing) result',
+      });
 
       // Should have received partial (recognizing) results
       expect(recognizingEvents.length).toBeGreaterThan(0);

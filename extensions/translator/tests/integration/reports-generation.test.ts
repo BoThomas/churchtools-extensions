@@ -126,9 +126,6 @@ describe('Reports Generation Integration', () => {
       await store.startSession(session1);
       const sessionId1 = store.currentSessionId!;
 
-      // Wait a bit to accumulate duration
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       await store.endSession(sessionId1, {
         status: 'completed',
         endTime: new Date().toISOString(),
@@ -156,7 +153,6 @@ describe('Reports Generation Integration', () => {
 
       // Pause
       await store.pauseSession(sessionId);
-      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Resume
       await store.resumeSession(sessionId);
@@ -214,7 +210,6 @@ describe('Reports Generation Integration', () => {
           mode: 'test',
         });
         await store.startSession(session);
-        await new Promise((resolve) => setTimeout(resolve, 50));
         await store.endSession(store.currentSessionId!, {
           status: 'completed',
           endTime: new Date().toISOString(),

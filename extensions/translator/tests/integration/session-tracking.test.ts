@@ -135,9 +135,6 @@ describe('Session Tracking Integration', () => {
       await store.startSession(sessionData);
       const sessionId = store.currentSessionId!;
 
-      // Wait a bit
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       const beforeHeartbeat = new Date();
       await store.updateHeartbeat(sessionId);
       const afterHeartbeat = new Date();
@@ -167,7 +164,6 @@ describe('Session Tracking Integration', () => {
 
       // Simulate multiple heartbeats
       for (let i = 0; i < 3; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
         await store.updateHeartbeat(sessionId);
       }
 
@@ -311,9 +307,6 @@ describe('Session Tracking Integration', () => {
 
       await store.pauseSession(sessionId);
 
-      // Wait 100ms (simulating pause duration)
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       await store.resumeSession(sessionId);
 
       await store.fetchSessions();
@@ -339,7 +332,6 @@ describe('Session Tracking Integration', () => {
 
       // First pause/resume
       await store.pauseSession(sessionId);
-      await new Promise((resolve) => setTimeout(resolve, 50));
       await store.resumeSession(sessionId);
 
       await store.fetchSessions();
@@ -349,7 +341,6 @@ describe('Session Tracking Integration', () => {
 
       // Second pause/resume
       await store.pauseSession(sessionId);
-      await new Promise((resolve) => setTimeout(resolve, 50));
       await store.resumeSession(sessionId);
 
       await store.fetchSessions();
@@ -399,9 +390,6 @@ describe('Session Tracking Integration', () => {
 
       await store.startSession(sessionData);
       const sessionId = store.currentSessionId!;
-
-      // Wait 100ms
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
       await store.endSession(sessionId, {
         status: 'completed',
