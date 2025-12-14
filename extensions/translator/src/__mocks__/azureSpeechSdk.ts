@@ -447,6 +447,7 @@ export const SCENARIOS = {
           text: 'Hello everyone',
           translations: {
             de: 'Hallo zusammen',
+            en: 'Hello everyone',
             es: 'Hola a todos',
             fr: 'Bonjour à tous',
           },
@@ -459,6 +460,7 @@ export const SCENARIOS = {
           text: 'Hello everyone',
           translations: {
             de: 'Hallo zusammen',
+            en: 'Hello everyone',
             es: 'Hola a todos',
             fr: 'Bonjour à tous',
           },
@@ -544,7 +546,7 @@ export const SCENARIOS = {
         delay: 100,
         data: {
           text: 'This is ****',
-          translations: { de: 'Das ist ****' },
+          translations: { de: 'Das ist ****', en: 'This is ****' },
         },
       },
       {
@@ -552,7 +554,7 @@ export const SCENARIOS = {
         delay: 300,
         data: {
           text: 'This is ****',
-          translations: { de: 'Das ist ****' },
+          translations: { de: 'Das ist ****', en: 'This is ****' },
         },
       },
     ],
@@ -569,7 +571,7 @@ export const SCENARIOS = {
         delay: 100,
         data: {
           text: 'First sentence',
-          translations: { de: 'Erster Satz' },
+          translations: { de: 'Erster Satz', en: 'First sentence' },
         },
       },
       {
@@ -577,7 +579,7 @@ export const SCENARIOS = {
         delay: 300,
         data: {
           text: 'First sentence',
-          translations: { de: 'Erster Satz' },
+          translations: { de: 'Erster Satz', en: 'First sentence' },
         },
       },
       {
@@ -598,7 +600,7 @@ export const SCENARIOS = {
         delay: 100,
         data: {
           text: 'Welcome to',
-          translations: { de: 'Willkommen zu' },
+          translations: { de: 'Willkommen zu', en: 'Welcome to' },
         },
       },
       {
@@ -606,7 +608,7 @@ export const SCENARIOS = {
         delay: 200,
         data: {
           text: 'Welcome to our',
-          translations: { de: 'Willkommen zu unserem' },
+          translations: { de: 'Willkommen zu unserem', en: 'Welcome to our' },
         },
       },
       {
@@ -614,7 +616,10 @@ export const SCENARIOS = {
         delay: 300,
         data: {
           text: 'Welcome to our church',
-          translations: { de: 'Willkommen zu unserer Kirche' },
+          translations: {
+            de: 'Willkommen zu unserer Kirche',
+            en: 'Welcome to our church',
+          },
         },
       },
       {
@@ -622,7 +627,10 @@ export const SCENARIOS = {
         delay: 500,
         data: {
           text: 'Welcome to our church',
-          translations: { de: 'Willkommen zu unserer Kirche' },
+          translations: {
+            de: 'Willkommen zu unserer Kirche',
+            en: 'Welcome to our church',
+          },
         },
       },
       {
@@ -630,7 +638,7 @@ export const SCENARIOS = {
         delay: 700,
         data: {
           text: 'We are glad',
-          translations: { de: 'Wir freuen uns' },
+          translations: { de: 'Wir freuen uns', en: 'We are glad' },
         },
       },
       {
@@ -638,7 +646,10 @@ export const SCENARIOS = {
         delay: 900,
         data: {
           text: 'We are glad you are here',
-          translations: { de: 'Wir freuen uns, dass Sie hier sind' },
+          translations: {
+            de: 'Wir freuen uns, dass Sie hier sind',
+            en: 'We are glad you are here',
+          },
         },
       },
     ],

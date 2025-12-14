@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
-import { setupTestEnvironment } from '../../src/__mocks__/setup';
 import { mockAzureSpeech } from '../../src/__mocks__/azureSpeechSdk';
 import {
   CaptioningService,
@@ -15,8 +13,7 @@ import {
  */
 describe('Translation Workflow Integration', () => {
   beforeEach(() => {
-    setActivePinia(createPinia());
-    setupTestEnvironment('withApiKey');
+    // Note: Pinia setup is in setup.ts global beforeEach
     mockAzureSpeech.reset();
   });
 
@@ -507,10 +504,10 @@ describe('Translation Workflow Integration', () => {
       );
 
       service.start();
-      expect(mockAzureSpeech.getRecognizerState()).toBe('started');
+      expect(mockAzureSpeech.getRecognizerState().isRunning).toBe(true);
 
       service.stop();
-      expect(mockAzureSpeech.getRecognizerState()).toBe('stopped');
+      expect(mockAzureSpeech.getRecognizerState().isRunning).toBe(false);
     });
 
     it('should handle multiple start/stop cycles', async () => {
@@ -541,7 +538,7 @@ describe('Translation Workflow Integration', () => {
 
       // Second cycle
       service.start();
-      expect(mockAzureSpeech.getRecognizerState()).toBe('started');
+      expect(mockAzureSpeech.getRecognizerState().isRunning).toBe(true);
       service.stop();
     });
 
@@ -641,7 +638,7 @@ describe('Translation Workflow Integration', () => {
       expect(translations.length).toBeGreaterThan(0);
 
       // Service should auto-stop after sessionStopped event
-      expect(mockAzureSpeech.getRecognizerState()).toBe('stopped');
+      expect(mockAzureSpeech.getRecognizerState().isRunning).toBe(false);
     });
   });
 

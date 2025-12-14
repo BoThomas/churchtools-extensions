@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
 import { useTranslatorStore } from '../../src/stores/translator';
-import { setupTestEnvironment } from '../../src/__mocks__/setup';
 
 /**
  * Integration Tests: Settings Persistence
@@ -13,8 +11,6 @@ describe('Settings Persistence Integration', () => {
   let store: ReturnType<typeof useTranslatorStore>;
 
   beforeEach(async () => {
-    setActivePinia(createPinia());
-    setupTestEnvironment('clean');
     store = useTranslatorStore();
   });
 

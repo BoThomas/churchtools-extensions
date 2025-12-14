@@ -1,25 +1,24 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
 import { useTranslatorStore } from '../../src/stores/translator';
 import {
   SessionLogger,
   type TranslationSession,
 } from '../../src/services/sessionLogger';
-import { setupTestEnvironment } from '../../src/__mocks__/setup';
 
 /**
  * Integration Tests: Session Tracking
  *
  * Tests the full workflow of session management including creating, pausing,
  * resuming, ending sessions, heartbeats, and abandoned session detection.
+ *
+ * These tests use real PersistanceCategory with mocked kv-store backend.
  */
 describe('Session Tracking Integration', () => {
   let store: ReturnType<typeof useTranslatorStore>;
   let sessionLogger: SessionLogger;
 
   beforeEach(async () => {
-    setActivePinia(createPinia());
-    setupTestEnvironment('clean');
+    // Note: Pinia and mocks are set up in setup.ts global beforeEach
     store = useTranslatorStore();
     sessionLogger = new SessionLogger();
     await store.loadApiSettings();

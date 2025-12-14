@@ -119,7 +119,7 @@ export const useTranslatorStore = defineStore('translator', () => {
    * Also migrates single outputLanguage to outputLanguages array
    */
   function migrateSettings(settings: any): TranslatorSettings {
-    const migrated = { ...settings };
+    const migrated = JSON.parse(JSON.stringify(settings ?? {}));
 
     // Migrate inputLanguage if it's an object
     if (
@@ -160,6 +160,30 @@ export const useTranslatorStore = defineStore('translator', () => {
       migrated.presentation.showInputLanguage === undefined
     ) {
       migrated.presentation.showInputLanguage = false;
+    }
+
+    // Ensure presentation object exists with defaults
+    migrated.presentation = {
+      ...DEFAULT_SETTINGS.presentation,
+      ...(migrated.presentation || {}),
+    };
+
+    // Fill other defaults if missing
+    if (!migrated.inputLanguage) {
+      migrated.inputLanguage = DEFAULT_SETTINGS.inputLanguage;
+    }
+
+    if (!migrated.profanityOption) {
+      migrated.profanityOption = DEFAULT_SETTINGS.profanityOption;
+    }
+
+    if (!migrated.stablePartialResultThreshold) {
+      migrated.stablePartialResultThreshold =
+        DEFAULT_SETTINGS.stablePartialResultThreshold;
+    }
+
+    if (migrated.phraseList === undefined) {
+      migrated.phraseList = '';
     }
 
     return migrated as TranslatorSettings;
@@ -272,18 +296,20 @@ export const useTranslatorStore = defineStore('translator', () => {
         selectedVariantId.value = id;
         settings.value = { ...DEFAULT_SETTINGS };
       } else {
-        // Load user's last selected variant
+        // Load user preferences (first available when userId not provided)
+        const userPrefsList =
+          await userPreferencesCategory.list<
+            Record<string, { lastVariantId: number }>
+          >();
+        const userPrefs = userPrefsList[0]?.value || {};
+
         let lastVariantId: number | null = null;
 
-        if (userId) {
-          const userPrefs =
-            await userPreferencesCategory.list<
-              Record<string, { lastVariantId: number }>
-            >();
-          if (userPrefs.length > 0) {
-            const userPref = userPrefs[0].value[userId.toString()];
-            lastVariantId = userPref?.lastVariantId || null;
-          }
+        if (userId && userPrefs[userId.toString()]) {
+          lastVariantId = userPrefs[userId.toString()].lastVariantId || null;
+        } else if (!userId) {
+          const firstPref = Object.values(userPrefs)[0];
+          lastVariantId = firstPref?.lastVariantId || null;
         }
 
         // Try to load the last selected variant
@@ -294,7 +320,7 @@ export const useTranslatorStore = defineStore('translator', () => {
         selectedVariantId.value = variantToLoad.id;
         // Migrate settings if they're in old format
         settings.value = migrateSettings(
-          JSON.parse(JSON.stringify(variantToLoad.value.settings)),
+          structuredClone(variantToLoad.value.settings),
         );
       }
 
@@ -348,6 +374,10 @@ export const useTranslatorStore = defineStore('translator', () => {
       await ensureCategories();
       if (!settingsCategory) return;
 
+      // Normalize settings before persisting to ensure defaults are present
+      const normalizedSettings = migrateSettings(settings.value);
+      settings.value = normalizedSettings;
+
       const currentVariant = settingVariants.value.find(
         (v) => v.id === selectedVariantId.value,
       );
@@ -369,7 +399,7 @@ export const useTranslatorStore = defineStore('translator', () => {
         // Create new variant
         const newVariant: SettingVariant = {
           name: trimmedName,
-          settings: { ...settings.value },
+          settings: { ...normalizedSettings },
         };
         const { id } = await settingsCategory.create(newVariant);
         settingVariants.value.push({ id, value: newVariant, raw: {} as any });
@@ -384,7 +414,7 @@ export const useTranslatorStore = defineStore('translator', () => {
         // Update existing variant
         const updatedVariant: SettingVariant = {
           name: currentVariant.value.name,
-          settings: { ...settings.value },
+          settings: { ...normalizedSettings },
         };
         await settingsCategory.update(selectedVariantId.value, updatedVariant);
         currentVariant.value = updatedVariant;
@@ -787,19 +817,12 @@ export const useTranslatorStore = defineStore('translator', () => {
           stats.lastUsed = session.startTime;
         }
 
-        // Add to per-day breakdown (using active duration for charts)
-        const date = session.startTime.split('T')[0]; // Get YYYY-MM-DD
-        const existingDay = stats.sessions.find((s) => s.date === date);
-        if (existingDay) {
-          existingDay.activeMinutes += activeDuration;
-          existingDay.pausedMinutes += pausedDuration;
-        } else {
-          stats.sessions.push({
-            date,
-            activeMinutes: activeDuration,
-            pausedMinutes: pausedDuration,
-          });
-        }
+        // Add per-session breakdown (use exact startTime for uniqueness)
+        stats.sessions.push({
+          date: session.startTime,
+          activeMinutes: activeDuration,
+          pausedMinutes: pausedDuration,
+        });
       },
     );
 

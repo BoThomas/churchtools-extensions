@@ -1,11 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
 import { useTranslatorStore } from '../../src/stores/translator';
 import {
   SessionLogger,
   type TranslationSession,
 } from '../../src/services/sessionLogger';
-import { setupTestEnvironment } from '../../src/__mocks__/setup';
 
 /**
  * Integration Tests: Reports Generation
@@ -18,8 +16,6 @@ describe('Reports Generation Integration', () => {
   let sessionLogger: SessionLogger;
 
   beforeEach(async () => {
-    setActivePinia(createPinia());
-    setupTestEnvironment('clean');
     store = useTranslatorStore();
     sessionLogger = new SessionLogger();
     await store.loadApiSettings();
