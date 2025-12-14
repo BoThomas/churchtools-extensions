@@ -1,9 +1,5 @@
 import { LoremIpsum } from 'lorem-ipsum';
-
-interface LanguageItem {
-  code: string;
-  isInput: boolean;
-}
+import type { LanguageConfig } from '../types/language';
 
 /**
  * Composable for managing test presentation with Lorem Ipsum content
@@ -22,7 +18,7 @@ export function useTestPresentation() {
     },
   });
 
-  let testPresentationInterval: NodeJS.Timeout | null = null;
+  let testPresentationInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Start generating lorem ipsum content for test presentation
@@ -35,8 +31,8 @@ export function useTestPresentation() {
    */
   function startGeneration(
     isPaused: { value: boolean },
-    operatorLanguages: LanguageItem[],
-    presentationLanguages: LanguageItem[],
+    operatorLanguages: LanguageConfig[],
+    presentationLanguages: LanguageConfig[],
     finalizedParagraphsByLang: { value: Record<string, string[]> },
     currentLiveTranslationByLang: { value: Record<string, string> },
     updatePresentationWindow: (

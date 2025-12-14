@@ -1,5 +1,8 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { SessionLogger } from '../services/sessionLogger';
+import {
+  SessionLogger,
+  type TranslationSession,
+} from '../services/sessionLogger';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { useTranslatorStore } from '../stores/translator';
 
@@ -11,8 +14,8 @@ export function useSessionManagement(user: { value: Person | null }) {
   const store = useTranslatorStore();
   const sessionLogger = new SessionLogger();
 
-  const currentSession = ref<any>(null);
-  let heartbeatInterval: NodeJS.Timeout | null = null;
+  const currentSession = ref<TranslationSession | null>(null);
+  let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Start sending heartbeat updates every 30 seconds

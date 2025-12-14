@@ -35,15 +35,11 @@
 import { ref } from 'vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import { getLanguageDisplayName } from '../../utils/languageHelpers';
-
-interface LanguageItem {
-  code: string;
-  isInput: boolean;
-}
+import type { LanguageConfig } from '../../types/language';
 
 interface Props {
   isTestRunning: boolean;
-  languages: LanguageItem[];
+  languages: LanguageConfig[];
   finalizedParagraphsByLang: Record<string, string[]>;
   currentLiveTranslationByLang: Record<string, string>;
 }

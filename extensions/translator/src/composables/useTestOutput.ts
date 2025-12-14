@@ -1,5 +1,5 @@
 import { ref, nextTick } from 'vue';
-import type { LanguageConfig } from './useLanguageValidation';
+import type { LanguageConfig } from '../types/language';
 
 export function useTestOutput() {
   const finalizedParagraphsByLang = ref<Record<string, string[]>>({});

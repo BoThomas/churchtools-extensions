@@ -1,11 +1,7 @@
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import type { TranslatorSettings } from '../stores/translator';
-
-interface LanguageItem {
-  code: string;
-  isInput: boolean;
-}
+import type { LanguageConfig } from '../types/language';
 
 /**
  * Composable for managing presentation windows and localStorage communication
@@ -67,7 +63,7 @@ export function usePresentationWindow() {
   function openPresentationWindows(
     sessionId: string,
     settings: TranslatorSettings,
-    presentationLanguages: LanguageItem[],
+    presentationLanguages: LanguageConfig[],
     options: {
       isTest: boolean;
       multiWindowSummary: string;
