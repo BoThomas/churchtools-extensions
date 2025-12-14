@@ -79,6 +79,50 @@
       </div>
     </div>
 
+    <!-- Browser Compatibility Warning -->
+    <div
+      v-if="showBrowserWarning"
+      class="fixed inset-0 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-yellow-600 text-white px-8 py-6 rounded-lg shadow-2xl max-w-2xl relative overflow-hidden"
+        style="font-size: 16px !important"
+      >
+        <div class="flex items-start gap-3">
+          <i
+            class="pi pi-exclamation-triangle text-xl mt-0.5"
+            style="font-size: 20px !important"
+          ></i>
+          <div class="flex-1">
+            <p class="font-semibold mb-2" style="font-size: 16px !important">
+              Browser Compatibility Warning
+            </p>
+            <p class="text-sm mb-2" style="font-size: 14px !important">
+              This presentation mode has only been tested on Chromium-based
+              browsers (Chrome, Edge, Brave, Opera, Vivaldi).
+            </p>
+            <p class="text-sm" style="font-size: 14px !important">
+              You appear to be using a different browser. While it may work,
+              you might experience unexpected behavior or display issues.
+            </p>
+          </div>
+          <button
+            @click="dismissBrowserWarning"
+            class="text-white/70 hover:text-white cursor-pointer"
+            style="font-size: 16px !important"
+          >
+            <i class="pi pi-times" style="font-size: 16px !important"></i>
+          </button>
+        </div>
+        <!-- Progress bar -->
+        <div
+          class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 overflow-hidden"
+        >
+          <div class="progress-bar-warning h-full bg-white/80"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Translation Display - Multi-language Split Screen -->
     <div
       v-if="outputLanguages.length > 1"
@@ -129,6 +173,7 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import type { TranslatorSettings } from '../stores/translator';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
+import { isChromiumBrowser } from '../utils/browserDetection';
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
 
 const textEl = ref<HTMLDivElement>();
@@ -147,6 +192,9 @@ const specificLanguage = urlParams.get('lang') || null; // For multi-window mode
 const showFullscreenInstructions = ref(true);
 const osType = ref<'mac' | 'windows' | 'linux'>('windows');
 
+// Browser compatibility warning
+const showBrowserWarning = ref(!isChromiumBrowser());
+
 // Detect OS for fullscreen instructions
 function detectOS() {
   const platform = navigator.platform.toLowerCase();
@@ -163,6 +211,10 @@ function detectOS() {
 
 function dismissFullscreenInstructions() {
   showFullscreenInstructions.value = false;
+}
+
+function dismissBrowserWarning() {
+  showBrowserWarning.value = false;
 }
 
 // Default presentation settings
@@ -354,6 +406,13 @@ onMounted(() => {
     showFullscreenInstructions.value = false;
   }, 10000);
 
+  // Auto-dismiss browser warning after 15 seconds
+  if (showBrowserWarning.value) {
+    setTimeout(() => {
+      showBrowserWarning.value = false;
+    }, 15000);
+  }
+
   // Clean up on window close - signal to control window
   window.addEventListener('beforeunload', () => {
     // Remove settings to signal the control window that presentation closed
@@ -535,6 +594,12 @@ kbd {
 /* Progress bar animation for fullscreen instructions */
 .progress-bar {
   animation: progressAnimation 10s linear forwards;
+  transform-origin: left;
+}
+
+/* Progress bar animation for browser warning (15s) */
+.progress-bar-warning {
+  animation: progressAnimation 15s linear forwards;
   transform-origin: left;
 }
 
