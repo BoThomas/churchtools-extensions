@@ -69,10 +69,9 @@ The Translator extension enables real-time translation of spoken language during
 - Microsoft Azure account with a ["Speech-Service" Resource](https://azure.microsoft.com/en-us/pricing/details/cognitive-services/speech-services/) (you can start with a free tier for 5h/month of speech-to-text)
 - A microphone for the speaker/translator plugged into the PC running ChurchTools-Website
 - A screen or projector for displaying translations
-- **Chromium-based browser recommended** (Chrome, Edge, Brave, Opera, Vivaldi) - The presentation mode has only been tested on Chromium browsers. Other browsers may work but could experience display issues or unexpected behavior.
 
 > [!NOTE]
-> If you open the presentation mode in a non-Chromium browser, you'll see a warning message that auto-dismisses after 15 seconds.
+> The presentation mode has only been tested on Chromium-based browsers (Chrome, Edge, Brave, Opera, Vivaldi). Other browsers may work but could experience unexpected behavior or display issues.
 
 ## Azure Setup
 
