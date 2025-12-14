@@ -70,6 +70,9 @@ The Translator extension enables real-time translation of spoken language during
 - A microphone for the speaker/translator plugged into the PC running ChurchTools-Website
 - A screen or projector for displaying translations
 
+> [!NOTE]
+> The presentation mode has only been tested on Chromium-based browsers (Chrome, Edge, Brave ...). Other browsers may work but could experience unexpected behavior.
+
 ## Azure Setup
 
 1. Go to [Azure Portal](https://portal.azure.com)

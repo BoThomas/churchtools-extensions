@@ -65,7 +65,6 @@
 - add unit tests with Vitest
 - add report for which language is used for input and output and how often
 - use the way test mode is displaying things optionally for the presentation window as well so the operator can see what is captured in original tone and in the translated languages. this should also work for test presentation with the lorem ipsum in the same way.
-- show an alert on browsers that are not chromium-based as we have only tested those for presentation mode. also metion this in the translator reamdme as an alertbox or sth.
 - Storing all `finalizedParagraphsByLang` could exceed 5-10MB limit in long sessions. We Should implement sliding window (keep only last N paragraphs)
 
 ## Finished TODOs in current branch
@@ -75,3 +74,4 @@
 - Optimized the flow for starting and testing a presentation session
 - Added support for country-flags under windows (as windows does not support the emoji flags per default)
 - Added autoscroll for translation test outputs
+- Added browser compatibility alert for non-Chromium browsers

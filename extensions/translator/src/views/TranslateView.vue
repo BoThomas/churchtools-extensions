@@ -19,6 +19,26 @@
     </Message>
 
     <Message
+      v-if="showBrowserWarning"
+      severity="warn"
+      :closable="true"
+      icon="pi pi-exclamation-triangle"
+      @close="dismissBrowserWarning"
+    >
+      <div>
+        <p>
+          <strong>Browser Compatibility Warning:</strong> This presentation mode
+          has only been tested on Chromium-based browsers (Chrome, Edge, Brave,
+          ...).
+        </p>
+        <p class="text-sm">
+          You appear to be using a different browser. While it may work, you
+          might experience unexpected behavior.
+        </p>
+      </div>
+    </Message>
+
+    <Message
       v-if="hasInvalidLanguages"
       severity="warn"
       :closable="false"
@@ -149,6 +169,7 @@ import { useToast } from 'primevue/usetoast';
 import { CaptioningService } from '../services/captioning';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { isChromiumBrowser } from '../utils/browserDetection';
 
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -172,6 +193,13 @@ const toast = useToast();
 
 const error = ref<string | null>(null);
 const user = ref<Person | null>(null);
+
+// Browser compatibility warning
+const showBrowserWarning = ref(!isChromiumBrowser());
+
+function dismissBrowserWarning() {
+  showBrowserWarning.value = false;
+}
 
 // Composables
 const { state, stateText, statusSeverity, inputsDisabled } =
