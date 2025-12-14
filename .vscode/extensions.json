@@ -1,3 +1,7 @@
 {
-  "recommendations": ["vitest.explorer", "vue.volar"]
+  "recommendations": [
+    "vitest.explorer",
+    "vue.volar",
+    "ms-playwright.playwright"
+  ]
 }
