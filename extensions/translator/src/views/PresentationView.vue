@@ -14,58 +14,68 @@
     <!-- Fullscreen Instructions -->
     <div
       v-if="showFullscreenInstructions"
-      class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-primary text-primary-contrast px-6 py-3 rounded-lg shadow-lg z-50 max-w-2xl"
-      style="font-size: 16px !important"
+      class="fixed inset-0 flex items-center justify-center z-50"
     >
-      <div class="flex items-start gap-3">
-        <i
-          class="pi pi-info-circle text-xl mt-0.5"
-          style="font-size: 20px !important"
-        ></i>
-        <div class="flex-1">
-          <p class="font-semibold mb-1" style="font-size: 16px !important">
-            Enter Fullscreen Mode
-          </p>
-          <p
-            v-if="specificLanguage"
-            class="text-sm font-medium mb-1"
-            style="font-size: 14px !important"
-          >
-            Language: {{ getLanguageDisplayName(specificLanguage) }}
-          </p>
-          <p class="text-sm" style="font-size: 14px !important">
-            <span v-if="osType === 'mac'"
-              >Press
-              <kbd
-                class="px-2 py-1 bg-white/20 rounded"
-                style="font-size: 14px !important"
-                >⌃⌘F</kbd
+      <div
+        class="bg-primary text-primary-contrast px-8 py-6 rounded-lg shadow-2xl max-w-2xl relative overflow-hidden"
+        style="font-size: 16px !important"
+      >
+        <div class="flex items-start gap-3">
+          <i
+            class="pi pi-info-circle text-xl mt-0.5"
+            style="font-size: 20px !important"
+          ></i>
+          <div class="flex-1">
+            <p class="font-semibold mb-1" style="font-size: 16px !important">
+              Enter Fullscreen Mode
+            </p>
+            <p
+              v-if="specificLanguage"
+              class="text-sm font-medium mb-1"
+              style="font-size: 14px !important"
+            >
+              Language: {{ getLanguageDisplayName(specificLanguage) }}
+            </p>
+            <p class="text-sm" style="font-size: 14px !important">
+              <span v-if="osType === 'mac'"
+                >Press
+                <kbd
+                  class="px-2 py-1 bg-white/20 rounded"
+                  style="font-size: 14px !important"
+                  >⌃⌘F</kbd
+                >
+                or
+                <kbd
+                  class="px-2 py-1 bg-white/20 rounded"
+                  style="font-size: 14px !important"
+                  >Ctrl+Cmd+F</kbd
+                ></span
               >
-              or
-              <kbd
-                class="px-2 py-1 bg-white/20 rounded"
-                style="font-size: 14px !important"
-                >Ctrl+Cmd+F</kbd
-              ></span
-            >
-            <span v-else
-              >Press
-              <kbd
-                class="px-2 py-1 bg-white/20 rounded"
-                style="font-size: 14px !important"
-                >F11</kbd
-              ></span
-            >
-            to enter fullscreen mode.
-          </p>
+              <span v-else
+                >Press
+                <kbd
+                  class="px-2 py-1 bg-white/20 rounded"
+                  style="font-size: 14px !important"
+                  >F11</kbd
+                ></span
+              >
+              to enter fullscreen mode.
+            </p>
+          </div>
+          <button
+            @click="dismissFullscreenInstructions"
+            class="text-white/70 hover:text-white cursor-pointer"
+            style="font-size: 16px !important"
+          >
+            <i class="pi pi-times" style="font-size: 16px !important"></i>
+          </button>
         </div>
-        <button
-          @click="dismissFullscreenInstructions"
-          class="text-white/70 hover:text-white"
-          style="font-size: 16px !important"
+        <!-- Progress bar -->
+        <div
+          class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 overflow-hidden"
         >
-          <i class="pi pi-times" style="font-size: 16px !important"></i>
-        </button>
+          <div class="progress-bar h-full bg-white/80"></div>
+        </div>
       </div>
     </div>
 
@@ -520,5 +530,20 @@ kbd {
   border-radius: 0.25rem;
   font-family: monospace;
   font-size: 0.875rem;
+}
+
+/* Progress bar animation for fullscreen instructions */
+.progress-bar {
+  animation: progressAnimation 10s linear forwards;
+  transform-origin: left;
+}
+
+@keyframes progressAnimation {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 </style>
