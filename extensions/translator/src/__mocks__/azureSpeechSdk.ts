@@ -364,12 +364,15 @@ export class MockPhraseListGrammar {
 // Mock TranslationRecognizer Factory
 // ============================================================================
 
-export const TranslationRecognizer = vi.fn(
-  (config: MockSpeechTranslationConfig, _audioConfig: MockAudioConfig) => {
-    const recognizer = new MockTranslationRecognizer();
+export class TranslationRecognizer extends MockTranslationRecognizer {
+  constructor(
+    config: MockSpeechTranslationConfig,
+    _audioConfig: MockAudioConfig,
+  ) {
+    super();
 
     // Store configuration on the recognizer
-    recognizer._config = {
+    this._config = {
       inputLanguage: config.speechRecognitionLanguage,
       outputLanguages: config._getConfig().outputLanguages,
       profanityOption: config._getConfig().profanityOption,
@@ -381,11 +384,9 @@ export const TranslationRecognizer = vi.fn(
     };
 
     // Register with manager
-    mockAzureSpeech._registerRecognizer(recognizer);
-
-    return recognizer;
-  },
-);
+    mockAzureSpeech._registerRecognizer(this);
+  }
+}
 
 // ============================================================================
 // Pre-built Scenarios
