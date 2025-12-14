@@ -9,6 +9,7 @@
         severity="secondary"
       />
       <SecondaryButton
+        v-if="isDev"
         icon="pi pi-database"
         label="Add 100 Dummy Sessions"
         outlined
@@ -297,11 +298,11 @@
             <div class="text-sm">
               <div>
                 <i class="pi pi-microphone text-xs mr-1"></i>
-                {{ data.value.inputLanguage }}
+                {{ getLanguageDisplayName(data.value.inputLanguage, 'input') }}
               </div>
               <div>
                 <i class="pi pi-arrow-right text-xs mr-1"></i>
-                {{ data.value.outputLanguage }}
+                {{ getOutputLanguagesDisplay(data.value) }}
               </div>
             </div>
           </template>
@@ -344,10 +345,13 @@ import Chart from 'primevue/chart';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
+import { getLanguageDisplayName } from '../utils/languageHelpers';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
 const toast = useToast();
+
+const isDev = import.meta.env.DEV;
 
 // State
 const usageStats = ref<UsageStats[]>([]);
@@ -432,11 +436,13 @@ const filteredSessions = computed(() => {
     const searchLower = sessionSearchText.value.toLowerCase().trim();
     filtered = filtered.filter((s: CategoryValue<TranslationSession>) => {
       const session = s.value;
+      const outputLanguagesStr =
+        SessionLogger.getOutputLanguagesDisplay(session).toLowerCase();
       return (
         session.userName.toLowerCase().includes(searchLower) ||
         session.userEmail.toLowerCase().includes(searchLower) ||
         session.inputLanguage.toLowerCase().includes(searchLower) ||
-        session.outputLanguage.toLowerCase().includes(searchLower) ||
+        outputLanguagesStr.includes(searchLower) ||
         session.mode.toLowerCase().includes(searchLower) ||
         session.status.toLowerCase().includes(searchLower)
       );
@@ -518,6 +524,10 @@ const filteredStats = computed(() => {
 });
 
 // Helper functions for session display
+function getOutputLanguagesDisplay(session: TranslationSession): string {
+  return SessionLogger.getOutputLanguagesDisplay(session);
+}
+
 function getSessionDuration(session: TranslationSession): number {
   return SessionLogger.calculateSessionDuration(session);
 }

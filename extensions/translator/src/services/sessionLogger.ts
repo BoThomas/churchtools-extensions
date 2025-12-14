@@ -1,3 +1,5 @@
+import { getLanguageDisplayName } from '../utils/languageHelpers';
+
 export interface TranslationSession {
   id?: number;
   userId: number;
@@ -10,7 +12,8 @@ export interface TranslationSession {
   pausedDurationMinutes?: number; // cumulative paused time (for accurate billing)
   durationMinutes?: number; // calculated from start/end or lastHeartbeat
   inputLanguage: string; // e.g., "de-DE"
-  outputLanguage: string; // e.g., "en"
+  outputLanguage?: string; // e.g., "en" - DEPRECATED: Use outputLanguages instead (kept for backward compatibility)
+  outputLanguages?: string[]; // e.g., ["en", "es"] - New format supporting multiple languages
   mode: 'presentation' | 'test';
   status: 'running' | 'paused' | 'completed' | 'error' | 'abandoned';
 }
@@ -20,7 +23,7 @@ export interface SessionCreateData {
   userEmail: string;
   userName: string;
   inputLanguage: string;
-  outputLanguage: string;
+  outputLanguages: string[];
   mode: 'presentation' | 'test';
 }
 
@@ -39,12 +42,38 @@ export class SessionLogger {
       userName: data.userName,
       startTime: now.toISOString(),
       inputLanguage: data.inputLanguage,
-      outputLanguage: data.outputLanguage,
+      outputLanguages: data.outputLanguages,
       mode: data.mode,
       status: 'running',
     };
 
     return session;
+  }
+
+  /**
+   * Get output languages from a session (handles both old and new formats)
+   */
+  static getOutputLanguages(session: TranslationSession): string[] {
+    // New format takes precedence
+    if (session.outputLanguages && session.outputLanguages.length > 0) {
+      return session.outputLanguages;
+    }
+    // Fallback to old format
+    if (session.outputLanguage) {
+      return [session.outputLanguage];
+    }
+    // Default fallback
+    return [];
+  }
+
+  /**
+   * Get output languages as display string with flag emojis
+   */
+  static getOutputLanguagesDisplay(session: TranslationSession): string {
+    const languages = SessionLogger.getOutputLanguages(session);
+    return languages
+      .map((code) => getLanguageDisplayName(code, 'output'))
+      .join(', ');
   }
 
   /**

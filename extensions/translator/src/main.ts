@@ -14,6 +14,10 @@ import ToastService from 'primevue/toastservice';
 import Tooltip from 'primevue/tooltip';
 import StyleClass from 'primevue/styleclass';
 import ConfirmationService from 'primevue/confirmationservice';
+import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
+
+// Polyfill country flag emojis for better cross-platform support (will only load on browsers that need it)
+polyfillCountryFlagEmojis();
 
 const app = createApp(App);
 

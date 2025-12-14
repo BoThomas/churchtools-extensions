@@ -1,1 +1,18 @@
 @import '@churchtools-extensions/shared-styles/style.css';
+
+/**
+* Polifill for country flag emojis using Twemoji for better cross-platform support.
+**/
+
+/* Prepend so the polyfill font is used only for flags via unicode-range */
+:root {
+  font-family:
+    'Twemoji Country Flags', var(--font-family, system-ui), sans-serif;
+}
+
+/* If PrimeVue sets a global font-family, also prepend there: */
+body,
+.p-component {
+  font-family:
+    'Twemoji Country Flags', var(--font-family, system-ui), sans-serif;
+}

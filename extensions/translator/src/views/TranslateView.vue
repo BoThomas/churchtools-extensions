@@ -24,10 +24,11 @@
       :closable="false"
       icon="pi pi-exclamation-triangle"
     >
-      <div class="space-y-2">
+      <div>
         <p>
-          <strong>Invalid Language Configuration:</strong> One or more selected
-          languages are no longer available in the current options.
+          <strong>Invalid Language Configuration:</strong> Either you have no
+          input/output language selected, or some selected languages are no
+          longer available.
         </p>
         <p class="text-sm">
           This may occur after updating the extension. Please select valid
@@ -38,674 +39,65 @@
 
     <div v-if="hasApiCredentials" class="space-y-6">
       <!-- Translation Options -->
-      <Fieldset
-        legend="Translation Options"
-        :collapsed="true"
-        :toggleable="true"
-      >
-        <!-- TODO: Volt doesnt support custom legends in combination with toggleable fieldsets yet -->
-        <!-- <template #legend>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-language"></i>
-            <span class="font-semibold">Translation Options</span>
-          </div>
-        </template> -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Input Language -->
-          <div class="flex flex-col gap-2">
-            <label for="input-lang" class="font-medium text-sm"
-              >Spoken Input Language</label
-            >
-            <div class="flex items-stretch w-full">
-              <Select
-                id="input-lang"
-                v-model="store.settings.inputLanguage"
-                :options="inputLanguages"
-                filter
-                optionLabel="name"
-                optionValue="code"
-                :disabled="inputsDisabled"
-                placeholder="Select input language"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => inputLangPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="inputLangPopover">
-              <div class="max-w-xs">
-                <p class="text-sm">The spoken language to be translated.</p>
-              </div>
-            </Popover>
-          </div>
+      <TranslationOptionsSection
+        v-model="store.settings"
+        :disabled="inputsDisabled"
+        @change="store.markSettingsChanged()"
+      />
 
-          <!-- Output Language -->
-          <div class="flex flex-col gap-2">
-            <label for="output-lang" class="font-medium text-sm"
-              >Written Output Language</label
-            >
-            <div class="flex items-stretch w-full">
-              <Select
-                id="output-lang"
-                v-model="store.settings.outputLanguage"
-                :options="outputLanguages"
-                filter
-                optionLabel="name"
-                optionValue="code"
-                :disabled="inputsDisabled"
-                placeholder="Select output language"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => outputLangPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="outputLangPopover">
-              <div class="max-w-xs">
-                <p class="text-sm">
-                  The written language to which is translated.
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Profanity Filter -->
-          <div class="flex flex-col gap-2">
-            <label for="profanity" class="font-medium text-sm"
-              >Profanity Option</label
-            >
-            <div class="flex items-stretch w-full">
-              <Select
-                id="profanity"
-                v-model="store.settings.profanityOption"
-                :options="profanityOptions"
-                :disabled="inputsDisabled"
-                placeholder="Select profanity option"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => profanityPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="profanityPopover">
-              <div class="max-w-xs">
-                <p class="text-sm mb-2">Setting for dealing with profanity:</p>
-                <p class="text-sm">
-                  <strong>raw</strong>: swear words are kept<br />
-                  <strong>remove</strong>: swear words are removed<br />
-                  <strong>mask</strong>: swear words are replaced by ***
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Stable Partial Result Threshold -->
-          <div class="flex flex-col gap-2">
-            <label for="threshold" class="font-medium text-sm"
-              >Partial Result Threshold</label
-            >
-            <div class="flex items-stretch w-full">
-              <Select
-                id="threshold"
-                v-model="store.settings.stablePartialResultThreshold"
-                :options="partialThresholds"
-                :disabled="inputsDisabled"
-                placeholder="Select threshold"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => thresholdPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="thresholdPopover">
-              <div class="max-w-sm">
-                <p class="text-sm mb-2">
-                  Real-time translation presents tradeoffs with respect to
-                  latency versus accuracy. You could show the text as soon as
-                  possible. However, if you can accept some latency, you can
-                  improve the accuracy of the caption by setting a higher
-                  'partial results threshold'.
-                </p>
-                <p class="text-sm">
-                  The value that you set is the number of times a word has to be
-                  recognized before the Speech service returns a live
-                  translation.
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Phrase List -->
-          <div class="flex flex-col gap-2 md:col-span-2">
-            <label for="phrases" class="font-medium text-sm">Phrase List</label>
-            <div class="flex items-stretch w-full">
-              <InputText
-                id="phrases"
-                v-model="store.settings.phraseList"
-                placeholder="Oeschelbronn;Schaan;Paul"
-                :disabled="inputsDisabled"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => phraseListPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="phraseListPopover">
-              <div class="max-w-sm">
-                <p class="text-sm mb-2">
-                  A phrase list is a list of words or phrases that you can
-                  provide before starting the translation. Adding a phrase to a
-                  phrase list increases its importance, thus making it more
-                  likely to be recognized.
-                </p>
-                <p class="text-sm mb-2">
-                  Examples of phrases include: Names, Geographical locations,
-                  Homonyms, Words or acronyms unique to your industry or
-                  organization.
-                </p>
-                <p class="text-sm">
-                  Phrases need to be separated by a semicolon.
-                </p>
-              </div>
-            </Popover>
-          </div>
-        </div>
-      </Fieldset>
-
-      <!-- Presentation Styling Options -->
-      <Fieldset
-        legend="Presentation Options"
-        :collapsed="true"
-        :toggleable="true"
-      >
-        <!-- TODO: Volt doesnt support custom legends in combination with toggleable fieldsets yet -->
-        <!-- <template #legend>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-palette"></i>
-            <span class="font-semibold">Presentation Options</span>
-          </div>
-        </template> -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <!-- Font -->
-          <div class="flex flex-col gap-2">
-            <label for="font" class="font-medium text-sm">Font</label>
-            <div class="flex items-stretch w-full">
-              <Select
-                id="font"
-                v-model="store.settings.presentation.font"
-                :options="presentationFonts"
-                :disabled="inputsDisabled"
-                placeholder="Select font"
-                pt:root="flex-1 rounded-e-none"
-              >
-                <template #option="{ option }">
-                  <span :style="{ fontFamily: option }">{{ option }}</span>
-                </template>
-              </Select>
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => fontPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="fontPopover">
-              <div class="max-w-xs">
-                <p class="text-sm">
-                  Font used to display the translated text. Make sure the font
-                  has all the characters of the selected output language.
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Font Size -->
-          <div class="flex flex-col gap-2">
-            <label for="font-size" class="font-medium text-sm">Font Size</label>
-            <div class="flex items-stretch w-full">
-              <InputText
-                id="font-size"
-                v-model="store.settings.presentation.fontSize"
-                placeholder="2em / 30px"
-                :disabled="inputsDisabled"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => fontSizePopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="fontSizePopover">
-              <div class="max-w-xs">
-                <p class="text-sm">
-                  Font size of the translated text. You can specify the size in
-                  any CSS unit (px, em, rem...).
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Margin -->
-          <div class="flex flex-col gap-2">
-            <label for="margin" class="font-medium text-sm"
-              >Paragraph Margin</label
-            >
-            <div class="flex items-stretch w-full">
-              <InputText
-                id="margin"
-                v-model="store.settings.presentation.margin"
-                placeholder="1em 2em"
-                :disabled="inputsDisabled"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => marginPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="marginPopover">
-              <div class="max-w-sm">
-                <p class="text-sm">
-                  Distance of the translated paragraphs to each other and to the
-                  screen border. Specifications in 'px' and in 'em' are allowed.
-                  To control all sides individually, e.g. '1em 4em 1em 2em' can
-                  be used (top, right, bottom, left).
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Text Color -->
-          <div class="flex flex-col gap-2">
-            <label for="color" class="font-medium text-sm">Text Color</label>
-            <div class="flex items-stretch w-full">
-              <InputText
-                id="color"
-                v-model="store.settings.presentation.color"
-                placeholder="white / #fff"
-                :disabled="inputsDisabled"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => colorPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="colorPopover">
-              <div class="max-w-xs">
-                <p class="text-sm">
-                  Color of the translated text. You can specify colors with html
-                  names, rgb, and hex.
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Live Text Color -->
-          <div class="flex flex-col gap-2">
-            <label for="live-color" class="font-medium text-sm"
-              >Live Text Color</label
-            >
-            <div class="flex items-stretch w-full">
-              <InputText
-                id="live-color"
-                v-model="store.settings.presentation.liveColor"
-                placeholder="gray / #999"
-                :disabled="inputsDisabled"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => liveColorPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="liveColorPopover">
-              <div class="max-w-xs">
-                <p class="text-sm">
-                  Color of the live translated text. You can specify colors with
-                  html names, rgb, and hex.
-                </p>
-              </div>
-            </Popover>
-          </div>
-
-          <!-- Background -->
-          <div class="flex flex-col gap-2">
-            <label for="background" class="font-medium text-sm"
-              >Background</label
-            >
-            <div class="flex items-stretch w-full">
-              <InputText
-                id="background"
-                v-model="store.settings.presentation.background"
-                placeholder="black / #000"
-                :disabled="inputsDisabled"
-                pt:root="flex-1 rounded-e-none"
-              />
-              <span
-                class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
-              >
-                <Button
-                  icon="pi pi-question-circle"
-                  severity="secondary"
-                  text
-                  pt:root="rounded-none"
-                  @click="(e) => backgroundPopover.toggle(e)"
-                  :disabled="inputsDisabled"
-                />
-              </span>
-            </div>
-            <Popover ref="backgroundPopover">
-              <div class="max-w-sm">
-                <p class="text-sm">
-                  Background of the presentation view. You can specify colors
-                  with html names, rgb, and hex. Also images with e.g. the
-                  following syntax: 'center / cover no-repeat
-                  url(https://picsum.photos/1920/1080)', or color-gradients
-                  with: 'linear-gradient(red, yellow)'.
-                </p>
-              </div>
-            </Popover>
-          </div>
-        </div>
-      </Fieldset>
+      <!-- Presentation Options -->
+      <PresentationOptionsSection
+        v-model="store.settings"
+        :disabled="inputsDisabled"
+        :presentation-languages-count="presentationLanguages.length"
+        @change="store.markSettingsChanged()"
+      />
 
       <!-- Controls -->
-      <Fieldset>
-        <template #legend>
-          <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-              <i class="pi pi-sitemap"></i>
-              <span class="font-semibold">Controls</span>
-            </div>
-            <Badge
-              v-if="stateText"
-              :value="stateText"
-              :severity="statusSeverity"
-            />
-          </div>
-        </template>
-        <div class="flex flex-col gap-4">
-          <!-- Main Flow: Test & Presentation -->
-          <div class="controls-grid grid grid-cols-1 gap-3 items-stretch">
-            <!-- Test in here -->
-            <div class="flex flex-col gap-1">
-              <span class="text-xs font-medium uppercase text-surface-500">
-                Quick check
-              </span>
-              <div class="test-button-wrapper flex flex-col gap-2">
-                <Button
-                  label="Test in here"
-                  icon="pi pi-compass"
-                  @click="startTest"
-                  :disabled="state.isPresentationRunning || state.isTestRunning"
-                  class="test-button w-full"
-                />
-              </div>
-            </div>
-
-            <!-- Presentation flow as input group -->
-            <div class="flex flex-col gap-1">
-              <span class="text-xs font-medium uppercase text-surface-500">
-                Live presentation
-              </span>
-              <div class="presentation-buttons-wrapper flex flex-col gap-2">
-                <Button
-                  label="Presentation"
-                  icon="pi pi-external-link"
-                  @click="startPresentation"
-                  :disabled="state.isPresentationRunning || state.isTestRunning"
-                  severity="secondary"
-                />
-                <Button
-                  v-if="state.isPaused"
-                  label="Resume"
-                  icon="pi pi-play"
-                  @click="pauseOrResume"
-                  :disabled="
-                    !(
-                      (state.isPresentationRunning &&
-                        state.isRecordingStarted) ||
-                      state.isTestRunning
-                    )
-                  "
-                />
-                <Button
-                  v-else
-                  label="Pause"
-                  icon="pi pi-pause"
-                  @click="pauseOrResume"
-                  :disabled="
-                    !(
-                      (state.isPresentationRunning &&
-                        state.isRecordingStarted) ||
-                      state.isTestRunning
-                    )
-                  "
-                  severity="warning"
-                />
-                <Button
-                  label="Stop"
-                  icon="pi pi-stop"
-                  @click="stop"
-                  :disabled="
-                    !(state.isPresentationRunning || state.isTestRunning)
-                  "
-                  severity="danger"
-                  outlined
-                />
-              </div>
-            </div>
-          </div>
-          <div class="text-xs text-surface-500 flex items-center justify-end">
-            <span>
-              Open the presentation window first, then control pause / stop from
-              here.
-            </span>
-          </div>
-
-          <!-- Save/Load Settings -->
-          <div
-            class="flex flex-col gap-4 pt-4 border-t border-surface-300 dark:border-surface-700"
-          >
-            <div class="flex flex-col md:flex-row gap-3">
-              <!-- Variant Selector -->
-              <div class="flex-1 flex flex-col gap-2">
-                <label for="variant-select" class="font-medium text-sm"
-                  >Setting Variant</label
-                >
-                <div class="flex gap-2">
-                  <Select
-                    id="variant-select"
-                    v-model="selectedVariantForDisplay"
-                    :options="store.settingVariants"
-                    optionLabel="value.name"
-                    optionValue="id"
-                    placeholder="Select a variant"
-                    @change="onVariantChange"
-                    :disabled="inputsDisabled"
-                    class="flex-1"
-                  />
-                  <Button
-                    icon="pi pi-trash"
-                    severity="danger"
-                    outlined
-                    @click="confirmDeleteVariant"
-                    :disabled="
-                      inputsDisabled ||
-                      store.settingVariants.length <= 1 ||
-                      isDefaultVariantSelected
-                    "
-                    v-tooltip.top="'Delete variant'"
-                  />
-                </div>
-              </div>
-
-              <!-- Save Buttons -->
-              <div class="flex gap-2 items-end">
-                <ContrastButton
-                  label="Save"
-                  icon="pi pi-save"
-                  @click="saveCurrentVariant"
-                  :disabled="
-                    inputsDisabled ||
-                    store.settingsSaving ||
-                    !store.hasUnsavedChanges ||
-                    isDefaultVariantSelected
-                  "
-                  :loading="store.settingsSaving"
-                />
-                <ContrastButton
-                  label="Save As..."
-                  icon="pi pi-plus"
-                  variant="outlined"
-                  @click="promptSaveAsNewVariant"
-                  :disabled="inputsDisabled"
-                />
-              </div>
-            </div>
-            <div
-              v-if="store.hasUnsavedChanges"
-              class="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1"
-            >
-              <i class="pi pi-exclamation-triangle"></i>
-              <span v-if="isDefaultVariantSelected">
-                You have unsaved changes. Use "Save As..." to create a new
-                variant.
-              </span>
-              <span v-else> You have unsaved changes </span>
-            </div>
-          </div>
-        </div>
-      </Fieldset>
+      <TranslationControlPanel
+        :is-test-running="state.isTestRunning"
+        :is-presentation-running="state.isPresentationRunning"
+        :is-test-presentation-running="state.isTestPresentationRunning"
+        :is-paused="state.isPaused"
+        :is-recording-started="state.isRecordingStarted"
+        :presentation-windows-opened-but-not-started="
+          state.presentationWindowsOpenedButNotStarted
+        "
+        :state-text="stateText"
+        :status-severity="statusSeverity"
+        :presentation-mode="store.settings.presentation.mode"
+        :show-input-language="store.settings.presentation.showInputLanguage"
+        :presentation-languages-count="presentationLanguages.length"
+        :output-languages-count="store.settings.outputLanguages.length"
+        :has-too-many-languages-for-split="hasTooManyLanguagesForSplit"
+        :selected-variant-id="selectedVariantForDisplay"
+        :setting-variants="store.settingVariants"
+        :has-unsaved-changes="store.hasUnsavedChanges"
+        :settings-saving="store.settingsSaving"
+        :is-default-variant-selected="isDefaultVariantSelected"
+        :has-invalid-languages="hasInvalidLanguages"
+        :inputs-disabled="inputsDisabled"
+        @start-test="startTest"
+        @start-test-presentation="startTestPresentation"
+        @start-presentation="startPresentation"
+        @start-recording="startRecording"
+        @start-test-generation="startTestGeneration"
+        @pause-or-resume="pauseOrResume"
+        @stop="stop"
+        @variant-change="onVariantChange"
+        @confirm-delete-variant="confirmDeleteVariant"
+        @save-current-variant="saveCurrentVariant"
+        @prompt-save-as-new-variant="promptSaveAsNewVariant"
+      />
 
       <!-- Test Mode Output -->
-      <div
-        v-if="state.isTestRunning"
-        class="grid grid-cols-1 md:grid-cols-2 gap-4"
-      >
-        <Fieldset>
-          <template #legend>
-            <span class="font-semibold">Speech to Text</span>
-          </template>
-          <div class="space-y-2 max-h-96 overflow-y-auto">
-            <p
-              v-for="(paragraph, index) in finalizedParagraphsOri"
-              :key="'ori-' + index"
-              class="text-sm"
-            >
-              {{ paragraph }}
-            </p>
-            <p
-              v-if="currentLiveTranslationOri"
-              class="text-sm text-surface-500"
-            >
-              {{ currentLiveTranslationOri }}
-            </p>
-          </div>
-        </Fieldset>
-
-        <Fieldset>
-          <template #legend>
-            <span class="font-semibold">Translation</span>
-          </template>
-          <div class="space-y-2 max-h-96 overflow-y-auto">
-            <p
-              v-for="(paragraph, index) in finalizedParagraphs"
-              :key="'trans-' + index"
-              class="text-sm"
-            >
-              {{ paragraph }}
-            </p>
-            <p v-if="currentLiveTranslation" class="text-sm text-surface-500">
-              {{ currentLiveTranslation }}
-            </p>
-          </div>
-        </Fieldset>
-      </div>
+      <TestOutputDisplay
+        ref="testOutputDisplay"
+        :is-test-running="state.isTestRunning"
+        :languages="operatorLanguages"
+        :finalized-paragraphs-by-lang="finalizedParagraphsByLang"
+        :current-live-translation-by-lang="currentLiveTranslationByLang"
+      />
     </div>
   </div>
 
@@ -750,133 +142,87 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useTranslatorStore } from '../stores/translator';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { CaptioningService } from '../services/captioning';
-import { SessionLogger } from '../services/sessionLogger';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 
-import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
-import Button from '@churchtools-extensions/prime-volt/Button.vue';
-import Badge from '@churchtools-extensions/prime-volt/Badge.vue';
-import ContrastButton from '@churchtools-extensions/prime-volt/ContrastButton.vue';
-import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
-import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
-import translationOptions from '../translation-options.json';
+import TranslationOptionsSection from '../components/sections/TranslationOptionsSection.vue';
+import PresentationOptionsSection from '../components/sections/PresentationOptionsSection.vue';
+import TestOutputDisplay from '../components/sections/TestOutputDisplay.vue';
+import TranslationControlPanel from '../components/sections/TranslationControlPanel.vue';
+import { useVariantManagement } from '../composables/useVariantManagement';
+import { useTranslationState } from '../composables/useTranslationState';
+import { useLanguageValidation } from '../composables/useLanguageValidation';
+import { useTestOutput } from '../composables/useTestOutput';
+import { usePresentationWindow } from '../composables/usePresentationWindow';
+import { useSessionManagement } from '../composables/useSessionManagement';
+import { useTestPresentation } from '../composables/useTestPresentation';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
 const toast = useToast();
 
-// Popover refs for info buttons
-const inputLangPopover = ref();
-const outputLangPopover = ref();
-const profanityPopover = ref();
-const thresholdPopover = ref();
-const phraseListPopover = ref();
-const fontPopover = ref();
-const fontSizePopover = ref();
-const marginPopover = ref();
-const colorPopover = ref();
-const liveColorPopover = ref();
-const backgroundPopover = ref();
-
-// State
-const state = ref({
-  isTestRunning: false,
-  isPresentationRunning: false,
-  isPaused: false,
-  isRecordingStarted: false, // Tracks if presentation window clicked start
-});
-
 const error = ref<string | null>(null);
 const user = ref<Person | null>(null);
-const currentSession = ref<any>(null);
 
-// Variant management
-const selectedVariantForDisplay = ref<number | null>(null);
-const saveAsDialogVisible = ref(false);
-const newVariantName = ref('');
+// Composables
+const { state, stateText, statusSeverity, inputsDisabled } =
+  useTranslationState();
+const {
+  hasInvalidLanguages,
+  operatorLanguages,
+  presentationLanguages,
+  hasTooManyLanguagesForSplit,
+} = useLanguageValidation();
+const { finalizedParagraphsByLang, currentLiveTranslationByLang } =
+  useTestOutput();
+const {
+  presentationSessionId,
+  generateSessionId,
+  updatePresentationWindow,
+  clearPresentationWindowStorage,
+  openPresentationWindows,
+  cleanupPresentationStorage,
+  setPausedFlag,
+} = usePresentationWindow();
+const {
+  startSession: startSessionTracking,
+  endSession: endSessionTracking,
+  pauseSession,
+  resumeSession,
+} = useSessionManagement(user);
+const { startGeneration, stopGeneration } = useTestPresentation();
+const {
+  selectedVariantForDisplay,
+  saveAsDialogVisible,
+  newVariantName,
+  isDefaultVariantSelected,
+  onVariantChange,
+  saveCurrentVariant,
+  promptSaveAsNewVariant,
+  saveAsNewVariant,
+  confirmDeleteVariant,
+} = useVariantManagement(user, hasInvalidLanguages);
 
 // Captioning service instance
 let captioningService: CaptioningService | null = null;
-const sessionLogger = new SessionLogger();
-let heartbeatInterval: NodeJS.Timeout | null = null;
 
-// Test mode output
-const finalizedParagraphsOri = ref<string[]>([]);
-const currentLiveTranslationOri = ref('');
-const finalizedParagraphs = ref<string[]>([]);
-const currentLiveTranslation = ref('');
-
-// Language options (imported from JSON config)
-const inputLanguages = translationOptions.inputLanguages;
-const outputLanguages = translationOptions.outputLanguages;
-const profanityOptions = translationOptions.profanityOptions;
-const partialThresholds = translationOptions.partialThresholds;
-const presentationFonts = translationOptions.presentationFonts;
-
-// Computed properties for language validation
-const inputLanguageValid = computed(() => {
-  return inputLanguages.some(
-    (lang) => lang.code === store.settings.inputLanguage,
-  );
-});
-
-const outputLanguageValid = computed(() => {
-  return outputLanguages.some(
-    (lang) => lang.code === store.settings.outputLanguage,
-  );
-});
-
-const hasInvalidLanguages = computed(() => {
-  return !inputLanguageValid.value || !outputLanguageValid.value;
-});
+// Ref for TestOutputDisplay component
+const testOutputDisplay = ref<InstanceType<typeof TestOutputDisplay> | null>(
+  null,
+);
 
 // Computed
 const hasApiCredentials = computed(() => {
   return !!store.apiSettings.azureApiKey && !!store.apiSettings.azureRegion;
-});
-
-const inputsDisabled = computed(() => {
-  return (
-    state.value.isTestRunning ||
-    state.value.isPresentationRunning ||
-    store.settingsSaving
-  );
-});
-
-const stateText = computed(() => {
-  if (state.value.isPaused) {
-    return state.value.isTestRunning ? 'Test Paused' : 'Presentation Paused';
-  } else if (state.value.isTestRunning) {
-    return 'Testing';
-  } else if (state.value.isPresentationRunning) {
-    return 'Presenting';
-  }
-  return '';
-});
-
-const statusSeverity = computed(() => {
-  if (state.value.isPaused) {
-    return 'warn';
-  } else if (state.value.isTestRunning || state.value.isPresentationRunning) {
-    return 'success';
-  }
-  return 'secondary';
-});
-
-const isDefaultVariantSelected = computed(() => {
-  const currentVariant = store.settingVariants.find(
-    (v) => v.id === store.selectedVariantId,
-  );
-  return currentVariant?.value.name === 'Default';
 });
 
 // Load current user
@@ -888,70 +234,70 @@ async function loadUser() {
   }
 }
 
-// Start sending heartbeat updates every 30 seconds
-function startHeartbeat() {
-  stopHeartbeat(); // Clear any existing interval
-
-  heartbeatInterval = setInterval(() => {
-    const sessionId = sessionLogger.getCurrentSessionId();
-    if (sessionId) {
-      // Non-blocking heartbeat update
-      store.updateHeartbeat(sessionId).catch(() => {
-        // Silent fail - already logged in store
-      });
-    }
-  }, 30000); // 30 seconds
-}
-
-// Stop heartbeat updates
-function stopHeartbeat() {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-    heartbeatInterval = null;
-  }
-}
-
-// Handle window close - try to end session gracefully
-function handleWindowClose() {
-  const sessionId = sessionLogger.getCurrentSessionId();
-  if (sessionId && currentSession.value) {
-    try {
-      // Attempt to end session, but browser may close before async call completes
-      // Sessions without endTime will be detected as "abandoned" based on lastHeartbeat
-      const endedSession = sessionLogger.endSession(
-        currentSession.value,
-        'completed',
-      );
-      // Note: This async call will likely not complete before page unload
-      // The session will be marked as abandoned (status='running' with old lastHeartbeat)
-      store.endSession(sessionId, endedSession);
-    } catch (e) {
-      // Silent fail on unload
-      console.warn('Could not end session on close:', e);
-    }
-  }
-}
-
 // Translation callbacks
-function onTranslating(translation: string, original: string) {
-  currentLiveTranslation.value = translation;
-  currentLiveTranslationOri.value = original;
+function onTranslating(translations: Record<string, string>, original: string) {
+  // Build translations for operator (always includes input)
+  const operatorTranslations = { ...translations };
+  operatorTranslations[store.settings.inputLanguage] = original;
 
-  // Update presentation window if running
+  // Store full operator view
+  currentLiveTranslationByLang.value = operatorTranslations;
+
+  // Scroll test output to bottom
+  if (state.value.isTestRunning) {
+    scrollTestOutputToBottom();
+  }
+
+  // Update presentation window if running (filter for audience)
   if (state.value.isPresentationRunning) {
-    updatePresentationWindow(translation, true);
+    // Build translations for presentation (respects checkbox)
+    const presentationTranslations = { ...translations };
+    if (store.settings.presentation.showInputLanguage) {
+      presentationTranslations[store.settings.inputLanguage] = original;
+    }
+    updatePresentationWindow(
+      presentationTranslations,
+      true,
+      finalizedParagraphsByLang.value,
+    );
   }
 }
 
-function onTranslated(translation: string, original: string) {
-  finalizedParagraphs.value.push(translation);
-  finalizedParagraphsOri.value.push(original);
-  currentLiveTranslation.value = '';
-  currentLiveTranslationOri.value = '';
+function onTranslated(translations: Record<string, string>, original: string) {
+  // Add translations to each language's finalized paragraphs (output languages)
+  for (const [lang, translation] of Object.entries(translations)) {
+    if (!finalizedParagraphsByLang.value[lang]) {
+      finalizedParagraphsByLang.value[lang] = [];
+    }
+    finalizedParagraphsByLang.value[lang].push(translation);
+  }
+
+  // Always add input language for operator monitoring
+  if (!finalizedParagraphsByLang.value[store.settings.inputLanguage]) {
+    finalizedParagraphsByLang.value[store.settings.inputLanguage] = [];
+  }
+  finalizedParagraphsByLang.value[store.settings.inputLanguage].push(original);
+
+  // Clear live translations
+  currentLiveTranslationByLang.value = {};
+
+  // Scroll test output to bottom
+  if (state.value.isTestRunning) {
+    scrollTestOutputToBottom();
+  }
 
   // Update presentation window if running
   if (state.value.isPresentationRunning) {
-    updatePresentationWindow(translation, false);
+    // Build translations for presentation (respects checkbox)
+    const presentationTranslations = { ...translations };
+    if (store.settings.presentation.showInputLanguage) {
+      presentationTranslations[store.settings.inputLanguage] = original;
+    }
+    updatePresentationWindow(
+      presentationTranslations,
+      false,
+      finalizedParagraphsByLang.value,
+    );
   }
 }
 
@@ -960,27 +306,18 @@ function onError(errorMsg: string) {
   stop();
 }
 
-// Update presentation window via localStorage
-function updatePresentationWindow(text: string, isLive: boolean) {
-  const data = {
-    text,
-    isLive,
-    finalized: finalizedParagraphs.value,
-    timestamp: Date.now(),
-  };
-  localStorage.setItem('translator_presentation', JSON.stringify(data));
-}
-
-// Clear presentation data in localStorage (used on pause/start to avoid showing
-// stale content in the presentation window)
-function clearPresentationWindowStorage() {
-  const data = {
-    text: '',
-    isLive: false,
-    finalized: [],
-    timestamp: Date.now(),
-  };
-  localStorage.setItem('translator_presentation', JSON.stringify(data));
+// Scroll test output containers to bottom
+function scrollTestOutputToBottom() {
+  nextTick(() => {
+    // Scroll all language containers via the TestOutputDisplay component
+    if (testOutputDisplay.value?.langRefs) {
+      Object.values(testOutputDisplay.value.langRefs).forEach((element) => {
+        if (element) {
+          element.scrollTop = element.scrollHeight;
+        }
+      });
+    }
+  });
 }
 
 // Start test mode
@@ -991,17 +328,15 @@ async function startTest() {
   }
 
   // Clear previous test output
-  finalizedParagraphs.value = [];
-  finalizedParagraphsOri.value = [];
-  currentLiveTranslation.value = '';
-  currentLiveTranslationOri.value = '';
+  finalizedParagraphsByLang.value = {};
+  currentLiveTranslationByLang.value = {};
 
   try {
     // Create captioning service
     captioningService = new CaptioningService(
       {
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
+        outputLanguages: store.settings.outputLanguages,
         profanityOption: store.settings.profanityOption,
         stablePartialResultThreshold:
           store.settings.stablePartialResultThreshold,
@@ -1019,25 +354,12 @@ async function startTest() {
     captioningService.start();
     state.value.isTestRunning = true;
 
-    // Start session logging
-    if (user.value) {
-      const session = sessionLogger.createSession({
-        userId: user.value.id!,
-        userEmail: user.value.email ?? '',
-        userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
-        mode: 'test',
-      });
-      const sessionId = await store.startSession(session);
-      if (sessionId) {
-        sessionLogger.setCurrentSessionId(sessionId);
-        currentSession.value = session;
-
-        // Start heartbeat updates
-        startHeartbeat();
-      }
-    }
+    // Start session tracking
+    await startSessionTracking(
+      'test',
+      store.settings.inputLanguage,
+      store.settings.outputLanguages,
+    );
 
     toast.add({
       severity: 'success',
@@ -1065,35 +387,35 @@ async function startPresentation() {
   }
 
   // Clear previous output
-  finalizedParagraphs.value = [];
-  finalizedParagraphsOri.value = [];
-  currentLiveTranslation.value = '';
-  currentLiveTranslationOri.value = '';
-  // Clear any existing presentation data to avoid showing previous session
+  finalizedParagraphsByLang.value = {};
+  currentLiveTranslationByLang.value = {};
+
+  // Generate unique session ID and clear storage
+  const sessionId = generateSessionId();
+  presentationSessionId.value = sessionId;
   clearPresentationWindowStorage();
 
   try {
     state.value.isPresentationRunning = true;
+    state.value.presentationWindowsOpenedButNotStarted = true;
 
-    // Save settings to localStorage for presentation window
-    localStorage.setItem('translator_settings', JSON.stringify(store.settings));
-    localStorage.removeItem('translator_paused');
-    localStorage.removeItem('translator_recording_started');
-
-    // Open presentation window - just open the same page which will detect the hash
-    const presentationUrl = `${window.location.origin}${window.location.pathname}?presentation=true`;
-    window.open(presentationUrl, '_blank', 'toolbar=0,location=0,menubar=0');
-
-    toast.add({
-      severity: 'success',
-      summary: 'Presentation Started',
-      detail: 'Presentation window opened',
-      life: 3000,
-    });
+    openPresentationWindows(
+      sessionId,
+      store.settings,
+      presentationLanguages.value,
+      {
+        isTest: false,
+        multiWindowSummary: 'Presentation Windows Opened',
+        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Recording" to begin.`,
+        singleWindowSummary: 'Presentation Window Opened',
+        singleWindowDetail: 'Click "Start Recording" to begin.',
+      },
+    );
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start presentation';
     console.error('startPresentation failed', e);
     state.value.isPresentationRunning = false;
+    presentationSessionId.value = null;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -1103,307 +425,68 @@ async function startPresentation() {
   }
 }
 
-// Pause or resume
-function pauseOrResume() {
-  const sessionId = sessionLogger.getCurrentSessionId();
+// Start test presentation mode with Lorem Ipsum
+async function startTestPresentation() {
+  // Clear previous output
+  finalizedParagraphsByLang.value = {};
+  currentLiveTranslationByLang.value = {};
 
-  if (state.value.isPaused) {
-    // Resume
-    if (state.value.isTestRunning) {
-      captioningService?.start();
-    }
-    if (state.value.isPresentationRunning) {
-      // Clear presenter's state to avoid showing stale content when resuming
-      finalizedParagraphs.value = [];
-      finalizedParagraphsOri.value = [];
-      currentLiveTranslation.value = '';
-      currentLiveTranslationOri.value = '';
-      clearPresentationWindowStorage();
-      localStorage.removeItem('translator_paused');
-      captioningService?.start();
-    }
+  // Generate unique session ID and clear storage
+  const sessionId = generateSessionId();
+  presentationSessionId.value = sessionId;
+  clearPresentationWindowStorage();
 
-    // Resume heartbeat and session tracking
-    if (sessionId) {
-      store.resumeSession(sessionId);
-      startHeartbeat();
-    }
-  } else {
-    // Pause
-    if (captioningService) {
-      captioningService.stop();
-    }
-    if (state.value.isPresentationRunning) {
-      // Clear presentation window and presenter's state to avoid showing
-      // stale content when paused
-      finalizedParagraphs.value = [];
-      finalizedParagraphsOri.value = [];
-      currentLiveTranslation.value = '';
-      currentLiveTranslationOri.value = '';
-      clearPresentationWindowStorage();
-      localStorage.setItem(
-        'translator_paused',
-        JSON.stringify({ isPaused: true }),
-      );
-    }
-
-    // Stop heartbeat and mark session as paused
-    if (sessionId) {
-      stopHeartbeat();
-      store.pauseSession(sessionId);
-    }
-  }
-  state.value.isPaused = !state.value.isPaused;
-}
-
-// Stop
-function stop() {
-  if (state.value.isTestRunning) {
-    captioningService?.stop();
-    state.value.isTestRunning = false;
-    state.value.isPaused = false;
-
-    // Stop heartbeat
-    stopHeartbeat();
-
-    // End session
-    const sessionId = sessionLogger.getCurrentSessionId();
-    if (sessionId && currentSession.value) {
-      try {
-        const endedSession = sessionLogger.endSession(
-          currentSession.value,
-          'completed',
-        );
-        store.endSession(sessionId, endedSession);
-      } catch (e) {
-        console.error('Failed to end session:', e);
-      } finally {
-        sessionLogger.clearCurrentSession();
-        currentSession.value = null;
-      }
-    }
-  }
-
-  if (state.value.isPresentationRunning) {
-    confirm.require({
-      message: 'Are you sure you want to stop the presentation?',
-      header: 'Confirm Stop',
-      icon: 'pi pi-exclamation-triangle',
-      rejectProps: {
-        label: 'Cancel',
-        severity: 'secondary',
-      },
-      acceptProps: {
-        label: 'Stop',
-      },
-      accept: () => {
-        captioningService?.stop();
-        localStorage.removeItem('translator_settings');
-        localStorage.removeItem('translator_paused');
-        localStorage.removeItem('translator_presentation');
-        localStorage.removeItem('translator_recording_started');
-        state.value.isPresentationRunning = false;
-        state.value.isPaused = false;
-        state.value.isRecordingStarted = false;
-
-        // Stop heartbeat
-        stopHeartbeat();
-
-        // End session
-        const sessionId = sessionLogger.getCurrentSessionId();
-        if (sessionId && currentSession.value) {
-          try {
-            const endedSession = sessionLogger.endSession(
-              currentSession.value,
-              'completed',
-            );
-            store.endSession(sessionId, endedSession);
-          } catch (e) {
-            console.error('Failed to end session:', e);
-          } finally {
-            sessionLogger.clearCurrentSession();
-            currentSession.value = null;
-          }
-        }
-
-        toast.add({
-          severity: 'info',
-          summary: 'Presentation Stopped',
-          life: 3000,
-        });
-      },
-    });
-  }
-}
-
-// Variant management methods
-function onVariantChange(event: any) {
-  const newVariantId = event.value;
-
-  // Check for unsaved changes
-  if (store.hasUnsavedChanges) {
-    confirm.require({
-      message:
-        'You have unsaved changes. Do you want to discard them and switch variants?',
-      header: 'Unsaved Changes',
-      icon: 'pi pi-exclamation-triangle',
-      rejectProps: {
-        label: 'Cancel',
-        severity: 'secondary',
-      },
-      acceptProps: {
-        label: 'Discard Changes',
-        severity: 'danger',
-      },
-      accept: async () => {
-        await store.selectVariant(newVariantId, user.value?.id);
-        selectedVariantForDisplay.value = newVariantId;
-      },
-      reject: () => {
-        // Revert to current selection
-        selectedVariantForDisplay.value = store.selectedVariantId;
-      },
-    });
-  } else {
-    store.selectVariant(newVariantId, user.value?.id);
-    selectedVariantForDisplay.value = newVariantId;
-  }
-}
-
-async function saveCurrentVariant() {
   try {
-    await store.saveCurrentVariant(undefined, user.value?.id);
-    toast.add({
-      severity: 'success',
-      summary: 'Settings Saved',
-      detail: 'Your configuration has been saved',
-      life: 3000,
-    });
+    state.value.isTestPresentationRunning = true;
+    state.value.presentationWindowsOpenedButNotStarted = true;
+
+    openPresentationWindows(
+      sessionId,
+      store.settings,
+      presentationLanguages.value,
+      {
+        isTest: true,
+        multiWindowSummary: 'Test Presentation Windows Opened',
+        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Test" to begin.`,
+        singleWindowSummary: 'Test Presentation Window Opened',
+        singleWindowDetail: 'Click "Start Test" to begin.',
+      },
+    );
+
+    // Initialize finalized paragraphs for all languages (operator gets all)
+    for (const lang of operatorLanguages.value) {
+      finalizedParagraphsByLang.value[lang.code] = [];
+    }
   } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start test presentation';
+    console.error('startTestPresentation failed', e);
+    state.value.isTestPresentationRunning = false;
+    presentationSessionId.value = null;
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to save settings',
+      detail: error.value,
       life: 5000,
     });
   }
 }
 
-function promptSaveAsNewVariant() {
-  newVariantName.value = '';
-  saveAsDialogVisible.value = true;
-}
-
-async function saveAsNewVariant() {
-  if (!newVariantName.value.trim()) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Name Required',
-      detail: 'Please enter a name for the new variant',
-      life: 3000,
-    });
-    return;
-  }
-
-  try {
-    await store.saveCurrentVariant(newVariantName.value.trim(), user.value?.id);
-    saveAsDialogVisible.value = false;
-    selectedVariantForDisplay.value = store.selectedVariantId;
-    toast.add({
-      severity: 'success',
-      summary: 'Variant Created',
-      detail: `"${newVariantName.value}" has been created`,
-      life: 3000,
-    });
-  } catch (e: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to create variant',
-      life: 5000,
-    });
-  }
-}
-
-function confirmDeleteVariant() {
-  const currentVariant = store.settingVariants.find(
-    (v) => v.id === store.selectedVariantId,
-  );
-  if (!currentVariant) return;
-
-  confirm.require({
-    message: `Are you sure you want to delete the variant "${currentVariant.value.name}"?`,
-    header: 'Delete Variant',
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: 'Cancel',
-      severity: 'secondary',
-    },
-    acceptProps: {
-      label: 'Delete',
-      severity: 'danger',
-    },
-    accept: async () => {
-      try {
-        await store.deleteVariant(store.selectedVariantId!);
-        selectedVariantForDisplay.value = store.selectedVariantId;
-        toast.add({
-          severity: 'success',
-          summary: 'Variant Deleted',
-          detail: `"${currentVariant.value.name}" has been deleted`,
-          life: 3000,
-        });
-      } catch (e: any) {
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to delete variant',
-          life: 5000,
-        });
-      }
-    },
-  });
-}
-
-// Start recording (called when presentation window signals ready)
+// Start recording for live presentation
 async function startRecording() {
-  if (!state.value.isPresentationRunning || state.value.isRecordingStarted) {
+  if (!hasApiCredentials.value) {
+    error.value = 'Please configure Azure API credentials first';
     return;
   }
 
   try {
-    // Ensure previous output is cleared before starting recording
-    finalizedParagraphs.value = [];
-    finalizedParagraphsOri.value = [];
-    currentLiveTranslation.value = '';
-    currentLiveTranslationOri.value = '';
-    clearPresentationWindowStorage();
+    state.value.isRecordingStarted = true;
+    state.value.presentationWindowsOpenedButNotStarted = false;
 
-    // Start session logging
-    if (user.value) {
-      const session = sessionLogger.createSession({
-        userId: user.value.id!,
-        userEmail: user.value.email ?? '',
-        userName: `${user.value.firstName} ${user.value.lastName}`,
-        inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
-        mode: 'presentation',
-      });
-      const sessionId = await store.startSession(session);
-      if (sessionId) {
-        sessionLogger.setCurrentSessionId(sessionId);
-        currentSession.value = session;
-
-        // Start heartbeat updates
-        startHeartbeat();
-      }
-    }
-
-    // Create and start captioning service
+    // Create captioning service
     captioningService = new CaptioningService(
       {
         inputLanguage: store.settings.inputLanguage,
-        outputLanguage: store.settings.outputLanguage,
+        outputLanguages: store.settings.outputLanguages,
         profanityOption: store.settings.profanityOption,
         stablePartialResultThreshold:
           store.settings.stablePartialResultThreshold,
@@ -1419,17 +502,24 @@ async function startRecording() {
     );
 
     captioningService.start();
-    state.value.isRecordingStarted = true;
+
+    // Start session tracking
+    await startSessionTracking(
+      'presentation',
+      store.settings.inputLanguage,
+      store.settings.outputLanguages,
+    );
 
     toast.add({
       severity: 'success',
       summary: 'Recording Started',
-      detail: 'Translation is now active',
+      detail: 'Speak into your microphone',
       life: 3000,
     });
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start recording';
     console.error('startRecording failed', e);
+    state.value.isRecordingStarted = false;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -1439,116 +529,247 @@ async function startRecording() {
   }
 }
 
-// Initialize
-loadUser();
+// Start lorem ipsum generation for test presentation
+function startTestGeneration() {
+  try {
+    state.value.isRecordingStarted = true;
+    state.value.presentationWindowsOpenedButNotStarted = false;
 
-// Sync selectedVariantForDisplay with store
-watch(
-  () => store.selectedVariantId,
-  (newId) => {
-    if (newId !== null) {
-      selectedVariantForDisplay.value = newId;
-    }
-  },
-  { immediate: true },
-);
-
-// Mark settings as changed when they're modified
-watch(
-  () => store.settings,
-  () => {
-    if (!store.settingsLoading && !store.selectingVariant) {
-      store.markSettingsChanged();
-    }
-  },
-  { deep: true },
-);
-
-// Listen for presentation window close via storage events
-function handleStorageEvent(e: StorageEvent) {
-  if (e.key === 'translator_recording_started' && e.newValue) {
-    // Presentation window clicked "Start & Fullscreen"
-    startRecording();
-  } else if (
-    e.key === 'translator_settings' &&
-    e.newValue === null &&
-    state.value.isPresentationRunning
-  ) {
-    // Presentation window was closed, stop everything
-    captioningService?.stop();
-    state.value.isPresentationRunning = false;
-    state.value.isPaused = false;
-    state.value.isRecordingStarted = false;
-
-    // Stop heartbeat
-    stopHeartbeat();
-
-    // End session
-    const sessionId = sessionLogger.getCurrentSessionId();
-    if (sessionId && currentSession.value) {
-      try {
-        const endedSession = sessionLogger.endSession(
-          currentSession.value,
-          'completed',
-        );
-        store.endSession(sessionId, endedSession);
-      } catch (e) {
-        console.error('Failed to end session:', e);
-      } finally {
-        sessionLogger.clearCurrentSession();
-        currentSession.value = null;
-      }
-    }
+    // Start generating lorem ipsum content using composable
+    // Create reactive ref for isPaused that the interval can check
+    const isPausedRef = computed(() => state.value.isPaused);
+    startGeneration(
+      isPausedRef,
+      operatorLanguages.value,
+      presentationLanguages.value,
+      finalizedParagraphsByLang,
+      currentLiveTranslationByLang,
+      (translations, isLive) =>
+        updatePresentationWindow(
+          translations,
+          isLive,
+          finalizedParagraphsByLang.value,
+        ),
+    );
 
     toast.add({
-      severity: 'info',
-      summary: 'Presentation Stopped',
-      detail: 'Presentation window was closed',
+      severity: 'success',
+      summary: 'Test Generation Started',
+      detail: 'Lorem ipsum content flowing',
       life: 3000,
+    });
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start test generation';
+    console.error('startTestGeneration failed', e);
+    state.value.isRecordingStarted = false;
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value,
+      life: 5000,
     });
   }
 }
 
-// Setup window close handler
+// Pause or resume
+function pauseOrResume() {
+  if (state.value.isPaused) {
+    // Resume
+    if (state.value.isTestRunning) {
+      captioningService?.start();
+    }
+    if (state.value.isPresentationRunning) {
+      // Clear presenter's state to avoid showing stale content when resuming
+      finalizedParagraphsByLang.value = {};
+      currentLiveTranslationByLang.value = {};
+      clearPresentationWindowStorage();
+      if (presentationSessionId.value) {
+        setPausedFlag(presentationSessionId.value, false);
+      }
+      captioningService?.start();
+    }
+    if (state.value.isTestPresentationRunning) {
+      // Resume test presentation - just remove paused flag
+      if (presentationSessionId.value) {
+        setPausedFlag(presentationSessionId.value, false);
+      }
+    }
+
+    // Resume session tracking
+    resumeSession();
+  } else {
+    // Pause
+    if (captioningService) {
+      captioningService.stop();
+    }
+    if (state.value.isPresentationRunning) {
+      // Clear presentation window and presenter's state to avoid showing stale content when paused
+      finalizedParagraphsByLang.value = {};
+      currentLiveTranslationByLang.value = {};
+      clearPresentationWindowStorage();
+      if (presentationSessionId.value) {
+        setPausedFlag(presentationSessionId.value, true);
+      }
+    }
+    if (state.value.isTestPresentationRunning) {
+      // Pause test presentation - keep content, just set paused flag
+      if (presentationSessionId.value) {
+        setPausedFlag(presentationSessionId.value, true);
+      }
+    }
+
+    // Pause session tracking
+    pauseSession();
+  }
+  state.value.isPaused = !state.value.isPaused;
+}
+
+// Stop
+async function stop() {
+  // Handle pre-start state (windows opened but not started)
+  if (state.value.presentationWindowsOpenedButNotStarted) {
+    // Clean up session-based localStorage
+    if (presentationSessionId.value) {
+      cleanupPresentationStorage(presentationSessionId.value);
+    }
+
+    state.value.isPresentationRunning = false;
+    state.value.isTestPresentationRunning = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
+    presentationSessionId.value = null;
+
+    toast.add({
+      severity: 'info',
+      summary: 'Presentation Aborted',
+      detail: 'Windows will close',
+      life: 3000,
+    });
+    return;
+  }
+
+  if (state.value.isTestRunning) {
+    captioningService?.stop();
+    state.value.isTestRunning = false;
+    state.value.isPaused = false;
+
+    // End session tracking
+    await endSessionTracking();
+  }
+
+  if (state.value.isTestPresentationRunning) {
+    // Stop lorem ipsum generation
+    stopGeneration();
+
+    // Clean up session-based localStorage
+    if (presentationSessionId.value) {
+      cleanupPresentationStorage(presentationSessionId.value);
+    }
+
+    state.value.isTestPresentationRunning = false;
+    state.value.isPaused = false;
+    state.value.isRecordingStarted = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
+    presentationSessionId.value = null;
+
+    toast.add({
+      severity: 'info',
+      summary: 'Test Presentation Stopped',
+      life: 3000,
+    });
+  }
+
+  if (state.value.isPresentationRunning) {
+    confirm.require({
+      message: 'Are you sure you want to stop the presentation?',
+      header: 'Confirm Stop',
+      icon: 'pi pi-exclamation-triangle',
+      rejectProps: {
+        label: 'Cancel',
+        severity: 'secondary',
+      },
+      acceptProps: {
+        label: 'Stop',
+      },
+      accept: async () => {
+        captioningService?.stop();
+
+        // Clean up session-based localStorage
+        if (presentationSessionId.value) {
+          cleanupPresentationStorage(presentationSessionId.value);
+        }
+
+        state.value.isPresentationRunning = false;
+        state.value.isPaused = false;
+        state.value.isRecordingStarted = false;
+        state.value.presentationWindowsOpenedButNotStarted = false;
+        presentationSessionId.value = null;
+
+        // End session tracking
+        await endSessionTracking();
+
+        toast.add({
+          severity: 'info',
+          summary: 'Presentation Stopped',
+          life: 3000,
+        });
+      },
+    });
+  }
+}
+
+// Initialize
+loadUser();
+
+// Listen for presentation window close via storage events
+async function handleStorageEvent(e: StorageEvent) {
+  const sessionId = presentationSessionId.value;
+  if (!sessionId) return;
+
+  if (e.key === `translator_settings_${sessionId}` && e.newValue === null) {
+    // Presentation window was closed, stop everything
+    if (state.value.isPresentationRunning) {
+      captioningService?.stop();
+      state.value.isPresentationRunning = false;
+      state.value.isPaused = false;
+      state.value.isRecordingStarted = false;
+      state.value.presentationWindowsOpenedButNotStarted = false;
+      presentationSessionId.value = null;
+
+      // End session tracking
+      await endSessionTracking();
+
+      toast.add({
+        severity: 'info',
+        summary: 'Presentation Stopped',
+        detail: 'Presentation window was closed',
+        life: 3000,
+      });
+    } else if (state.value.isTestPresentationRunning) {
+      // Test presentation window was closed
+      stopGeneration();
+
+      state.value.isTestPresentationRunning = false;
+      state.value.isPaused = false;
+      state.value.isRecordingStarted = false;
+      state.value.presentationWindowsOpenedButNotStarted = false;
+      presentationSessionId.value = null;
+
+      toast.add({
+        severity: 'info',
+        summary: 'Test Presentation Stopped',
+        detail: 'Presentation window was closed',
+        life: 3000,
+      });
+    }
+  }
+}
+
+// Setup storage event listener
 onMounted(() => {
-  window.addEventListener('beforeunload', handleWindowClose);
   window.addEventListener('storage', handleStorageEvent);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('beforeunload', handleWindowClose);
   window.removeEventListener('storage', handleStorageEvent);
-  stopHeartbeat();
 });
 </script>
-
-<style scoped>
-/* Use explicit media queries to avoid conflicts with host page Tailwind */
-
-/* Medium layout - horizontal buttons within each section */
-@media (min-width: 768px) {
-  .test-button-wrapper {
-    flex-direction: row;
-  }
-
-  .test-button {
-    width: auto;
-  }
-
-  .presentation-buttons-wrapper {
-    flex-direction: row;
-    align-items: stretch;
-  }
-
-  .presentation-buttons-wrapper > button {
-    flex: 1;
-  }
-}
-
-/* Wide layout - two-column grid with sections side-by-side */
-@media (min-width: 1024px) {
-  .controls-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  }
-}
-</style>

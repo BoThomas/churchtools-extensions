@@ -18,7 +18,7 @@ export interface ApiSettings {
 export interface TranslatorSettings {
   // Translation Options
   inputLanguage: string; // Language code (e.g., 'de-DE')
-  outputLanguage: string; // Language code (e.g., 'en')
+  outputLanguages: string[]; // Array of language codes (e.g., ['en', 'es'])
   profanityOption: 'raw' | 'remove' | 'mask';
   stablePartialResultThreshold: string;
   phraseList: string;
@@ -31,6 +31,8 @@ export interface TranslatorSettings {
     color: string;
     liveColor: string;
     background: string;
+    mode: 'split' | 'multi-window'; // Split-screen or multiple windows
+    showInputLanguage: boolean; // Show input language transcription in presentation
   };
 }
 
@@ -53,7 +55,7 @@ export interface UsageStats {
 
 const DEFAULT_SETTINGS: TranslatorSettings = {
   inputLanguage: 'de-DE',
-  outputLanguage: 'en',
+  outputLanguages: ['en'],
   profanityOption: 'raw',
   stablePartialResultThreshold: '5',
   phraseList: '',
@@ -64,6 +66,8 @@ const DEFAULT_SETTINGS: TranslatorSettings = {
     color: 'white',
     liveColor: '#999',
     background: 'black',
+    mode: 'split',
+    showInputLanguage: false,
   },
 };
 
@@ -112,6 +116,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Migrate old settings format (object with name/code) to new format (code string only)
+   * Also migrates single outputLanguage to outputLanguages array
    */
   function migrateSettings(settings: any): TranslatorSettings {
     const migrated = { ...settings };
@@ -124,12 +129,37 @@ export const useTranslatorStore = defineStore('translator', () => {
       migrated.inputLanguage = settings.inputLanguage.code;
     }
 
-    // Migrate outputLanguage if it's an object
-    if (
-      typeof settings.outputLanguage === 'object' &&
-      settings.outputLanguage?.code
+    // Migrate old outputLanguage (string) to new outputLanguages (array)
+    if (settings.outputLanguage && !settings.outputLanguages) {
+      // Old format: single language as string or object
+      if (typeof settings.outputLanguage === 'string') {
+        migrated.outputLanguages = [settings.outputLanguage];
+      } else if (settings.outputLanguage?.code) {
+        migrated.outputLanguages = [settings.outputLanguage.code];
+      }
+      delete migrated.outputLanguage;
+    } else if (
+      settings.outputLanguages &&
+      !Array.isArray(settings.outputLanguages)
     ) {
-      migrated.outputLanguage = settings.outputLanguage.code;
+      // Ensure outputLanguages is always an array
+      migrated.outputLanguages = [settings.outputLanguages];
+    } else if (!settings.outputLanguages) {
+      // No output language set at all, use default
+      migrated.outputLanguages = ['en'];
+    }
+
+    // Ensure presentation.mode exists (default to 'split')
+    if (migrated.presentation && !migrated.presentation.mode) {
+      migrated.presentation.mode = 'split';
+    }
+
+    // Ensure presentation.showInputLanguage exists (default to false)
+    if (
+      migrated.presentation &&
+      migrated.presentation.showInputLanguage === undefined
+    ) {
+      migrated.presentation.showInputLanguage = false;
     }
 
     return migrated as TranslatorSettings;
@@ -789,19 +819,26 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (!sessionsCategory) return;
 
       const users = [
-        { id: 1, name: 'Alice Example', email: 'alice@example.com' },
-        { id: 2, name: 'Bob Example', email: 'bob@example.com' },
-        { id: 3, name: 'Charlie Example', email: 'charlie@example.com' },
-        { id: 4, name: 'Dana Example', email: 'dana@example.com' },
-        { id: 5, name: 'Eve Example', email: 'eve@example.com' },
+        // Use negative IDs so dummy users can never collide with real ChurchTools user IDs
+        { id: -1001, name: 'Dummy Alice', email: 'dummy-alice@example.com' },
+        { id: -1002, name: 'Dummy Bob', email: 'dummy-bob@example.com' },
+        {
+          id: -1003,
+          name: 'Dummy Charlie',
+          email: 'dummy-charlie@example.com',
+        },
+        { id: -1004, name: 'Dummy Dana', email: 'dummy-dana@example.com' },
+        { id: -1005, name: 'Dummy Eve', email: 'dummy-eve@example.com' },
       ];
 
       const modes: TranslationSession['mode'][] = ['presentation', 'test'];
       const languages = [
-        { in: 'de-DE', out: 'en' },
-        { in: 'en', out: 'de-DE' },
-        { in: 'es', out: 'en' },
-        { in: 'fr', out: 'en' },
+        { in: 'de-DE', out: ['en'] },
+        { in: 'en-GB', out: ['de'] },
+        { in: 'es-ES', out: ['en'] },
+        { in: 'fr-FR', out: ['en', 'de'] },
+        { in: 'de-DE', out: ['en', 'es'] },
+        { in: 'en-US', out: ['de', 'fr', 'es'] },
       ];
 
       const now = new Date();
@@ -872,7 +909,7 @@ export const useTranslatorStore = defineStore('translator', () => {
             pausedDurationMinutes > 0 ? pausedDurationMinutes : undefined,
           durationMinutes: status === 'completed' ? durationMinutes : undefined,
           inputLanguage: lang.in,
-          outputLanguage: lang.out,
+          outputLanguages: lang.out,
           mode,
           status,
         };
