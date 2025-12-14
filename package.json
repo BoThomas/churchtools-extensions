@@ -6,6 +6,9 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "type-check": "turbo type-check",
+    "test": "turbo test",
+    "test:ui": "turbo test -- --ui",
+    "test:coverage": "turbo test -- --coverage",
     "deploy": "turbo deploy",
     "release": "ct-release",
     "format": "prettier --write ."
@@ -16,10 +19,15 @@
   "devDependencies": {
     "@types/node": "^24.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "@vitest/ui": "^4.0.15",
+    "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.8.1",
+    "jsdom": "^27.3.0",
     "prettier": "^3.6.2",
     "turbo": "^2.6.1",
     "typescript": "^5.9.2",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "vitest": "^4.0.15"
   }
 }
