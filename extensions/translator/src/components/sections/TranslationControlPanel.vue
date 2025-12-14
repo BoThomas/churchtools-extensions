@@ -59,7 +59,8 @@
               :disabled="
                 isPresentationRunning ||
                 isTestRunning ||
-                isTestPresentationRunning
+                isTestPresentationRunning ||
+                hasInvalidLanguages
               "
               class="test-button w-full"
             />
@@ -72,7 +73,8 @@
                 isTestRunning ||
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
-                hasTooManyLanguagesForSplit
+                hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages
               "
               severity="secondary"
             />
@@ -94,7 +96,8 @@
                 isTestRunning ||
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
-                hasTooManyLanguagesForSplit
+                hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages
               "
               severity="secondary"
             />
@@ -235,7 +238,7 @@
         </div>
         <div
           v-if="hasUnsavedChanges"
-          class="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1"
+          class="text-xs text-orange-400 dark:text-orange-200 flex items-center gap-1"
         >
           <i class="pi pi-exclamation-triangle"></i>
           <span v-if="isDefaultVariantSelected">
