@@ -9,7 +9,8 @@
   "exports": {
     "./kv-store": {
       "types": "./kv-store.d.ts",
-      "default": "./kv-store.ts"
+      "default": "./kv-store.ts",
+      "vitest": "./__mocks__/kv-store.ts"
     },
     "./ct-types": {
       "types": "./ct-types.d.ts",
