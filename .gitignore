@@ -27,3 +27,6 @@ certs
 
 # Turborepo
 .turbo
+
+# Test coverage
+coverage

@@ -52,6 +52,7 @@ churchtools-extensions/
 - **Framework**: Vue 3 with Composition API and `<script setup>`
 - **Language**: TypeScript (strict mode)
 - **Build Tool**: Vite
+- **Testing**: Vitest with @vue/test-utils
 - **Monorepo**: pnpm workspaces + Turborepo
 - **State Management**: Pinia stores
 - **UI Components**: PrimeVue/Volt via `@churchtools-extensions/prime-volt`
@@ -133,8 +134,71 @@ await category.delete(id);
 
 1. **Install dependencies**: `pnpm install` from root
 2. **Start dev server**: `pnpm dev --filter=<extension-name>`
-3. **Build**: `pnpm build` or `turbo build --filter=<extension-name>`
-4. **Package for deployment**: `pnpm deploy` in extension directory
+3. **Run tests**: `pnpm test --filter=<extension-name>` or `pnpm test` for all
+4. **Build**: `pnpm build` or `turbo build --filter=<extension-name>`
+5. **Package for deployment**: `pnpm deploy` in extension directory
+
+## Testing
+
+The monorepo uses Vitest for unit testing with Turborepo integration.
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests for a specific extension
+pnpm test --filter=ct-translator
+
+# Run with coverage (from extension directory)
+cd extensions/translator
+pnpm test:coverage
+```
+
+### Writing Tests
+
+1. **Test file location**: Co-locate test files with source files
+   - Example: `src/utils/helper.test.ts` next to `helper.ts`
+   - Use `.test.ts` extensions
+
+2. **Test structure**: Use Vitest's `describe`, `it`, `expect`
+
+   ```ts
+   import { describe, it, expect } from 'vitest';
+
+   describe('MyFeature', () => {
+     it('should work correctly', () => {
+       expect(1 + 1).toBe(2);
+     });
+   });
+   ```
+
+3. **Vue component testing**: Use `@vue/test-utils`
+
+   ```ts
+   import { mount } from '@vue/test-utils';
+   import MyComponent from './MyComponent.vue';
+
+   describe('MyComponent', () => {
+     it('renders properly', () => {
+       const wrapper = mount(MyComponent, {
+         props: { msg: 'Hello' },
+       });
+       expect(wrapper.text()).toContain('Hello');
+     });
+   });
+   ```
+
+4. **Configuration**:
+   - Root Vitest config: `/vitest.config.ts` (shared settings)
+   - Extension config: Each extension merges root config with Vite config
+   - Globals enabled: No need to import `describe`, `it`, `expect` in every file
+
+5. **Coverage**: Coverage reports are generated with `--coverage` flag
+   - Provider: v8
+   - Reports: text, json, html
+   - Output: `coverage/` directory (gitignored)
 
 ## Common Patterns
 

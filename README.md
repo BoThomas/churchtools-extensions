@@ -17,6 +17,7 @@ A collection of extensions for [ChurchTools](https://church.tools/) – the chur
   - [Repository Structure](#repository-structure)
   - [Shared Packages](#shared-packages)
   - [Getting Started](#getting-started)
+  - [Testing](#testing)
   - [Adding a New Extension](#adding-a-new-extension)
 - [Support](#support)
 
@@ -253,6 +254,65 @@ For local development, configure CORS in your ChurchTools instance:
 
 1. Go to **Admin → API Settings → Integration → Cross-Origin Resource Sharing**
 2. Add e.g. `https://localhost:5173` to allowed origins
+
+#### Testing
+
+This monorepo uses [Vitest](https://vitest.dev/) for unit testing with Turborepo integration.
+
+**Run all tests:**
+
+```bash
+pnpm test
+```
+
+**Run tests for a specific extension:**
+
+```bash
+pnpm test --filter=ct-translator
+```
+
+**Run tests with coverage:**
+
+```bash
+# All extensions
+pnpm test:coverage
+
+# Specific extension
+cd extensions/translator
+pnpm test:coverage
+```
+
+**Run tests with UI:**
+
+```bash
+pnpm test:ui --filter=ct-translator
+```
+
+**Watch mode (for development):**
+
+```bash
+cd extensions/translator
+pnpm test:watch
+```
+
+**Writing tests:**
+
+- Test files should be co-located with source files (e.g., `src/utils/helper.test.ts` next to `helper.ts`)
+- Use `.test.ts` or `.test.tsx` extensions for test files
+- Vitest is configured with globals enabled, so you can use `describe`, `it`, `expect` without imports
+- For Vue component testing, `@vue/test-utils` is available
+
+**Example test:**
+
+```ts
+import { describe, it, expect } from 'vitest';
+
+describe('My Feature', () => {
+  it('should work correctly', () => {
+    expect(1 + 1).toBe(2);
+  });
+});
+```
 
 #### Local packaging (optional)
 
