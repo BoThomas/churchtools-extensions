@@ -1,51 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CaptioningService } from './captioning';
+import { mockAzureSpeech } from '../__mocks__/azureSpeechSdk';
 
-// Mock the Microsoft Speech SDK
-vi.mock('microsoft-cognitiveservices-speech-sdk', () => {
-  class MockTranslationRecognizer {
-    startContinuousRecognitionAsync = vi.fn();
-    stopContinuousRecognitionAsync = vi.fn();
-    sessionStopped: any = null;
-    canceled: any = null;
-    recognizing: any = null;
-    recognized: any = null;
-  }
-
-  return {
-    SpeechTranslationConfig: {
-      fromSubscription: vi.fn(() => ({
-        speechRecognitionLanguage: '',
-        addTargetLanguage: vi.fn(),
-        setProfanity: vi.fn(),
-        setProperty: vi.fn(),
-      })),
-    },
-    AudioConfig: {
-      fromDefaultMicrophoneInput: vi.fn(() => ({})),
-    },
-    TranslationRecognizer: MockTranslationRecognizer,
-    ProfanityOption: {
-      Raw: 0,
-      Masked: 1,
-      Removed: 2,
-    },
-    PhraseListGrammar: {
-      fromRecognizer: vi.fn(() => ({
-        addPhrases: vi.fn(),
-      })),
-    },
-    CancellationReason: {
-      Error: 1,
-      EndOfStream: 2,
-    },
-    ResultReason: {
-      TranslatingSpeech: 3,
-      TranslatedSpeech: 4,
-      NoMatch: 5,
-    },
-  };
-});
+// Import the Azure Speech SDK mock
+import '../__mocks__/azureSpeechSdk';
 
 describe('CaptioningService', () => {
   const mockCallbacks = {
@@ -55,7 +13,7 @@ describe('CaptioningService', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockAzureSpeech.reset();
   });
 
   describe('constructor', () => {

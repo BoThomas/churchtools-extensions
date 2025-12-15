@@ -2,5 +2,27 @@ import { mergeConfig } from 'vitest/config';
 import viteConfig from './vite.config';
 import rootConfig from '../../vitest.config';
 
-// Merge Vite config (for Vue plugin, aliases, etc.) with root Vitest config
-export default mergeConfig(viteConfig({ mode: 'test' }), rootConfig);
+const baseConfig = mergeConfig(viteConfig({ mode: 'test' }), rootConfig);
+
+export default mergeConfig(baseConfig, {
+  test: {
+    projects: [
+      {
+        name: 'unit',
+        test: {
+          environment: 'jsdom',
+          include: ['src/**/*.{test,spec}.{ts,tsx}'],
+        },
+      },
+      {
+        name: 'integration',
+        test: {
+          environment: 'jsdom',
+          include: ['tests/integration/**/*.test.ts'],
+          setupFiles: ['tests/integration/setup.ts'],
+          testTimeout: 10000,
+        },
+      },
+    ],
+  },
+});

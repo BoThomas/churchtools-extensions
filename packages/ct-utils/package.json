@@ -11,6 +11,10 @@
       "types": "./kv-store.d.ts",
       "default": "./kv-store.ts"
     },
+    "./__mocks__/kv-store": {
+      "types": "./kv-store-mock.d.ts",
+      "default": "./__mocks__/kv-store.ts"
+    },
     "./ct-types": {
       "types": "./ct-types.d.ts",
       "default": "./ct-types.d.ts"
