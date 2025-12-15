@@ -257,7 +257,7 @@ For local development, configure CORS in your ChurchTools instance:
 
 #### Testing
 
-This monorepo uses [Vitest](https://vitest.dev/) for unit testing with Turborepo integration.
+This monorepo uses [Vitest](https://vitest.dev/) for unit and integration testing.
 
 **Run all tests:**
 
@@ -276,23 +276,6 @@ pnpm test --filter=ct-translator
 ```bash
 # All extensions
 pnpm test:coverage
-
-# Specific extension
-cd extensions/translator
-pnpm test:coverage
-```
-
-**Run tests with UI:**
-
-```bash
-pnpm test:ui --filter=ct-translator
-```
-
-**Watch mode (for development):**
-
-```bash
-cd extensions/translator
-pnpm test:watch
 ```
 
 **Writing tests:**
