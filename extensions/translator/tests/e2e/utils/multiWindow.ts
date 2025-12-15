@@ -2,7 +2,7 @@ import type { Page, BrowserContext } from '@playwright/test';
 
 /**
  * Helper class for managing multiple windows in Playwright tests
- * 
+ *
  * Useful for testing multi-window features like the translator's presentation mode
  */
 export class MultiWindowHelper {
@@ -11,7 +11,7 @@ export class MultiWindowHelper {
 
   constructor(context: BrowserContext) {
     this.context = context;
-    
+
     // Track all new pages/windows
     context.on('page', (page) => {
       this.windows.push(page);
@@ -44,7 +44,7 @@ export class MultiWindowHelper {
    */
   async waitForWindow(timeout = 5000): Promise<Page> {
     const initialCount = this.windows.length;
-    
+
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         this.context.off('page', pageHandler);
@@ -74,16 +74,16 @@ export class MultiWindowHelper {
    */
   async waitForWindows(count: number, timeout = 10000): Promise<Page[]> {
     const startTime = Date.now();
-    
+
     while (this.windows.length < count) {
       if (Date.now() - startTime > timeout) {
         throw new Error(
-          `Timeout waiting for ${count} windows. Got ${this.windows.length} after ${timeout}ms`
+          `Timeout waiting for ${count} windows. Got ${this.windows.length} after ${timeout}ms`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    
+
     return this.windows;
   }
 
@@ -92,14 +92,13 @@ export class MultiWindowHelper {
    */
   async waitForWindowWithUrl(
     urlPattern: string | RegExp,
-    timeout = 5000
+    timeout = 5000,
   ): Promise<Page> {
-    const pattern = typeof urlPattern === 'string' 
-      ? new RegExp(urlPattern) 
-      : urlPattern;
-    
+    const pattern =
+      typeof urlPattern === 'string' ? new RegExp(urlPattern) : urlPattern;
+
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       for (const window of this.windows) {
         if (pattern.test(window.url())) {
@@ -108,7 +107,7 @@ export class MultiWindowHelper {
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    
+
     throw new Error(`No window found with URL pattern: ${urlPattern}`);
   }
 
@@ -116,7 +115,9 @@ export class MultiWindowHelper {
    * Close all tracked windows
    */
   async closeAll(): Promise<void> {
-    await Promise.all(this.windows.map((window) => window.close().catch(() => {})));
+    await Promise.all(
+      this.windows.map((window) => window.close().catch(() => {})),
+    );
     this.windows = [];
   }
 
@@ -148,6 +149,24 @@ export class MultiWindowHelper {
     for (const window of this.windows) {
       const windowTitle = await window.title();
       if (pattern.test(windowTitle)) {
+        matchingWindows.push(window);
+      }
+    }
+
+    return matchingWindows;
+  }
+
+  /**
+   * Find windows by URL pattern
+   */
+  async findWindowsByUrl(urlPattern: string | RegExp): Promise<Page[]> {
+    const pattern =
+      typeof urlPattern === 'string' ? new RegExp(urlPattern) : urlPattern;
+    const matchingWindows: Page[] = [];
+
+    for (const window of this.windows) {
+      const windowUrl = window.url();
+      if (pattern.test(windowUrl)) {
         matchingWindows.push(window);
       }
     }

@@ -15,6 +15,7 @@
                 type="password"
                 placeholder="Enter your Azure Speech API key"
                 class="w-full"
+                data-testid="input-api-key"
               />
               <p class="text-xs text-surface-500 dark:text-surface-400">
                 Your Azure Speech Service API subscription key
@@ -30,6 +31,7 @@
                 v-model="localApiSettings.azureRegion"
                 placeholder="e.g., westeurope, eastus"
                 class="w-full"
+                data-testid="input-api-region"
               />
               <p class="text-xs text-surface-500 dark:text-surface-400">
                 The Azure region where your Speech service is deployed
@@ -43,6 +45,7 @@
                 @click="saveSettings"
                 :loading="store.apiSettingsSaving"
                 :disabled="!isValid"
+                data-testid="button-save-settings"
               />
               <Button
                 label="Reload Settings"
@@ -51,6 +54,7 @@
                 outlined
                 @click="reloadSettings"
                 :loading="store.apiSettingsLoading"
+                data-testid="button-reload-settings"
               />
             </div>
 

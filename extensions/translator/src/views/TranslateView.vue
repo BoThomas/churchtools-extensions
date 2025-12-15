@@ -130,6 +130,7 @@
     :modal="true"
     :closable="true"
     :style="{ width: '450px' }"
+    data-testid="dialog-save-as-variant"
   >
     <div class="flex flex-col gap-4">
       <div class="flex flex-col gap-2">
@@ -142,6 +143,7 @@
           placeholder="Enter variant name"
           @keyup.enter="saveAsNewVariant"
           autofocus
+          data-testid="input-variant-name"
         />
       </div>
     </div>
@@ -152,11 +154,13 @@
           severity="secondary"
           outlined
           @click="saveAsDialogVisible = false"
+          data-testid="button-cancel-save-as"
         />
         <Button
           label="Save"
           @click="saveAsNewVariant"
           :disabled="!newVariantName.trim()"
+          data-testid="button-confirm-save-as"
         />
       </div>
     </template>

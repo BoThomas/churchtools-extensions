@@ -18,6 +18,9 @@ export default defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.spec.ts',
 
+  // Global setup
+  globalSetup: './tests/e2e/global-setup.ts',
+
   // Single worker
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

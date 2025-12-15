@@ -1,6 +1,6 @@
 <template>
-  <div v-if="isTestRunning" class="grid gap-4 grid-cols-1 md:grid-cols-2">
-    <Fieldset v-for="lang in languages" :key="lang.code">
+  <div v-if="isTestRunning" class="grid gap-4 grid-cols-1 md:grid-cols-2" data-testid="test-output-display">
+    <Fieldset v-for="lang in languages" :key="lang.code" :data-testid="`test-output-${lang.code}`">
       <template #legend>
         <span class="font-semibold">
           {{
@@ -11,18 +11,21 @@
       <div
         :ref="(el) => setLangRef(lang.code, el as HTMLDivElement)"
         class="space-y-2 max-h-96 overflow-y-auto"
+        :data-testid="`test-output-content-${lang.code}`"
       >
         <p
           v-for="(paragraph, index) in finalizedParagraphsByLang[lang.code] ||
           []"
           :key="'trans-' + lang.code + '-' + index"
           class="text-sm"
+          :data-testid="`test-finalized-${lang.code}-${index}`"
         >
           {{ paragraph }}
         </p>
         <p
           v-if="currentLiveTranslationByLang[lang.code]"
           class="text-sm text-surface-500"
+          :data-testid="`test-live-${lang.code}`"
         >
           {{ currentLiveTranslationByLang[lang.code] }}
         </p>

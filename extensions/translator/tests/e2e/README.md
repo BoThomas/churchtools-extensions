@@ -5,16 +5,20 @@ This guide explains how to run and write E2E (End-to-End) tests for the Translat
 ## Overview
 
 E2E tests run in a real browser (Chromium) and test the complete user experience, including:
+
 - Multi-window functionality (presentation windows)
 - localStorage communication between windows
 - Real browser behavior (unlike unit/integration tests in jsdom)
 - Visual verification
+
+**Important:** E2E tests use **mocked APIs** for both Azure Speech SDK and ChurchTools API. No real API calls are made during testing.
 
 **Note:** E2E tests are run **manually only** - they are not part of CI/CD.
 
 ## Architecture
 
 E2E tests are **extension-specific** because each extension has:
+
 - Different dev server port
 - Different mocks (Azure SDK, ChurchTools API, etc.)
 - Different UI structure and selectors
@@ -76,12 +80,42 @@ extensions/translator/tests/e2e/
 │   └── multiWindow.ts           # Helper for managing multiple windows
 ├── mocks/
 │   └── mockSetup.ts             # Mock injection strategies (Azure SDK, ChurchTools)
+├── api-mocking.spec.ts          # API mocking verification tests
 ├── presentation-mode.spec.ts    # Split-screen presentation mode tests
 ├── multi-window.spec.ts         # Multi-window mode tests
 ├── test-mode.spec.ts            # Test/preview mode tests
 ├── settings-flow.spec.ts        # Settings and variant management tests
 └── README.md                    # This file
 ```
+
+## API Mocking Strategy
+
+E2E tests **DO NOT** make real API calls. All external dependencies are mocked:
+
+### ChurchTools API Mocking
+
+The `mockChurchToolsAPI()` function intercepts ALL ChurchTools API requests using Playwright's `page.route()` and provides an in-memory implementation:
+
+- **Stateful**: Mock maintains state across calls (CRUD operations work correctly)
+- **Complete coverage**: All endpoints are mocked:
+  - `GET /api/whoami` - Authentication/current user info
+  - `GET /api/csrftoken` - CSRF token for old API calls
+  - `GET/POST /api/custommodules` - Module operations
+  - `GET/POST/PUT/DELETE /api/custommodules/:id/categories` - Category operations
+  - `GET/POST/PUT/DELETE /api/custommodules/:id/categories/:id/values` - Value operations
+- **No external calls**: Tests are fully isolated and don't require ChurchTools access or authentication
+
+### Azure Speech SDK Mocking
+
+The `injectMockAzureSDK()` function sets window flags that the application can check to use mock implementations instead of the real Azure SDK.
+
+### Benefits
+
+- **Fast**: No network latency
+- **Reliable**: No flaky tests due to network issues
+- **Isolated**: Tests don't interfere with production data
+- **Offline**: Can run tests without internet connection
+- **Reproducible**: Same results every time
 
 ## Writing E2E Tests
 
@@ -95,12 +129,12 @@ test.describe('My Feature', () => {
   test.beforeEach(async ({ extensionPage, localStorage }) => {
     // Setup mocks
     await setupE2EMocks(extensionPage);
-    
+
     // Setup test data
     await localStorage.setItem('my_settings', {
-      key: 'value'
+      key: 'value',
     });
-    
+
     // Navigate
     await extensionPage.goto('/');
   });
@@ -121,18 +155,22 @@ The `extensionFixture` provides three custom fixtures:
 3. **localStorage**: Helper for localStorage operations
 
 ```typescript
-test('multi-window test', async ({ extensionPage, windowHelper, localStorage }) => {
+test('multi-window test', async ({
+  extensionPage,
+  windowHelper,
+  localStorage,
+}) => {
   // Open a new window
   const startButton = extensionPage.getByRole('button', { name: /start/i });
   const windowPromise = windowHelper.waitForWindow();
   await startButton.click();
-  
+
   const newWindow = await windowPromise;
   await newWindow.waitForLoadState('networkidle');
-  
+
   // Check window count
   expect(windowHelper.getWindowCount()).toBe(1);
-  
+
   // Set localStorage and verify
   await localStorage.setItem('test_key', { data: 'value' });
   const value = await localStorage.getItem('test_key');
@@ -219,11 +257,12 @@ await setupE2EMocks(extensionPage);
 // With Azure scenario
 await setupE2EMocks(extensionPage, {
   azureScenario: 'multiLanguage',
-  mockChurchTools: true
+  mockChurchTools: true,
 });
 ```
 
 Available Azure scenarios:
+
 - `basic` (default): Simple German to English translation
 - `multiLanguage`: Multiple target languages
 - `error`: Simulates API errors
@@ -253,16 +292,19 @@ pnpm test:e2e:debug
 ### Common Issues
 
 **Issue: Tests fail with "Target closed"**
+
 - Dev server crashed or stopped
 - Window was closed unexpectedly
 - Solution: Restart dev server, check for errors
 
 **Issue: Tests timeout**
+
 - Page didn't load in time
 - Element selector is wrong
 - Solution: Increase timeout, verify selectors
 
 **Issue: Can't find element**
+
 - Page structure changed
 - Element not yet rendered
 - Solution: Use `waitForSelector()`, check element exists
@@ -287,6 +329,7 @@ The current E2E test files in `extensions/translator/tests/e2e/` are **templates
 4. **Implementation details**: Adjust to match your actual implementation
 
 To complete a test:
+
 1. Remove `test.skip()`
 2. Add real selectors based on your UI
 3. Adjust assertions based on actual behavior
@@ -303,15 +346,13 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   workers: 1,
   use: {
-    baseURL: 'https://localhost:5173',  // Translator dev server
-    ignoreHTTPSErrors: true,  // Self-signed cert
+    baseURL: 'https://localhost:5173', // Translator dev server
+    ignoreHTTPSErrors: true, // Self-signed cert
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  projects: [
-    { name: 'chromium' },
-  ],
+  projects: [{ name: 'chromium' }],
 });
 ```
 
@@ -320,21 +361,23 @@ export default defineConfig({
 To add E2E tests to another extension, copy the translator's E2E infrastructure:
 
 1. Copy the entire E2E setup:
+
    ```bash
    # Copy E2E tests directory
    cp -r extensions/translator/tests/e2e extensions/my-extension/tests/
-   
+
    # Copy Playwright config
    cp extensions/translator/playwright.config.ts extensions/my-extension/
    ```
 
 2. Update `playwright.config.ts` for your extension:
+
    ```typescript
    // extensions/my-extension/playwright.config.ts
    export default defineConfig({
      testDir: './tests/e2e',
      use: {
-       baseURL: 'https://localhost:XXXX',  // Your extension's port
+       baseURL: 'https://localhost:XXXX', // Your extension's port
        // ... rest of config
      },
    });
@@ -346,6 +389,7 @@ To add E2E tests to another extension, copy the translator's E2E infrastructure:
    - Update fixture setup for your UI
 
 4. Add scripts to your extension's package.json:
+
    ```json
    {
      "scripts": {
@@ -358,11 +402,12 @@ To add E2E tests to another extension, copy the translator's E2E infrastructure:
    ```
 
 5. Start dev server and run tests:
+
    ```bash
    # Terminal 1
    cd extensions/my-extension
    pnpm dev
-   
+
    # Terminal 2
    pnpm test:e2e
    ```

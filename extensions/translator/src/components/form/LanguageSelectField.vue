@@ -14,6 +14,7 @@
         :placeholder="placeholder"
         :invalid="invalid"
         pt:root="flex-1 rounded-e-none"
+        :data-testid="inputId ? `select-${inputId}` : undefined"
       />
       <Multiselect
         v-else
@@ -29,6 +30,7 @@
         :max-selected-labels="2"
         :invalid="invalid"
         pt:root="flex-1 rounded-e-none"
+        :data-testid="inputId ? `multiselect-${inputId}` : undefined"
       />
     </template>
     <template #info>

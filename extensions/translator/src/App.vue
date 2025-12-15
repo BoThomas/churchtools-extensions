@@ -18,11 +18,11 @@
   <!-- Normal Mode -->
   <div v-else class="min-h-screen flex flex-col">
     <div class="flex-1 p-4">
-      <Tabs v-model:value="activeTab">
+      <Tabs v-model:value="activeTab" data-testid="main-tabs">
         <TabList>
-          <Tab value="settings">Settings</Tab>
-          <Tab value="translate">Translate</Tab>
-          <Tab value="reports">Reports</Tab>
+          <Tab value="settings" data-testid="tab-settings">Settings</Tab>
+          <Tab value="translate" data-testid="tab-translate">Translate</Tab>
+          <Tab value="reports" data-testid="tab-reports">Reports</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="settings">
@@ -79,6 +79,7 @@ declare const window: Window &
     settings: {
       base_url?: string;
     };
+    __USE_MOCK_PERSISTENCE__?: boolean;
   };
 
 const baseUrl = window.settings?.base_url ?? import.meta.env.VITE_API_BASE_URL;
@@ -93,7 +94,13 @@ async function init() {
   try {
     const username = import.meta.env.VITE_USERNAME;
     const password = import.meta.env.VITE_PASSWORD;
-    if (import.meta.env.MODE === 'development' && username && password) {
+    // Only auto-login if we are in dev mode AND NOT running E2E tests (mock persistence)
+    if (
+      import.meta.env.MODE === 'development' &&
+      username &&
+      password &&
+      !window.__USE_MOCK_PERSISTENCE__
+    ) {
       await churchtoolsClient.post('/login', { username, password });
     }
     user.value = await churchtoolsClient.get<Person>(`/whoami`);

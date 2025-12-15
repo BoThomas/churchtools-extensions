@@ -84,9 +84,10 @@
       v-if="outputLanguages.length > 1"
       class="split-view-container"
       :class="splitViewGridClass"
+      data-testid="split-view-container"
     >
-      <div v-for="lang in outputLanguages" :key="lang" class="language-pane">
-        <div class="language-header">{{ getLanguageDisplayName(lang) }}</div>
+      <div v-for="lang in outputLanguages" :key="lang" class="language-pane" :data-testid="`language-pane-${lang}`">
+        <div class="language-header" :data-testid="`language-header-${lang}`">{{ getLanguageDisplayName(lang) }}</div>
         <div
           :ref="
             (el) => {
@@ -99,10 +100,11 @@
             v-for="(paragraph, index) in finalizedParagraphsByLang[lang] || []"
             :key="'para-' + lang + '-' + index"
             class="finalized-paragraph"
+            :data-testid="`finalized-paragraph-${lang}-${index}`"
           >
             {{ paragraph }}
           </p>
-          <p v-if="currentLiveTranslationByLang[lang]" class="live-translation">
+          <p v-if="currentLiveTranslationByLang[lang]" class="live-translation" :data-testid="`live-translation-${lang}`">
             {{ currentLiveTranslationByLang[lang] }}
           </p>
         </div>
@@ -110,15 +112,16 @@
     </div>
 
     <!-- Translation Display - Single Language -->
-    <div v-else class="translation-content">
+    <div v-else class="translation-content" data-testid="single-language-container">
       <p
         v-for="(paragraph, index) in singleLanguageParagraphs"
         :key="'para-' + index"
         class="finalized-paragraph"
+        :data-testid="`finalized-paragraph-${index}`"
       >
         {{ paragraph }}
       </p>
-      <p v-if="singleLanguageLiveTranslation" class="live-translation">
+      <p v-if="singleLanguageLiveTranslation" class="live-translation" data-testid="live-translation">
         {{ singleLanguageLiveTranslation }}
       </p>
     </div>
