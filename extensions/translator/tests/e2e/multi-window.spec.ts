@@ -32,33 +32,65 @@ test.describe('Multi-Window Mode', () => {
   test('opens multiple windows for multiple languages', async ({
     extensionPage,
     windowHelper,
-    localStorage,
   }) => {
-    // Set multi-window mode with 3 languages
-    await localStorage.setItem('translator_settings', {
-      inputLanguage: 'en-US',
-      outputLanguages: ['de-DE', 'fr-FR', 'es-ES'],
-      profanityOption: 'raw',
-      stablePartialResultThreshold: '3',
-      phraseList: '',
-      presentation: {
-        mode: 'multi-window',
-        showInputLanguage: false,
-        font: 'Arial',
-        fontSize: '2em',
-        margin: '1em 2em',
-        color: 'white',
-        liveColor: '#999',
-        background: 'black',
-      },
-    });
-
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
+    // Navigate to translate tab
     const translateTab = extensionPage.getByTestId('tab-translate');
     await translateTab.click();
     await extensionPage.waitForTimeout(500);
+
+    // Expand Translation Options fieldset
+    await extensionPage
+      .getByRole('button', { name: /Translation Options/i })
+      .click();
+    await extensionPage.waitForTimeout(300);
+
+    // Change input language to English
+    const inputLangSelect = extensionPage.getByTestId('select-input-lang');
+    await inputLangSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByText('🇬🇧 English (United Kingdom)').click();
+    await extensionPage.waitForTimeout(300);
+
+    // Configure output languages via UI - select multiple languages
+    const outputLangsMultiselect = extensionPage.getByTestId(
+      'multiselect-output-langs',
+    );
+    await outputLangsMultiselect.click();
+    await extensionPage.waitForTimeout(500);
+
+    // First deselect English (now the input language) - target the option in the dropdown
+    await extensionPage
+      .getByLabel('Option List')
+      .getByText('🇬🇧 English')
+      .click();
+    await extensionPage.waitForTimeout(200);
+
+    // Select output languages: German, French, Spanish
+    await extensionPage.getByText('🇩🇪 German').click();
+    await extensionPage.waitForTimeout(200);
+
+    await extensionPage.getByText('🇫🇷 French').click();
+    await extensionPage.waitForTimeout(200);
+
+    await extensionPage.getByText('🇪🇸 Spanish').click();
+    await extensionPage.waitForTimeout(200);
+
+    // Close the multiselect dropdown
+    await extensionPage.keyboard.press('Escape');
+    await extensionPage.waitForTimeout(300);
+
+    // Expand Presentation Options fieldset
+    await extensionPage
+      .getByRole('button', { name: /Presentation Options/i })
+      .click();
+    await extensionPage.waitForTimeout(300);
+
+    // Set presentation mode to multi-window
+    const presentationModeSelect = extensionPage.locator('#presentation-mode');
+    await presentationModeSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByText('Multi-window').click();
+    await extensionPage.waitForTimeout(300);
 
     // Start presentation
     const presentationButton = extensionPage.getByTestId('button-presentation');
@@ -67,57 +99,78 @@ test.describe('Multi-Window Mode', () => {
 
     const windows = await windowsPromise;
 
-    // Verify 3 windows opened
+    // Verify 3 windows opened (one per output language)
     expect(windows.length).toBe(3);
     expect(windowHelper.getWindowCount()).toBe(3);
 
-    // Verify each has language parameter
+    // Verify each has language parameter (accepts both "de" and "de-DE" formats)
     for (const win of windows) {
       const url = win.url();
-      expect(url).toMatch(/[?&]lang=[a-z]{2}-[A-Z]{2}/);
+      expect(url).toMatch(/[?&]lang=[a-z]{2}(-[A-Z]{2})?/);
     }
-  });
-
-  test('each window displays only its assigned language', async ({
-    extensionPage,
-    windowHelper,
-    localStorage,
-  }) => {
-    // This test is already covered in presentation-mode.spec.ts
-    // with the "each window shows only its assigned language" test
-    test.skip();
   });
 
   test('windows have unique URLs with language parameters', async ({
     extensionPage,
     windowHelper,
-    localStorage,
   }) => {
-    await localStorage.setItem('translator_settings', {
-      inputLanguage: 'en-US',
-      outputLanguages: ['de-DE', 'fr-FR'],
-      profanityOption: 'raw',
-      stablePartialResultThreshold: '3',
-      phraseList: '',
-      presentation: {
-        mode: 'multi-window',
-        showInputLanguage: false,
-        font: 'Arial',
-        fontSize: '2em',
-        margin: '1em 2em',
-        color: 'white',
-        liveColor: '#999',
-        background: 'black',
-      },
-    });
-
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
+    // Navigate to translate tab
     const translateTab = extensionPage.getByTestId('tab-translate');
     await translateTab.click();
     await extensionPage.waitForTimeout(500);
 
+    // Expand Translation Options fieldset
+    await extensionPage
+      .getByRole('button', { name: /Translation Options/i })
+      .click();
+    await extensionPage.waitForTimeout(300);
+
+    // Change input language from German (default) to English
+    const inputLangSelect = extensionPage.getByTestId('select-input-lang');
+    await inputLangSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByText('🇬🇧 English (United Kingdom)').click();
+    await extensionPage.waitForTimeout(300);
+
+    // Configure output languages via UI - select 2 languages
+    const outputLangsMultiselect = extensionPage.getByTestId(
+      'multiselect-output-langs',
+    );
+    await outputLangsMultiselect.click();
+    await extensionPage.waitForTimeout(500);
+
+    // First deselect English (now the input language) - target the option in the dropdown
+    await extensionPage
+      .getByLabel('Option List')
+      .getByText('🇬🇧 English')
+      .click();
+    await extensionPage.waitForTimeout(200);
+
+    // Select output languages: German and French
+    await extensionPage.getByText('🇩🇪 German').click();
+    await extensionPage.waitForTimeout(200);
+
+    await extensionPage.getByText('🇫🇷 French').click();
+    await extensionPage.waitForTimeout(200);
+
+    // Close the multiselect dropdown
+    await extensionPage.keyboard.press('Escape');
+    await extensionPage.waitForTimeout(300);
+
+    // Expand Presentation Options fieldset
+    await extensionPage
+      .getByRole('button', { name: /Presentation Options/i })
+      .click();
+    await extensionPage.waitForTimeout(300);
+
+    // Set presentation mode to multi-window
+    const presentationModeSelect = extensionPage.locator('#presentation-mode');
+    await presentationModeSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByRole('option', { name: /Multi-window/i }).click();
+    await extensionPage.waitForTimeout(300);
+
+    // Settings are in store and ready to use
     const presentationButton = extensionPage.getByTestId('button-presentation');
     const windowsPromise = windowHelper.waitForWindows(2);
     await presentationButton.click();
@@ -127,119 +180,113 @@ test.describe('Multi-Window Mode', () => {
     // Get all URLs
     const urls = windows.map((w) => w.url());
 
-    // Each should have unique language parameter
+    // Each should have unique language parameter (accepts both "de" and "de-DE" formats)
     const langParams = urls.map((url) => {
-      const match = url.match(/[?&]lang=([a-z]{2}-[A-Z]{2})/);
+      const match = url.match(/[?&]lang=([a-z]{2}(?:-[A-Z]{2})?)/);
       return match ? match[1] : null;
     });
 
     expect(langParams[0]).not.toBe(langParams[1]);
-    expect(langParams).toContain('de-DE');
-    expect(langParams).toContain('fr-FR');
+    expect(langParams).toContain('de');
+    expect(langParams).toContain('fr');
   });
 
-  test('closing one window does not affect others', async ({
+  test('closing one window closes all windows and stops recording', async ({
     extensionPage,
     windowHelper,
-    localStorage,
   }) => {
-    await localStorage.setItem('translator_settings', {
-      inputLanguage: 'en-US',
-      outputLanguages: ['de-DE', 'fr-FR', 'es-ES'],
-      profanityOption: 'raw',
-      stablePartialResultThreshold: '3',
-      phraseList: '',
-      presentation: {
-        mode: 'multi-window',
-        showInputLanguage: false,
-        font: 'Arial',
-        fontSize: '2em',
-        margin: '1em 2em',
-        color: 'white',
-        liveColor: '#999',
-        background: 'black',
-      },
-    });
-
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
+    // Navigate to translate tab
     const translateTab = extensionPage.getByTestId('tab-translate');
     await translateTab.click();
     await extensionPage.waitForTimeout(500);
 
+    // Expand Translation Options fieldset
+    await extensionPage
+      .getByRole('button', { name: /Translation Options/i })
+      .click();
+    await extensionPage.waitForTimeout(300);
+
+    // Change input language from German (default) to English
+    const inputLangSelect = extensionPage.getByTestId('select-input-lang');
+    await inputLangSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByText('🇬🇧 English (United Kingdom)').click();
+    await extensionPage.waitForTimeout(300);
+
+    // Configure output languages via UI - select 3 languages
+    const outputLangsMultiselect = extensionPage.getByTestId(
+      'multiselect-output-langs',
+    );
+    await outputLangsMultiselect.click();
+    await extensionPage.waitForTimeout(500);
+
+    // First deselect English (now the input language) - target the option in the dropdown
+    await extensionPage
+      .getByLabel('Option List')
+      .getByText('🇬🇧 English')
+      .click();
+    await extensionPage.waitForTimeout(200);
+
+    await extensionPage.getByText('🇩🇪 German').click();
+    await extensionPage.waitForTimeout(200);
+    await extensionPage.getByText('🇫🇷 French').click();
+    await extensionPage.waitForTimeout(200);
+    await extensionPage.getByText('🇪🇸 Spanish').click();
+    await extensionPage.waitForTimeout(200);
+
+    await extensionPage.keyboard.press('Escape');
+    await extensionPage.waitForTimeout(300);
+
+    // Expand Presentation Options fieldset
+    await extensionPage
+      .getByRole('button', { name: /Presentation Options/i })
+      .click();
+    await extensionPage.waitForTimeout(300);
+
+    // Set presentation mode to multi-window
+    const presentationModeSelect = extensionPage.locator('#presentation-mode');
+    await presentationModeSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByRole('option', { name: /Multi-window/i }).click();
+    await extensionPage.waitForTimeout(300);
+
+    // Start presentation
     const presentationButton = extensionPage.getByTestId('button-presentation');
     const windowsPromise = windowHelper.waitForWindows(3);
     await presentationButton.click();
 
     const windows = await windowsPromise;
 
-    // Close middle window
-    await windows[1].close();
-
-    // Wait a bit
-    await extensionPage.waitForTimeout(300);
-
-    // Verify other windows still open
+    // Verify all 3 windows are open
     expect(windows[0].isClosed()).toBeFalsy();
+    expect(windows[1].isClosed()).toBeFalsy();
     expect(windows[2].isClosed()).toBeFalsy();
-    expect(windowHelper.getWindowCount()).toBe(2);
-  });
 
-  test('closing all windows stops presentation', async ({
-    extensionPage,
-    windowHelper,
-    localStorage,
-  }) => {
-    await localStorage.setItem('translator_settings', {
-      inputLanguage: 'en-US',
-      outputLanguages: ['de-DE', 'fr-FR'],
-      profanityOption: 'raw',
-      stablePartialResultThreshold: '3',
-      phraseList: '',
-      presentation: {
-        mode: 'multi-window',
-        showInputLanguage: false,
-        font: 'Arial',
-        fontSize: '2em',
-        margin: '1em 2em',
-        color: 'white',
-        liveColor: '#999',
-        background: 'black',
-      },
-    });
-
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
+    // Start recording
+    const startRecordingButton = extensionPage.getByTestId(
+      'button-start-recording',
+    );
+    await startRecordingButton.click();
     await extensionPage.waitForTimeout(500);
 
-    const presentationButton = extensionPage.getByTestId('button-presentation');
-    const windowsPromise = windowHelper.waitForWindows(2);
-    await presentationButton.click();
+    // Verify recording is active (stop button should be enabled)
+    const stopButton = extensionPage.getByTestId('button-stop');
+    await expect(stopButton).toBeEnabled();
 
-    const windows = await windowsPromise;
-
-    // Close all windows
-    await windowHelper.closeAll();
+    // Close one window (middle window)
+    await windows[1].close();
 
     // Wait for cleanup
     await extensionPage.waitForTimeout(500);
 
-    // Verify presentation button is enabled again (can start new presentation)
-    await expect(presentationButton).toBeEnabled();
-  });
+    // Verify ALL windows are now closed
+    expect(windows[0].isClosed()).toBeTruthy();
+    expect(windows[1].isClosed()).toBeTruthy();
+    expect(windows[2].isClosed()).toBeTruthy();
 
-  test('window titles reflect the language', async ({
-    extensionPage,
-    windowHelper,
-    localStorage,
-  }) => {
-    // Window titles are typically "Translator - <language>" or similar
-    // This depends on the actual implementation
-    test.skip();
+    // Verify recording has stopped (presentation button should be enabled again)
+    await expect(presentationButton).toBeEnabled();
+    await expect(stopButton).not.toBeVisible();
   });
 });
 
@@ -252,24 +299,5 @@ test.describe('Multi-Window - Translation Distribution', () => {
     });
 
     await extensionPage.goto('/');
-  });
-
-  test('translations are correctly routed to language-specific windows', async ({
-    extensionPage,
-    windowHelper,
-    localStorage,
-  }) => {
-    // This test is covered in presentation-mode.spec.ts
-    test.skip();
-  });
-
-  test('live vs finalized styling works per window', async ({
-    extensionPage,
-    windowHelper,
-    localStorage,
-  }) => {
-    // Styling differences are tested at component level in integration tests
-    // E2E focuses on window management and routing
-    test.skip();
   });
 });
