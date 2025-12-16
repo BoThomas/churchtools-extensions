@@ -19,8 +19,6 @@ import type { BrowserContext } from '@playwright/test';
  * at the browser context level, which means it applies to ALL pages
  * (including popups/new windows) created in that context.
  *
- * ChurchTools API calls are NOT intercepted - they go to the real test instance.
- *
  * @param context - Playwright browser context
  * @param options - Mock configuration options
  */
@@ -40,7 +38,6 @@ export async function setupAzureMocksForContext(
   }, azureScenario);
 
   console.log(`🎭 Azure SDK mocking enabled (scenario: ${azureScenario})`);
-  console.log('🌐 ChurchTools API calls will use REAL instance');
 }
 
 /**

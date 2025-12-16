@@ -16,6 +16,7 @@ import { cleanupE2EData } from './utils/cleanup';
 test.describe('Multi-Window Mode', () => {
   test.beforeEach(async ({ extensionPage }) => {
     await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
     // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
@@ -26,11 +27,6 @@ test.describe('Multi-Window Mode', () => {
     await extensionPage.getByTestId('input-api-region').fill('westeurope');
     await extensionPage.getByTestId('button-save-settings').click();
     await extensionPage.waitForTimeout(1000);
-  });
-
-  // Cleanup after all tests in this block
-  test.afterAll(async ({ extensionPage }) => {
-    await cleanupE2EData(extensionPage);
   });
 
   test('opens multiple windows for multiple languages', async ({

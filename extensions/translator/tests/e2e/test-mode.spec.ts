@@ -17,6 +17,8 @@ import { cleanupE2EData } from './utils/cleanup';
 test.describe('Test Mode', () => {
   test.beforeEach(async ({ extensionPage }) => {
     await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
+
     // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
@@ -27,11 +29,6 @@ test.describe('Test Mode', () => {
     await extensionPage.getByTestId('input-api-region').fill('westeurope');
     await extensionPage.getByTestId('button-save-settings').click();
     await extensionPage.waitForTimeout(1000);
-  });
-
-  // Cleanup after all tests in this block
-  test.afterAll(async ({ extensionPage }) => {
-    await cleanupE2EData(extensionPage);
   });
 
   test('starts test mode and displays output area', async ({
@@ -197,6 +194,11 @@ test.describe('Test Mode - Error Handling', () => {
     });
 
     await extensionPage.goto('/');
+  });
+
+  // Cleanup after all tests in this block
+  test.afterAll(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage);
   });
 
   test('displays error message when Azure API fails', async ({

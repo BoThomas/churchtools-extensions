@@ -16,6 +16,8 @@ import { cleanupE2EData } from './utils/cleanup';
 test.describe('Presentation Mode - Split Screen', () => {
   test.beforeEach(async ({ extensionPage }) => {
     await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
+
     // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
@@ -31,11 +33,6 @@ test.describe('Presentation Mode - Split Screen', () => {
     const translateTab = extensionPage.getByTestId('tab-translate');
     await translateTab.click();
     await extensionPage.waitForTimeout(500);
-  });
-
-  // Cleanup after all tests in this block
-  test.afterAll(async ({ extensionPage }) => {
-    await cleanupE2EData(extensionPage);
   });
 
   test('opens split presentation window with configured languages', async ({
@@ -221,6 +218,11 @@ test.describe('Presentation Mode - Multi-Window', () => {
     const translateTab = extensionPage.getByTestId('tab-translate');
     await translateTab.click();
     await extensionPage.waitForTimeout(500);
+  });
+
+  // Cleanup after all tests in this block
+  test.afterAll(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage);
   });
 
   test('opens one window per language', async ({

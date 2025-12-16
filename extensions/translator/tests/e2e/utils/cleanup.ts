@@ -1,155 +1,114 @@
 import { type Page } from '@playwright/test';
 
 /**
- * ChurchTools E2E Cleanup Utilities
- *
- * Functions to clean up test data from real ChurchTools instance after E2E tests
+ * ChurchTools E2E Cleanup - Deletes test data from real ChurchTools instance
  */
 
-/**
- * Deletes all categories for the translator-e2e-test module
- *
- * This uses the ChurchTools KV store API to delete all test data
- *
- * @param page - Playwright page object (must be authenticated)
- */
-export async function deleteAllCategories(page: Page): Promise<void> {
-  const extensionKey = process.env.VITE_KEY || 'translator-e2e-test';
-
-  console.log(`🧹 Cleaning up categories for module: ${extensionKey}`);
-
-  try {
-    // Get all modules to find our module ID
-    const modulesResponse = await page.request.get(
-      '/api/key-value-store/modules',
-      {
-        headers: {
-          Accept: 'application/json',
-        },
-      },
-    );
-
-    if (!modulesResponse.ok()) {
-      console.warn(
-        `⚠️  Failed to fetch modules: ${modulesResponse.status()} ${modulesResponse.statusText()}`,
-      );
-      return;
-    }
-
-    const modules = await modulesResponse.json();
-    const ourModule = modules.data?.find((m: any) => m.key === extensionKey);
-
-    if (!ourModule) {
-      console.log(`ℹ️  No module found with key: ${extensionKey}`);
-      return;
-    }
-
-    const moduleId = ourModule.id;
-
-    // Get all categories for this module
-    const categoriesResponse = await page.request.get(
-      `/api/key-value-store/modules/${moduleId}/categories`,
-      {
-        headers: {
-          Accept: 'application/json',
-        },
-      },
-    );
-
-    if (!categoriesResponse.ok()) {
-      console.warn(
-        `⚠️  Failed to fetch categories: ${categoriesResponse.status()}`,
-      );
-      return;
-    }
-
-    const categories = await categoriesResponse.json();
-    const categoryList = categories.data || [];
-
-    if (categoryList.length === 0) {
-      console.log('✅ No categories to clean up');
-      return;
-    }
-
-    // Delete each category
-    for (const category of categoryList) {
-      try {
-        const deleteResponse = await page.request.delete(
-          `/api/key-value-store/modules/${moduleId}/categories/${category.id}`,
-          {
-            headers: {
-              Accept: 'application/json',
-            },
-          },
-        );
-
-        if (deleteResponse.ok()) {
-          console.log(`  ✓ Deleted category: ${category.key}`);
-        } else {
-          console.warn(
-            `  ⚠️  Failed to delete category ${category.key}: ${deleteResponse.status()}`,
-          );
-        }
-      } catch (error) {
-        console.warn(`  ⚠️  Error deleting category ${category.key}:`, error);
-      }
-    }
-
-    console.log(`✅ Cleaned up ${categoryList.length} categories`);
-  } catch (error) {
-    console.error('❌ Error during cleanup:', error);
+async function ensurePageContext(page: Page): Promise<void> {
+  const url = page.url();
+  if (!url || url === 'about:blank' || !url.includes('localhost')) {
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
   }
 }
 
-/**
- * Clears localStorage for the extension
- *
- * This removes any client-side data stored by the extension
- *
- * @param page - Playwright page object
- */
-export async function clearExtensionLocalStorage(page: Page): Promise<void> {
+export async function deleteAllCategories(
+  page: Page,
+  navigateFirst: boolean = false,
+): Promise<void> {
   const extensionKey = process.env.VITE_KEY || 'translator-e2e-test';
 
-  console.log(`🧹 Clearing localStorage for: ${extensionKey}`);
-
   try {
-    await page.evaluate((key) => {
-      // Get all localStorage keys
-      const keys = Object.keys(localStorage);
+    if (navigateFirst) await ensurePageContext(page);
 
-      // Filter keys that belong to this extension
-      const extensionKeys = keys.filter((k) => k.startsWith(key));
+    const result = await page.evaluate(async (extKey) => {
+      const modulesResp = await fetch('/api/custommodules');
+      if (!modulesResp.ok)
+        return { error: `Fetch modules failed: ${modulesResp.status}` };
 
-      // Remove each key
-      extensionKeys.forEach((k) => localStorage.removeItem(k));
+      const modulesData = await modulesResp.json();
+      const modules = Array.isArray(modulesData)
+        ? modulesData
+        : modulesData.data || [];
+      const module = modules.find((m: any) => m.shorty === extKey);
+      if (!module) return { notFound: true };
 
-      return extensionKeys.length;
+      const catsResp = await fetch(
+        `/api/custommodules/${module.id}/customdatacategories`,
+      );
+      if (!catsResp.ok)
+        return { error: `Fetch categories failed: ${catsResp.status}` };
+
+      const catsData = await catsResp.json();
+      const categories = Array.isArray(catsData)
+        ? catsData
+        : catsData.data || [];
+      if (categories.length === 0) return { count: 0 };
+
+      const results = await Promise.all(
+        categories.map(async (cat: any) => {
+          const resp = await fetch(
+            `/api/custommodules/${module.id}/customdatacategories/${cat.id}`,
+            { method: 'DELETE' },
+          );
+          return { shorty: cat.shorty, success: resp.ok };
+        }),
+      );
+
+      return {
+        count: results.filter((r) => r.success).length,
+        total: categories.length,
+      };
     }, extensionKey);
 
-    // Also clear sessionStorage
-    await page.evaluate(() => {
-      sessionStorage.clear();
-    });
-
-    console.log('✅ LocalStorage cleared');
+    if ('error' in result) {
+      console.warn(`⚠️  Category cleanup: ${result.error}`);
+    } else if ('notFound' in result) {
+      console.log(`✓ No module found: ${extensionKey}`);
+    } else if (result.count === 0) {
+      console.log('✓ No categories to clean');
+    } else {
+      console.log(`✓ Deleted ${result.count}/${result.total} categories`);
+    }
   } catch (error) {
-    console.error('❌ Error clearing localStorage:', error);
+    console.error('❌ Category cleanup error:', error);
   }
 }
 
-/**
- * Complete cleanup function that runs both category deletion and localStorage clearing
- *
- * This should be called in test.afterAll() to clean up after each test file
- *
- * @param page - Playwright page object (must be authenticated)
- */
-export async function cleanupE2EData(page: Page): Promise<void> {
-  console.log('\n🧹 Running E2E cleanup...\n');
+export async function clearExtensionLocalStorage(
+  page: Page,
+  navigateFirst: boolean = false,
+): Promise<void> {
+  const extensionKey = process.env.VITE_KEY || 'translator-e2e-test';
 
-  await deleteAllCategories(page);
-  await clearExtensionLocalStorage(page);
+  try {
+    if (navigateFirst) await ensurePageContext(page);
 
-  console.log('\n✅ E2E cleanup complete\n');
+    const count = await page.evaluate((key) => {
+      const lower = key.toLowerCase();
+      const toRemove = Object.keys(localStorage).filter(
+        (k) =>
+          k.toLowerCase().startsWith(lower) ||
+          k.toLowerCase().startsWith('translator_') ||
+          k.toLowerCase().includes('translator'),
+      );
+      toRemove.forEach((k) => localStorage.removeItem(k));
+      sessionStorage.clear();
+      return toRemove.length;
+    }, extensionKey);
+
+    if (count > 0) console.log(`✓ Cleared ${count} localStorage keys`);
+  } catch (error) {
+    console.warn('⚠️  localStorage cleanup failed:', (error as Error).message);
+  }
+}
+
+export async function cleanupE2EData(
+  page: Page,
+  navigateFirst: boolean = true,
+): Promise<void> {
+  console.log('🧹 Cleanup started');
+  await deleteAllCategories(page, navigateFirst);
+  await clearExtensionLocalStorage(page, navigateFirst);
+  console.log('✅ Cleanup complete\n');
 }
