@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# E2E test environment files
+.env.e2e
+
 # Editor directories and files
 .idea
 .DS_Store

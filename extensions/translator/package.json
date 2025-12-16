@@ -14,6 +14,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:e2e": "vite --mode e2e",
     "build": "tsc && vite build",
     "type-check": "tsc --noEmit",
     "test": "vitest run",

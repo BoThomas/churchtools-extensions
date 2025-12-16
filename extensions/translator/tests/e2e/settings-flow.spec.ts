@@ -1,31 +1,32 @@
 import { test, expect } from './fixtures/extensionFixture';
+import { authenticateChurchTools } from './utils/auth';
+import { cleanupE2EData } from './utils/cleanup';
 
 /**
- * E2E Tests for Settings Flow
+ * E2E Tests for Settings Flow with REAL ChurchTools Integration
  *
  * Tests the complete user flow for configuring the translator extension,
  * including API settings, variants, and preferences.
  *
- * IMPORTANT: These tests use MOCKED APIs (Azure + ChurchTools).
- * Mocks are automatically set up at the context level by the extensionFixture.
- *
- * Prerequisites:
- * - Dev server must be running: cd extensions/translator && pnpm dev
- * - Run tests: pnpm test:e2e:translator
+ * IMPORTANT: These tests use a REAL ChurchTools instance for authentic testing
+ * - Azure SDK: Mocked (stable, no costs, fast)
+ * - ChurchTools: Real API calls to test instance (tests auth, persistence, API compatibility)
  */
 
 test.describe('Settings Flow - First Time User', () => {
   test.beforeEach(async ({ extensionPage, localStorage }) => {
-    // Navigate first, then manipulate localStorage
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Clear any existing settings to simulate first-time user
+    await authenticateChurchTools(extensionPage);
+    // Clear localStorage to simulate first-time user
     await localStorage.clear();
 
-    // Reload to apply cleared settings
-    await extensionPage.reload();
+    // Navigate to extension
+    await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
+  });
+
+  // Cleanup after all tests in this block
+  test.afterAll(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage);
   });
 
   test('shows warning when API key is missing', async ({ extensionPage }) => {
@@ -43,10 +44,7 @@ test.describe('Settings Flow - First Time User', () => {
     await expect(warningMessage).toBeVisible();
   });
 
-  test('allows entering API credentials', async ({
-    extensionPage,
-    localStorage,
-  }) => {
+  test('allows entering API credentials', async ({ extensionPage }) => {
     await extensionPage.waitForLoadState('networkidle');
 
     // Navigate to Settings tab
@@ -65,14 +63,26 @@ test.describe('Settings Flow - First Time User', () => {
     const saveButton = extensionPage.getByTestId('button-save-settings');
     await saveButton.click();
 
-    // Wait for save to complete
-    await extensionPage.waitForTimeout(500);
+    // Wait for save to complete (real API call)
+    await extensionPage.waitForTimeout(1000);
 
-    // Verify settings are persisted
-    const savedSettings = await localStorage.getItem('translator_api_settings');
-    expect(savedSettings).toBeDefined();
-    expect(savedSettings.azureApiKey).toBe('test-api-key-12345');
-    expect(savedSettings.azureRegion).toBe('westeurope');
+    // Verify settings are persisted by reloading the page
+    await extensionPage.reload();
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Navigate back to settings
+    await extensionPage.getByTestId('tab-settings').click();
+
+    // Verify the saved values are still there
+    const savedApiKey = await extensionPage
+      .getByTestId('input-api-key')
+      .inputValue();
+    const savedRegion = await extensionPage
+      .getByTestId('input-api-region')
+      .inputValue();
+
+    expect(savedApiKey).toBe('test-api-key-12345');
+    expect(savedRegion).toBe('westeurope');
   });
 
   test('warning disappears after entering valid API key', async ({
@@ -134,25 +144,31 @@ test.describe('Settings Flow - First Time User', () => {
 });
 
 test.describe('Settings Flow - Variant Management', () => {
-  test.beforeEach(async ({ extensionPage, localStorage }) => {
-    // Navigate first, then set localStorage
+  test.beforeEach(async ({ extensionPage }) => {
+    await authenticateChurchTools(extensionPage);
+    // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
 
-    // Setup with API credentials
-    await localStorage.setItem('translator_api_settings', {
-      azureApiKey: 'mock-api-key-12345',
-      azureRegion: 'westeurope',
-    });
+    // Setup API credentials via UI (save to real KV store)
+    await extensionPage.getByTestId('tab-settings').click();
+    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
+    await extensionPage.getByTestId('input-api-region').fill('westeurope');
+    await extensionPage.getByTestId('button-save-settings').click();
+    await extensionPage.waitForTimeout(1000);
 
-    // Reload to apply settings
-    await extensionPage.reload();
-    await extensionPage.waitForLoadState('networkidle');
+    // Navigate back to translate tab for variant tests
+    await extensionPage.getByTestId('tab-translate').click();
+    await extensionPage.waitForTimeout(500);
+  });
+
+  // Cleanup after all tests in this block
+  test.afterAll(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage);
   });
 
   test('creates a new variant with custom settings', async ({
     extensionPage,
-    localStorage,
   }) => {
     await extensionPage.waitForLoadState('networkidle');
 
@@ -187,7 +203,7 @@ test.describe('Settings Flow - Variant Management', () => {
     await expect(variantSelect).toBeVisible();
   });
 
-  test('switches between variants', async ({ extensionPage, localStorage }) => {
+  test('switches between variants', async ({ extensionPage }) => {
     // Note: This test requires understanding the actual storage format for variants
     // The test is implemented but may need adjustment based on actual persistence format
 
@@ -281,19 +297,23 @@ test.describe('Settings Flow - Variant Management', () => {
 });
 
 test.describe('Settings Flow - Language Configuration', () => {
-  test.beforeEach(async ({ extensionPage, localStorage }) => {
-    // Navigate first, then set localStorage
+  test.beforeEach(async ({ extensionPage }) => {
+    await authenticateChurchTools(extensionPage);
+    // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
 
-    await localStorage.setItem('translator_api_settings', {
-      azureApiKey: 'mock-api-key-12345',
-      azureRegion: 'westeurope',
-    });
+    // Setup API credentials via UI (save to real KV store)
+    await extensionPage.getByTestId('tab-settings').click();
+    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
+    await extensionPage.getByTestId('input-api-region').fill('westeurope');
+    await extensionPage.getByTestId('button-save-settings').click();
+    await extensionPage.waitForTimeout(1000);
+  });
 
-    // Reload to apply settings
-    await extensionPage.reload();
-    await extensionPage.waitForLoadState('networkidle');
+  // Cleanup after all tests in this block
+  test.afterAll(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage);
   });
 
   test('validates language selection', async ({ extensionPage }) => {

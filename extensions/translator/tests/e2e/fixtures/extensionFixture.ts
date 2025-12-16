@@ -1,22 +1,25 @@
-import { test as base, expect } from '@playwright/test';
-import type { Page, BrowserContext } from '@playwright/test';
+import { test as base } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { LocalStorageHelper } from '../utils/localStorage';
 import { MultiWindowHelper } from '../utils/multiWindow';
-import { setupE2EMocksForContext } from '../mocks/mockSetup';
+import { setupAzureMocksForContext } from '../mocks/azureMockSetup';
 
 /**
- * Extended Playwright fixtures for testing ChurchTools extensions
+ * Extended Playwright fixtures for testing ChurchTools extensions with Real ChurchTools Integration
  *
  * Provides pre-configured pages, window management, and localStorage helpers
  *
- * IMPORTANT: Mocks are set up at the CONTEXT level, so they apply to ALL pages
- * (including popup windows) created in the test. This ensures no real API calls
- * are made, even before tests explicitly call setupE2EMocks().
+ * IMPORTANT: Azure SDK is mocked, but ChurchTools API calls are REAL
+ * - Azure SDK: Mocked at context level (stable, no costs, fast)
+ * - ChurchTools: Real API calls to test instance (authentic integration testing)
+ *
+ * This approach allows us to test real auth, persistence, and API compatibility
+ * while avoiding Azure costs and rate limits.
  */
 export type ExtensionFixtures = {
   /**
    * Pre-configured page for the extension
-   * Mocks are already set up at the context level
+   * Azure mocks are already set up at the context level
    */
   extensionPage: Page;
 
@@ -39,20 +42,19 @@ export type ExtensionFixtures = {
  * import { test, expect } from './fixtures/extensionFixture';
  *
  * test('my test', async ({ extensionPage, windowHelper, localStorage }) => {
- *   // Mocks are automatically set up before any page navigation
+ *   // Azure mocks are automatically set up
+ *   // ChurchTools API calls are REAL
  *   await extensionPage.goto('/');
  * });
  * ```
  */
 export const test = base.extend<ExtensionFixtures>({
-  // Set up API mocks at the context level BEFORE creating any pages
-  // This is CRITICAL - mocks MUST be set up at context level to intercept
-  // ALL requests including those made during page initialization
+  // Set up Azure mocks at the context level BEFORE creating any pages
+  // ChurchTools API is NOT mocked - tests use real instance
   context: async ({ context }, use) => {
-    // Set up comprehensive mocking for ALL API endpoints
-    await setupE2EMocksForContext(context, {
+    // Only mock Azure SDK (ChurchTools is real)
+    await setupAzureMocksForContext(context, {
       azureScenario: 'basic',
-      mockChurchTools: true,
     });
 
     await use(context);

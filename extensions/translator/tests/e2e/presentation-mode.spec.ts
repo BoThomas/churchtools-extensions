@@ -1,39 +1,41 @@
 import { test, expect } from './fixtures/extensionFixture';
+import { authenticateChurchTools } from './utils/auth';
+import { cleanupE2EData } from './utils/cleanup';
 
 /**
- * E2E Tests for Presentation Mode (Split Screen)
+ * E2E Tests for Presentation Mode with REAL ChurchTools Integration
  *
  * Tests the multi-window functionality of the translator's presentation mode,
  * including window opening, translation propagation, and pause/resume behavior.
  *
- * IMPORTANT: These tests use MOCKED APIs (Azure + ChurchTools).
- * Mocks are automatically set up at the context level by the extensionFixture.
- *
- * Prerequisites:
- * - Dev server must be running: cd extensions/translator && pnpm dev
- * - Run tests: pnpm test:e2e
+ * IMPORTANT: These tests use a REAL ChurchTools instance
+ * - Azure SDK: Mocked (stable, no costs, fast)
+ * - ChurchTools: Real API calls (tests auth, persistence, API compatibility)
  */
 
 test.describe('Presentation Mode - Split Screen', () => {
-  test.beforeEach(async ({ extensionPage, localStorage }) => {
-    // Navigate first, then set localStorage
+  test.beforeEach(async ({ extensionPage }) => {
+    await authenticateChurchTools(extensionPage);
+    // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
 
-    // Setup: Add mock API credentials to bypass initial setup
-    await localStorage.setItem('translator_api_settings', {
-      azureApiKey: 'mock-api-key-12345',
-      azureRegion: 'westeurope',
-    });
-
-    // Reload to apply settings
-    await extensionPage.reload();
-    await extensionPage.waitForLoadState('networkidle');
+    // Setup API credentials via UI (save to real KV store)
+    await extensionPage.getByTestId('tab-settings').click();
+    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
+    await extensionPage.getByTestId('input-api-region').fill('westeurope');
+    await extensionPage.getByTestId('button-save-settings').click();
+    await extensionPage.waitForTimeout(1000);
 
     // Navigate to Translate tab
     const translateTab = extensionPage.getByTestId('tab-translate');
     await translateTab.click();
     await extensionPage.waitForTimeout(500);
+  });
+
+  // Cleanup after all tests in this block
+  test.afterAll(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage);
   });
 
   test('opens split presentation window with configured languages', async ({
@@ -188,6 +190,7 @@ test.describe('Presentation Mode - Split Screen', () => {
 
 test.describe('Presentation Mode - Multi-Window', () => {
   test.beforeEach(async ({ extensionPage, localStorage }) => {
+    await authenticateChurchTools(extensionPage);
     await localStorage.setItem('translator_api_settings', {
       azureApiKey: 'mock-api-key-12345',
       azureRegion: 'westeurope',
