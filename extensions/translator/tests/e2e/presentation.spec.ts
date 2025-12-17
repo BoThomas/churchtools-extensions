@@ -325,7 +325,6 @@ test.describe('Presentation Mode - Multi-Window', () => {
   test('each window shows only its assigned language', async ({
     extensionPage,
     windowHelper,
-    localStorage,
   }) => {
     await configureTranslationSettings(extensionPage, {
       inputLang: '🇬🇧 English (United Kingdom)',
@@ -339,39 +338,39 @@ test.describe('Presentation Mode - Multi-Window', () => {
       2,
     );
 
-    // Get session ID
-    const settingsKeys = await localStorage.keys();
-    const sessionKey = settingsKeys.find((key) =>
-      key.startsWith('translator_settings_'),
-    );
-    const sessionId = sessionKey!.replace('translator_settings_', '');
-
-    // Add translations for all languages
-    await localStorage.setItem(`translator_presentation_${sessionId}`, {
-      translations: {
-        de: 'Hallo Welt',
-        fr: 'Bonjour le monde',
-      },
-      finalized: { de: [], fr: [] },
-      isLive: true,
-    });
-
-    await extensionPage.waitForTimeout(500);
-
     // Extract language parameters to identify windows
     const langParams = extractLanguageParams(windows);
     const deWindowIndex = langParams.indexOf('de');
     const frWindowIndex = langParams.indexOf('fr');
 
-    // Verify German window shows only German
-    await expect(
-      windows[deWindowIndex].getByTestId('live-translation'),
-    ).toContainText('Hallo Welt');
+    // Start recording - Azure SDK is mocked and will produce translations
+    const startRecordingButton = extensionPage.getByTestId(
+      'button-start-recording',
+    );
+    await startRecordingButton.click();
 
-    // Verify French window shows only French
-    await expect(
-      windows[frWindowIndex].getByTestId('live-translation'),
-    ).toContainText('Bonjour le monde');
+    // Wait for mocked Azure SDK to produce translations
+    // Mock 'basic' scenario: recognizing at 500ms, recognized at 1000ms
+    await extensionPage.waitForTimeout(1500);
+
+    // Check for either live translation or finalized paragraph containing the text
+    const deWindow = windows[deWindowIndex];
+    const frWindow = windows[frWindowIndex];
+
+    // Verify German window shows German content
+    const deContainer = deWindow.getByTestId('single-language-container');
+    await expect(deContainer).toBeVisible();
+
+    // Content could be in live translation or finalized paragraph
+    const deContent = await deContainer.textContent();
+    expect(deContent).toContain('Hallo Welt');
+
+    // Verify French window shows French content
+    const frContainer = frWindow.getByTestId('single-language-container');
+    await expect(frContainer).toBeVisible();
+
+    const frContent = await frContainer.textContent();
+    expect(frContent).toContain('Bonjour le monde');
   });
 
   test('closing one window closes all windows and stops recording', async ({
