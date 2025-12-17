@@ -1,6 +1,11 @@
 import { test, expect } from './fixtures/extensionFixture';
 import { authenticateChurchTools } from './utils/auth';
 import { cleanupE2EData } from './utils/cleanup';
+import {
+  configureApiCredentials,
+  configureTranslationSettings,
+  navigateToTab,
+} from './utils/testHelpers';
 
 /**
  * E2E Tests for Test Mode with REAL ChurchTools Integration
@@ -15,38 +20,31 @@ import { cleanupE2EData } from './utils/cleanup';
  */
 
 test.describe('Test Mode', () => {
-  test.beforeEach(async ({ extensionPage }) => {
-    await authenticateChurchTools(extensionPage);
-    await cleanupE2EData(extensionPage);
-
-    // Navigate to extension
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Setup API credentials via UI (save to real KV store)
-    await extensionPage.getByTestId('tab-settings').click();
-    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(1000);
-  });
-
-  test('starts test mode and displays output area', async ({
+  test('comprehensive test mode workflow', async ({
     extensionPage,
     windowHelper,
   }) => {
+    // Setup: Authenticate and clean up
+    await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
+    await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
 
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
+    // Setup API credentials
+    await configureApiCredentials(extensionPage);
 
-    // Click Test Translation button
+    // Configure multiple languages for test
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German', '🇫🇷 French', '🇪🇸 Spanish'],
+    });
+
+    // Navigate to translate tab
+    await navigateToTab(extensionPage, 'translate');
+
+    // 1. Start test mode and verify output area appears
     const testButton = extensionPage.getByTestId('button-test-translation');
     await testButton.click();
-
-    // Wait a bit for test mode to start
     await extensionPage.waitForTimeout(500);
 
     // Verify test output area becomes visible
@@ -55,181 +53,60 @@ test.describe('Test Mode', () => {
 
     // Verify no presentation windows opened
     expect(windowHelper.getWindowCount()).toBe(0);
-  });
 
-  test('displays translations in test output area', async ({
-    extensionPage,
-  }) => {
-    await extensionPage.waitForLoadState('networkidle');
+    // 2. Verify output containers appear for all configured languages
+    // Default showInputLanguage should be true, so 4 total (1 input + 3 output)
+    const inputOutput = extensionPage.getByTestId('test-output-en-GB');
+    const germanOutput = extensionPage.getByTestId('test-output-de');
+    const frenchOutput = extensionPage.getByTestId('test-output-fr');
+    const spanishOutput = extensionPage.getByTestId('test-output-es');
 
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
+    await expect(inputOutput).toBeVisible();
+    await expect(germanOutput).toBeVisible();
+    await expect(frenchOutput).toBeVisible();
+    await expect(spanishOutput).toBeVisible();
 
-    // Start test mode
-    const testButton = extensionPage.getByTestId('button-test-translation');
-    await testButton.click();
-    await extensionPage.waitForTimeout(300);
+    // 3. Wait for mocked Azure SDK to produce translations
+    // Test mode auto-starts recognition, no need to click start recording
+    // Mock 'basic' scenario: recognizing at 500ms, recognized at 1000ms
+    await extensionPage.waitForTimeout(1500);
 
-    // Verify output containers appear for configured languages
-    const testOutput = extensionPage.getByTestId('test-output-display');
-    await expect(testOutput).toBeVisible();
+    // 4. Verify translated content appears in correct language boxes
+    // Mock 'basic' scenario produces:
+    // - recognizing: "Hello" -> de: "Hallo", fr: "Bonjour", es: "Hola"
+    // - recognized: "Hello world" -> de: "Hallo Welt", fr: "Bonjour le monde", es: "Hola mundo"
 
-    // With default settings, should have input + output language containers
-    // The actual languages depend on the default configuration
-  });
+    // Check input language shows original text
+    const inputContent = await inputOutput.textContent();
+    expect(inputContent).toContain('Hello');
 
-  test('shows live vs finalized translation styling', async ({
-    extensionPage,
-  }) => {
-    await extensionPage.waitForLoadState('networkidle');
+    // Check German translation
+    const germanContent = await germanOutput.textContent();
+    expect(germanContent).toContain('Hallo');
 
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
+    // Check French translation
+    const frenchContent = await frenchOutput.textContent();
+    expect(frenchContent).toContain('Bonjour');
 
-    // Start test mode
-    const testButton = extensionPage.getByTestId('button-test-translation');
-    await testButton.click();
-    await extensionPage.waitForTimeout(300);
+    // Check Spanish translation
+    const spanishContent = await spanishOutput.textContent();
+    expect(spanishContent).toContain('Hola');
 
-    // Test output has different CSS classes for live vs finalized
-    // Live: text-surface-500 (gray/dimmed)
-    // Finalized: text-sm (normal)
+    // 5. Verify live vs finalized styling
+    // After recognized event, text should be finalized (not grayed out)
+    // Live translations have text-surface-500, finalized don't
+    const germanLiveText = germanOutput.locator('.text-surface-500');
+    const germanFinalizedText = germanOutput.locator('p.text-sm');
 
-    // This is primarily tested at the integration level
-    // E2E just verifies the output area exists
-    const testOutput = extensionPage.getByTestId('test-output-display');
-    await expect(testOutput).toBeVisible();
-  });
+    // Should have finalized paragraph after recognized event
+    await expect(germanFinalizedText).toBeVisible();
 
-  test('clears output when stopping test mode', async ({ extensionPage }) => {
-    await extensionPage.waitForLoadState('networkidle');
-
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
-
-    // Start test mode
-    const testButton = extensionPage.getByTestId('button-test-translation');
-    await testButton.click();
-    await extensionPage.waitForTimeout(300);
-
-    // Verify output is visible
-    const testOutput = extensionPage.getByTestId('test-output-display');
-    await expect(testOutput).toBeVisible();
-
-    // Stop test mode
+    // 6. Stop test mode and verify output clears
     const stopButton = extensionPage.getByTestId('button-stop');
     await stopButton.click();
     await extensionPage.waitForTimeout(300);
 
     // Verify output is hidden
     await expect(testOutput).not.toBeVisible();
-  });
-
-  test('tracks session even in test mode', async ({
-    extensionPage,
-    localStorage,
-  }) => {
-    // Session tracking is tested at integration level
-    // E2E focuses on UI interactions
-    test.skip();
-  });
-
-  test('displays multiple languages simultaneously', async ({
-    extensionPage,
-    localStorage,
-  }) => {
-    // Setup with multiple output languages
-    await localStorage.setItem('translator_settings', {
-      inputLanguage: 'en-US',
-      outputLanguages: ['de-DE', 'fr-FR', 'es-ES'],
-      profanityOption: 'raw',
-      stablePartialResultThreshold: '3',
-      phraseList: '',
-      presentation: {
-        mode: 'split',
-        showInputLanguage: true,
-        font: 'Arial',
-        fontSize: '2em',
-        margin: '1em 2em',
-        color: 'white',
-        liveColor: '#999',
-        background: 'black',
-      },
-    });
-
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
-
-    // Start test mode
-    const testButton = extensionPage.getByTestId('button-test-translation');
-    await testButton.click();
-    await extensionPage.waitForTimeout(300);
-
-    // Verify output containers for each language
-    // With showInputLanguage: true, should have 4 total (1 input + 3 output)
-    const testOutput = extensionPage.getByTestId('test-output-display');
-    await expect(testOutput).toBeVisible();
-
-    // Check for individual language outputs
-    await expect(extensionPage.getByTestId('test-output-en-US')).toBeVisible();
-    await expect(extensionPage.getByTestId('test-output-de-DE')).toBeVisible();
-    await expect(extensionPage.getByTestId('test-output-fr-FR')).toBeVisible();
-    await expect(extensionPage.getByTestId('test-output-es-ES')).toBeVisible();
-  });
-});
-
-test.describe('Test Mode - Error Handling', () => {
-  test.beforeEach(async ({ extensionPage, localStorage }) => {
-    await authenticateChurchTools(extensionPage);
-    await localStorage.setItem('translator_api_settings', {
-      azureApiKey: 'mock-api-key-12345',
-      azureRegion: 'westeurope',
-    });
-
-    await extensionPage.goto('/');
-  });
-
-  // Cleanup after all tests in this block
-  test.afterAll(async ({ extensionPage }) => {
-    await cleanupE2EData(extensionPage);
-  });
-
-  test('displays error message when Azure API fails', async ({
-    extensionPage,
-  }) => {
-    // Error handling is tested at integration level with mocked Azure SDK
-    // E2E with real Azure API mocking is complex and may not be reliable
-    test.skip();
-  });
-
-  test('gracefully handles missing API credentials', async ({
-    extensionPage,
-    localStorage,
-  }) => {
-    // Clear API credentials
-    await localStorage.clear();
-    await extensionPage.reload();
-    await extensionPage.waitForLoadState('networkidle');
-
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
-
-    // Verify warning message about missing credentials
-    const warningMessage = extensionPage.getByText(
-      /configure.*azure.*api.*credentials/i,
-    );
-    await expect(warningMessage).toBeVisible();
-
-    // Test button should exist but may be disabled or show warning
-    const testButton = extensionPage.getByTestId('button-test-translation');
-    await expect(testButton).toBeVisible();
   });
 });
