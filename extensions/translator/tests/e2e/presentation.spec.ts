@@ -7,7 +7,9 @@ import {
   openTestPresentationWindows,
   startTestRecording,
   extractLanguageParams,
-} from './utils/translatorHelpers';
+  navigateToTab,
+  configureApiCredentials,
+} from './utils/testHelpers';
 
 /**
  * E2E Tests for Presentation Modes with REAL ChurchTools Integration
@@ -30,11 +32,7 @@ test.describe('Presentation Mode - Split Screen', () => {
     await extensionPage.waitForLoadState('networkidle');
 
     // Setup API credentials via UI (save to real KV store)
-    await extensionPage.getByTestId('tab-settings').click();
-    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(1000);
+    await configureApiCredentials(extensionPage);
   });
 
   test('opens split presentation window with multiple languages', async ({
@@ -117,8 +115,7 @@ test.describe('Presentation Mode - Split Screen', () => {
     windowHelper,
     localStorage,
   }) => {
-    await extensionPage.getByTestId('tab-translate').click();
-    await extensionPage.waitForTimeout(500);
+    await navigateToTab(extensionPage, 'translate');
 
     // Start presentation mode
     const presentationButton = extensionPage.getByTestId('button-presentation');
@@ -168,8 +165,7 @@ test.describe('Presentation Mode - Split Screen', () => {
     extensionPage,
     windowHelper,
   }) => {
-    await extensionPage.getByTestId('tab-translate').click();
-    await extensionPage.waitForTimeout(500);
+    await navigateToTab(extensionPage, 'translate');
 
     // Start presentation
     const presentationButton = extensionPage.getByTestId('button-presentation');
@@ -207,11 +203,7 @@ test.describe('Presentation Mode - Split Screen Test', () => {
     await extensionPage.waitForLoadState('networkidle');
 
     // Setup API credentials
-    await extensionPage.getByTestId('tab-settings').click();
-    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(1000);
+    await configureApiCredentials(extensionPage);
   });
 
   test('opens split test window with lorem ipsum', async ({
@@ -275,11 +267,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     await extensionPage.waitForLoadState('networkidle');
 
     // Setup API credentials
-    await extensionPage.getByTestId('tab-settings').click();
-    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(1000);
+    await configureApiCredentials(extensionPage);
   });
 
   test('opens multiple windows for multiple languages', async ({
@@ -451,11 +439,7 @@ test.describe('Presentation Mode - Multi-Window Test', () => {
     await extensionPage.waitForLoadState('networkidle');
 
     // Setup API credentials
-    await extensionPage.getByTestId('tab-settings').click();
-    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(1000);
+    await configureApiCredentials(extensionPage);
   });
 
   test('opens multiple test windows with lorem ipsum', async ({

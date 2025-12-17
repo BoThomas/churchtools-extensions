@@ -130,3 +130,75 @@ export function extractLanguageParams(windows: Page[]): (string | null)[] {
     return match ? match[1] : null;
   });
 }
+
+/**
+ * Navigate to a specific tab in the extension
+ */
+export async function navigateToTab(
+  page: Page,
+  tab: 'translate' | 'settings',
+  waitTime: number = 500,
+) {
+  const tabButton = page.getByTestId(`tab-${tab}`);
+  await tabButton.click();
+  await page.waitForTimeout(waitTime);
+}
+
+/**
+ * Configure Azure API credentials via Settings tab
+ * Saves to real ChurchTools KV store
+ */
+export async function configureApiCredentials(
+  page: Page,
+  apiKey: string = 'mock-api-key-12345',
+  region: string = 'westeurope',
+) {
+  await navigateToTab(page, 'settings');
+
+  const apiKeyInput = page.getByTestId('input-api-key');
+  await apiKeyInput.fill(apiKey);
+
+  const regionInput = page.getByTestId('input-api-region');
+  await regionInput.fill(region);
+
+  const saveButton = page.getByTestId('button-save-settings');
+  await saveButton.click();
+
+  // Wait for save to complete (real API call)
+  await page.waitForTimeout(1000);
+}
+
+/**
+ * Create a new variant with a given name
+ * Assumes user is already on the Translate tab
+ */
+export async function createVariant(
+  page: Page,
+  variantName: string,
+): Promise<void> {
+  const saveAsButton = page.getByTestId('button-save-as-variant');
+  await saveAsButton.click();
+
+  const dialog = page.getByTestId('dialog-save-as-variant');
+  await dialog.waitFor({ state: 'visible' });
+
+  const variantNameInput = page.getByTestId('input-variant-name');
+  await variantNameInput.fill(variantName);
+
+  const confirmButton = page.getByTestId('button-confirm-save-as');
+  await confirmButton.click();
+
+  await dialog.waitFor({ state: 'hidden' });
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Clear localStorage and sessionStorage to simulate first-time user
+ * Must be called after page navigation
+ */
+export async function clearBrowserStorage(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+}
