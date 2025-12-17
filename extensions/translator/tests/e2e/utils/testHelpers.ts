@@ -217,3 +217,84 @@ export async function clearBrowserStorage(page: Page): Promise<void> {
     sessionStorage.clear();
   });
 }
+
+/**
+ * Configuration for presentation styling options
+ */
+export interface PresentationStylingConfig {
+  font?: string;
+  fontSize?: string;
+  margin?: string;
+  color?: string;
+  liveColor?: string;
+  background?: string;
+}
+
+/**
+ * Configure presentation styling options via UI
+ * Assumes user is already on the Translate tab
+ */
+export async function configurePresentationStyling(
+  page: Page,
+  config: PresentationStylingConfig,
+) {
+  // Expand Presentation Options if not already expanded
+  const presentationOptionsButton = page.getByRole('button', {
+    name: /Presentation Options/i,
+  });
+  const presentationOptionsExpanded =
+    (await presentationOptionsButton.getAttribute('aria-expanded')) === 'true';
+  if (!presentationOptionsExpanded) {
+    await presentationOptionsButton.click();
+    await page.waitForTimeout(300);
+  }
+
+  // Configure font if specified
+  if (config.font) {
+    const fontSelect = page.locator('#font');
+    await fontSelect.click();
+    await page.waitForTimeout(300);
+    await page.locator('[role="listbox"]').getByText(config.font).click();
+    await page.waitForTimeout(300);
+  }
+
+  // Configure font size if specified
+  if (config.fontSize) {
+    const fontSizeInput = page.locator('#font-size');
+    await fontSizeInput.clear();
+    await fontSizeInput.fill(config.fontSize);
+    await page.waitForTimeout(200);
+  }
+
+  // Configure margin if specified
+  if (config.margin) {
+    const marginInput = page.locator('#margin');
+    await marginInput.clear();
+    await marginInput.fill(config.margin);
+    await page.waitForTimeout(200);
+  }
+
+  // Configure text color if specified
+  if (config.color) {
+    const colorInput = page.locator('#color');
+    await colorInput.clear();
+    await colorInput.fill(config.color);
+    await page.waitForTimeout(200);
+  }
+
+  // Configure live text color if specified
+  if (config.liveColor) {
+    const liveColorInput = page.locator('#live-color');
+    await liveColorInput.clear();
+    await liveColorInput.fill(config.liveColor);
+    await page.waitForTimeout(200);
+  }
+
+  // Configure background if specified
+  if (config.background) {
+    const backgroundInput = page.locator('#background');
+    await backgroundInput.clear();
+    await backgroundInput.fill(config.background);
+    await page.waitForTimeout(200);
+  }
+}

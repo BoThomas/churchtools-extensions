@@ -6,6 +6,9 @@ import {
   configureApiCredentials,
   createVariant,
   configureTranslationSettings,
+  configurePresentationStyling,
+  openTestPresentationWindows,
+  startTestRecording,
 } from './utils/testHelpers';
 
 /**
@@ -372,27 +375,190 @@ test.describe('Settings Flow - Configuration Management', () => {
     await expect(deleteButton).toBeDisabled(); // Can't delete last variant
   });
 
-  test.skip('configures presentation styling options (font, colors, background, etc.)', async ({
+  test('configures presentation styling options (font, colors, background, etc.)', async ({
     extensionPage,
+    windowHelper,
   }) => {
-    // TODO: Implement comprehensive test for presentation styling options
-    // This test should verify that all presentation options apply correctly:
-    // - Font family selection
-    // - Font size
-    // - Paragraph margin
-    // - Text color
-    // - Live text color
-    // - Background (color, image, gradient)
-    //
-    // Test approach:
-    // 1. Configure various presentation styling options
-    // 2. Save the configuration
-    // 3. Open test presentation window
-    // 4. Verify styles are applied in presentation view by:
-    //    - Reading computed styles from presentation window elements
-    //    - Checking CSS properties match configured values
-    //
-    // Note: This requires inspecting the presentation window's DOM
-    // and computed styles to verify the settings are applied correctly.
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Step 1: Create a custom variant for testing presentation styles
+    await createVariant(extensionPage, 'Styling Test Variant');
+    await extensionPage.waitForTimeout(500);
+
+    // Step 2: Configure specific presentation styling options
+    await configurePresentationStyling(extensionPage, {
+      font: 'Times New Roman',
+      fontSize: '3em',
+      margin: '2em 3em',
+      color: '#00ff00',
+      liveColor: '#ffff00',
+      background: 'linear-gradient(to bottom, #000080, #000000)',
+    });
+
+    // Step 3: Save the variant
+    const saveButton = extensionPage.getByTestId('button-save-variant');
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await extensionPage.waitForTimeout(1000);
+
+    // Step 4: Open test presentation window
+    const windows = await openTestPresentationWindows(
+      extensionPage,
+      windowHelper,
+      1,
+    );
+    const testWindow = windows[0];
+    await testWindow.waitForLoadState('networkidle');
+
+    // Step 5: Verify styles are applied in the presentation window
+    // Get the root presentation element
+    const presentationRoot = testWindow.locator(
+      '.translator-presentation-root',
+    );
+    await expect(presentationRoot).toBeVisible();
+
+    // Verify CSS custom properties are set correctly
+    const rootStyles = await presentationRoot.evaluate((el) => {
+      const styles = window.getComputedStyle(el);
+      return {
+        background: styles.getPropertyValue('background'),
+        color: styles.getPropertyValue('color'),
+        fontFamily: styles.getPropertyValue('font-family'),
+        fontSize: styles.getPropertyValue('font-size'),
+        // Get CSS variables
+        presentationBackground: styles
+          .getPropertyValue('--presentation-background')
+          .trim(),
+        presentationColor: styles
+          .getPropertyValue('--presentation-color')
+          .trim(),
+        presentationFont: styles.getPropertyValue('--presentation-font').trim(),
+        presentationFontSize: styles
+          .getPropertyValue('--presentation-font-size')
+          .trim(),
+        presentationMargin: styles
+          .getPropertyValue('--presentation-margin')
+          .trim(),
+        presentationLiveColor: styles
+          .getPropertyValue('--presentation-live-color')
+          .trim(),
+      };
+    });
+
+    // Verify CSS variables match configured values
+    expect(rootStyles.presentationFont).toBe('Times New Roman');
+    expect(rootStyles.presentationFontSize).toBe('3em');
+    expect(rootStyles.presentationMargin).toBe('2em 3em');
+    expect(rootStyles.presentationColor).toBe('#00ff00');
+    expect(rootStyles.presentationLiveColor).toBe('#ffff00');
+    expect(rootStyles.presentationBackground).toBe(
+      'linear-gradient(to bottom, #000080, #000000)',
+    );
+
+    // Verify that the computed styles apply the CSS variables
+    // Font family should include Times New Roman (plus the Twemoji Country Flags fallback)
+    expect(rootStyles.fontFamily).toContain('Times New Roman');
+
+    // Color should be the configured color (may be in rgb format)
+    // #00ff00 = rgb(0, 255, 0) = lime green
+    expect(rootStyles.color).toMatch(/rgb\(0,\s*255,\s*0\)|#00ff00|lime/i);
+
+    // Background should contain the gradient
+    // #000080 = rgb(0, 0, 128) = navy blue
+    // #000000 = rgb(0, 0, 0) = black
+    expect(rootStyles.background).toContain('linear-gradient');
+    expect(rootStyles.background).toMatch(/rgb\(0,\s*0,\s*128\)|000080/i); // Dark blue
+    expect(rootStyles.background).toMatch(/rgb\(0,\s*0,\s*0\)|000000/i); // Black
+
+    // Step 6: Start test generation to verify live text color
+    await startTestRecording(extensionPage);
+    await testWindow.waitForTimeout(2000); // Wait for lorem ipsum generation
+
+    // Check if live translation element exists and has correct color
+    const liveTranslation = testWindow.locator('.live-translation').first();
+    if ((await liveTranslation.count()) > 0) {
+      const liveStyles = await liveTranslation.evaluate((el) => {
+        const styles = window.getComputedStyle(el);
+        return {
+          color: styles.getPropertyValue('color'),
+        };
+      });
+
+      // Live color should be yellow (#ffff00 = rgb(255, 255, 0))
+      expect(liveStyles.color).toMatch(
+        /rgb\(255,\s*255,\s*0\)|#ffff00|yellow/i,
+      );
+    }
+
+    // Step 7: Stop test generation (this will close the test window automatically)
+    const stopButton = extensionPage.getByTestId('button-stop');
+    await expect(stopButton).toBeEnabled();
+    await stopButton.click();
+    await extensionPage.waitForTimeout(1000); // Wait for window cleanup
+
+    // Step 8: Test with different styling - color background
+    // Configure different presentation styles with a color background
+    await configurePresentationStyling(extensionPage, {
+      font: 'Palatino',
+      fontSize: '24px',
+      margin: '10px 20px',
+      color: 'white',
+      liveColor: '#cccccc',
+      background: '#333333',
+    });
+
+    // Save the changes
+    await saveButton.click();
+    await extensionPage.waitForTimeout(1000);
+
+    // Open new test presentation window
+    const windows2 = await openTestPresentationWindows(
+      extensionPage,
+      windowHelper,
+      1,
+    );
+    const testWindow2 = windows2[0];
+    await testWindow2.waitForLoadState('networkidle');
+
+    // Verify the new styles
+    const presentationRoot2 = testWindow2.locator(
+      '.translator-presentation-root',
+    );
+    await expect(presentationRoot2).toBeVisible();
+
+    const rootStyles2 = await presentationRoot2.evaluate((el) => {
+      const styles = window.getComputedStyle(el);
+      return {
+        presentationBackground: styles
+          .getPropertyValue('--presentation-background')
+          .trim(),
+        presentationColor: styles
+          .getPropertyValue('--presentation-color')
+          .trim(),
+        presentationFont: styles.getPropertyValue('--presentation-font').trim(),
+        presentationFontSize: styles
+          .getPropertyValue('--presentation-font-size')
+          .trim(),
+        presentationMargin: styles
+          .getPropertyValue('--presentation-margin')
+          .trim(),
+        presentationLiveColor: styles
+          .getPropertyValue('--presentation-live-color')
+          .trim(),
+        color: styles.getPropertyValue('color'),
+        fontFamily: styles.getPropertyValue('font-family'),
+      };
+    });
+
+    expect(rootStyles2.presentationFont).toBe('Palatino');
+    expect(rootStyles2.presentationFontSize).toBe('24px');
+    expect(rootStyles2.presentationMargin).toBe('10px 20px');
+    expect(rootStyles2.presentationColor).toBe('white');
+    expect(rootStyles2.presentationLiveColor).toBe('#cccccc');
+    expect(rootStyles2.presentationBackground).toBe('#333333');
+
+    // Verify computed styles
+    expect(rootStyles2.fontFamily).toContain('Palatino');
+    expect(rootStyles2.color).toMatch(/rgb\(255,\s*255,\s*255\)|white/i);
   });
 });

@@ -26,6 +26,13 @@ export class MultiWindowHelper {
   }
 
   /**
+   * Get all currently open windows (filters out closed windows)
+   */
+  getOpenWindows(): Page[] {
+    return this.windows.filter((window) => !window.isClosed());
+  }
+
+  /**
    * Get a specific window by index
    */
   getWindow(index: number): Page | undefined {
@@ -75,16 +82,16 @@ export class MultiWindowHelper {
   async waitForWindows(count: number, timeout = 10000): Promise<Page[]> {
     const startTime = Date.now();
 
-    while (this.windows.length < count) {
+    while (this.getOpenWindows().length < count) {
       if (Date.now() - startTime > timeout) {
         throw new Error(
-          `Timeout waiting for ${count} windows. Got ${this.windows.length} after ${timeout}ms`,
+          `Timeout waiting for ${count} windows. Got ${this.getOpenWindows().length} after ${timeout}ms`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
-    return this.windows;
+    return this.getOpenWindows().slice(0, count);
   }
 
   /**
@@ -133,10 +140,10 @@ export class MultiWindowHelper {
   }
 
   /**
-   * Get window count
+   * Get window count (only open windows)
    */
   getWindowCount(): number {
-    return this.windows.length;
+    return this.getOpenWindows().length;
   }
 
   /**
