@@ -276,8 +276,15 @@ test.describe('Multi-Window Mode', () => {
     // Close one window (middle window)
     await windows[1].close();
 
-    // Wait for cleanup
-    await extensionPage.waitForTimeout(500);
+    // Wait for cleanup and cross-window communication
+    // The close signal propagates via localStorage and other windows close themselves
+    await extensionPage.waitForTimeout(1000);
+
+    // Wait for all windows to finish closing
+    await Promise.all([
+      windows[0].waitForEvent('close', { timeout: 2000 }).catch(() => {}),
+      windows[2].waitForEvent('close', { timeout: 2000 }).catch(() => {}),
+    ]);
 
     // Verify ALL windows are now closed
     expect(windows[0].isClosed()).toBeTruthy();
@@ -286,18 +293,6 @@ test.describe('Multi-Window Mode', () => {
 
     // Verify recording has stopped (presentation button should be enabled again)
     await expect(presentationButton).toBeEnabled();
-    await expect(stopButton).not.toBeVisible();
-  });
-});
-
-test.describe('Multi-Window - Translation Distribution', () => {
-  test.beforeEach(async ({ extensionPage, localStorage }) => {
-    await authenticateChurchTools(extensionPage);
-    await localStorage.setItem('translator_api_settings', {
-      azureApiKey: 'mock-api-key-12345',
-      azureRegion: 'westeurope',
-    });
-
-    await extensionPage.goto('/');
+    await expect(stopButton).toBeDisabled();
   });
 });

@@ -86,8 +86,15 @@
       :class="splitViewGridClass"
       data-testid="split-view-container"
     >
-      <div v-for="lang in outputLanguages" :key="lang" class="language-pane" :data-testid="`language-pane-${lang}`">
-        <div class="language-header" :data-testid="`language-header-${lang}`">{{ getLanguageDisplayName(lang) }}</div>
+      <div
+        v-for="lang in outputLanguages"
+        :key="lang"
+        class="language-pane"
+        :data-testid="`language-pane-${lang}`"
+      >
+        <div class="language-header" :data-testid="`language-header-${lang}`">
+          {{ getLanguageDisplayName(lang) }}
+        </div>
         <div
           :ref="
             (el) => {
@@ -104,7 +111,11 @@
           >
             {{ paragraph }}
           </p>
-          <p v-if="currentLiveTranslationByLang[lang]" class="live-translation" :data-testid="`live-translation-${lang}`">
+          <p
+            v-if="currentLiveTranslationByLang[lang]"
+            class="live-translation"
+            :data-testid="`live-translation-${lang}`"
+          >
             {{ currentLiveTranslationByLang[lang] }}
           </p>
         </div>
@@ -112,7 +123,11 @@
     </div>
 
     <!-- Translation Display - Single Language -->
-    <div v-else class="translation-content" data-testid="single-language-container">
+    <div
+      v-else
+      class="translation-content"
+      data-testid="single-language-container"
+    >
       <p
         v-for="(paragraph, index) in singleLanguageParagraphs"
         :key="'para-' + index"
@@ -121,7 +136,11 @@
       >
         {{ paragraph }}
       </p>
-      <p v-if="singleLanguageLiveTranslation" class="live-translation" data-testid="live-translation">
+      <p
+        v-if="singleLanguageLiveTranslation"
+        class="live-translation"
+        data-testid="live-translation"
+      >
         {{ singleLanguageLiveTranslation }}
       </p>
     </div>
@@ -240,6 +259,13 @@ function handleStorageEvent(e: StorageEvent) {
   const presentationKey = `translator_presentation_${sessionId}`;
   const settingsKey = `translator_settings_${sessionId}`;
   const pausedKey = `translator_paused_${sessionId}`;
+  const closeKey = `translator_close_${sessionId}`;
+
+  // Listen for close signal from another window
+  if (e.key === closeKey && e.newValue) {
+    window.close();
+    return;
+  }
 
   if (e.key === presentationKey && e.newValue) {
     try {
@@ -271,6 +297,12 @@ function handleStorageEvent(e: StorageEvent) {
     }
   } else if (e.key === settingsKey && e.newValue === null) {
     // Settings removed means presentation stopped
+    console.log(
+      '[PresentationView] Settings removed, closing window. Session:',
+      sessionId,
+      'Lang:',
+      specificLanguage || 'all',
+    );
     window.close();
   } else if (e.key === pausedKey) {
     if (e.newValue === null) {
@@ -357,13 +389,26 @@ onMounted(() => {
     showFullscreenInstructions.value = false;
   }, 10000);
 
-  // Clean up on window close - signal to control window
-  window.addEventListener('beforeunload', () => {
-    // Remove settings to signal the control window that presentation closed
+  // Clean up on window close - signal to control window and other presentation windows
+  // Use both beforeunload and unload for better browser compatibility
+  const cleanupStorage = () => {
+    // Signal to close all windows by setting a close flag
+    localStorage.setItem(
+      `translator_close_${sessionId}`,
+      JSON.stringify({ timestamp: Date.now() }),
+    );
+    // Then remove all session data
     localStorage.removeItem(`translator_settings_${sessionId}`);
     localStorage.removeItem(`translator_paused_${sessionId}`);
     localStorage.removeItem(`translator_presentation_${sessionId}`);
-  });
+    localStorage.removeItem(`translator_close_${sessionId}`);
+  };
+
+  window.addEventListener('beforeunload', cleanupStorage);
+  window.addEventListener('unload', cleanupStorage);
+
+  // Also listen for page hide (more reliable for programmatic closes)
+  window.addEventListener('pagehide', cleanupStorage);
 });
 
 onUnmounted(() => {
