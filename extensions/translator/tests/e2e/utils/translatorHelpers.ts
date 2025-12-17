@@ -27,9 +27,11 @@ export async function configureTranslationSettings(
   await page.waitForTimeout(300);
 
   // Set input language
-  await page.getByTestId('select-input-lang').click();
+  const inputLangSelect = page.getByTestId('select-input-lang');
+  await inputLangSelect.click();
   await page.waitForTimeout(300);
-  await page.getByText(config.inputLang).click();
+  // Input language: scope to the listbox to avoid matching the selected value display
+  await page.locator('[role="listbox"]').getByText(config.inputLang).click();
   await page.waitForTimeout(300);
 
   // Configure output languages
@@ -37,15 +39,22 @@ export async function configureTranslationSettings(
   await outputLangsMultiselect.click();
   await page.waitForTimeout(500);
 
-  // Deselect English if it's the input language
-  if (config.inputLang.includes('English')) {
-    await page.getByLabel('Option List').getByText('🇬🇧 English').click();
+  // First, deselect all currently selected languages
+  // The default is usually just English
+  const selectedOptions = page
+    .getByLabel('Option List')
+    .locator('[aria-selected="true"]');
+  const selectedCount = await selectedOptions.count();
+
+  for (let i = 0; i < selectedCount; i++) {
+    await selectedOptions.first().click();
     await page.waitForTimeout(200);
   }
 
-  // Select output languages
+  // Now select the desired output languages
+  // Output languages: already scoped by getByLabel('Option List')
   for (const lang of config.outputLangs) {
-    await page.getByText(lang).click();
+    await page.getByLabel('Option List').getByText(lang).click();
     await page.waitForTimeout(200);
   }
 
