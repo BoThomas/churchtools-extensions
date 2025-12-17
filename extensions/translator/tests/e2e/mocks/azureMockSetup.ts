@@ -15,9 +15,12 @@ import type { BrowserContext } from '@playwright/test';
 /**
  * Setup Azure mocks for E2E testing at the CONTEXT level
  *
- * This function configures Playwright to mock the Azure Speech SDK
- * at the browser context level, which means it applies to ALL pages
- * (including popups/new windows) created in that context.
+ * This function configures Playwright to inject scenario configuration
+ * into the browser window, which the mock SDK will read.
+ *
+ * The mock SDK is loaded via Vite's resolve.alias (see vite.config.ts)
+ * which replaces 'microsoft-cognitiveservices-speech-sdk' with
+ * the browser-compatible mock during E2E mode.
  *
  * @param context - Playwright browser context
  * @param options - Mock configuration options
@@ -30,14 +33,16 @@ export async function setupAzureMocksForContext(
 ) {
   const { azureScenario = 'basic' } = options;
 
-  // Inject init script to enable Azure mocking
+  // Inject scenario configuration into browser window
   // This runs before any page loads in this context
   await context.addInitScript((scenarioName) => {
-    (window as any).__USE_MOCK_AZURE__ = true;
     (window as any).__MOCK_AZURE_SCENARIO__ = scenarioName;
   }, azureScenario);
 
-  console.log(`🎭 Azure SDK mocking enabled (scenario: ${azureScenario})`);
+  console.log(
+    `🎭 Azure Speech SDK mock configured (scenario: ${azureScenario})`,
+  );
+  console.log('   Real SDK replaced with mock via Vite alias');
 }
 
 /**

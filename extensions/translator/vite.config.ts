@@ -11,6 +11,9 @@ export default ({ mode }: { mode: string }) => {
   // When mode is 'e2e', Vite will automatically load .env.e2e
   const env = loadEnv(mode, process.cwd(), '');
 
+  // Determine if we're in E2E test mode
+  const isE2EMode = mode === 'e2e' || env.VITE_E2E === 'true';
+
   return defineConfig({
     base: `/ccm/${env.VITE_KEY}/`,
     server: {
@@ -33,7 +36,21 @@ export default ({ mode }: { mode: string }) => {
     },
     plugins: [vue(), tailwindcss(), versionInfoPlugin()],
     resolve: {
-      alias: [{ find: '@', replacement: path.resolve(__dirname, './src') }],
+      alias: [
+        { find: '@', replacement: path.resolve(__dirname, './src') },
+        // In E2E mode, replace Azure SDK with browser-compatible mock
+        ...(isE2EMode
+          ? [
+              {
+                find: 'microsoft-cognitiveservices-speech-sdk',
+                replacement: path.resolve(
+                  __dirname,
+                  './src/__mocks__/azureSpeechSdk.browser.ts',
+                ),
+              },
+            ]
+          : []),
+      ],
     },
   });
 };
