@@ -1,6 +1,12 @@
 import { test, expect } from './fixtures/extensionFixture';
 import { authenticateChurchTools } from './utils/auth';
 import { cleanupE2EData } from './utils/cleanup';
+import {
+  navigateToTab,
+  configureApiCredentials,
+  createVariant,
+  configureTranslationSettings,
+} from './utils/testHelpers';
 
 /**
  * E2E Tests for Settings Flow with REAL ChurchTools Integration
@@ -14,66 +20,73 @@ import { cleanupE2EData } from './utils/cleanup';
  */
 
 test.describe('Settings Flow - First Time User', () => {
-  test.beforeEach(async ({ extensionPage, localStorage }) => {
+  test.beforeEach(async ({ extensionPage }) => {
     await authenticateChurchTools(extensionPage);
-    // Clear localStorage to simulate first-time user
-    await localStorage.clear();
+    // Clean up both KV store and localStorage BEFORE navigation
+    await cleanupE2EData(extensionPage);
 
     // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
   });
 
-  // Cleanup after all tests in this block
-  test.afterAll(async ({ extensionPage }) => {
-    await cleanupE2EData(extensionPage);
+  // Cleanup after each test
+  test.afterEach(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage, false);
   });
 
-  test('shows warning when API key is missing', async ({ extensionPage }) => {
-    // Wait for page to load
+  test('complete first-time user flow: API credentials setup, persistence, and default variant creation', async ({
+    extensionPage,
+  }) => {
     await extensionPage.waitForLoadState('networkidle');
 
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
+    // Step 1: Navigate to Translate tab - verify warning is shown
+    await navigateToTab(extensionPage, 'translate');
 
-    // Verify warning message about API credentials is displayed
     const warningMessage = extensionPage.getByText(
       /configure.*azure.*api.*credentials/i,
     );
     await expect(warningMessage).toBeVisible();
-  });
 
-  test('allows entering API credentials', async ({ extensionPage }) => {
-    await extensionPage.waitForLoadState('networkidle');
+    // Step 2: Navigate to Settings tab and enter credentials
+    await navigateToTab(extensionPage, 'settings');
 
-    // Navigate to Settings tab
-    const settingsTab = extensionPage.getByTestId('tab-settings');
-    await settingsTab.click();
-
-    // Find and fill API key
     const apiKeyInput = extensionPage.getByTestId('input-api-key');
     await apiKeyInput.fill('test-api-key-12345');
 
-    // Find and fill region
     const regionInput = extensionPage.getByTestId('input-api-region');
     await regionInput.fill('westeurope');
 
-    // Save settings
     const saveButton = extensionPage.getByTestId('button-save-settings');
     await saveButton.click();
 
     // Wait for save to complete (real API call)
     await extensionPage.waitForTimeout(1000);
 
-    // Verify settings are persisted by reloading the page
+    // Step 3: Navigate to Translate tab - verify warning disappeared
+    await navigateToTab(extensionPage, 'translate', 500);
+    await expect(warningMessage).not.toBeVisible();
+
+    // Step 4: Verify default variant was created
+    const variantSelect = extensionPage.getByTestId('select-variant');
+    await expect(variantSelect).toBeVisible();
+
+    const saveAsButton = extensionPage.getByTestId('button-save-as-variant');
+    await expect(saveAsButton).toBeVisible();
+
+    // Step 5: Verify settings are persisted by reloading the page
     await extensionPage.reload();
     await extensionPage.waitForLoadState('networkidle');
 
-    // Navigate back to settings
-    await extensionPage.getByTestId('tab-settings').click();
+    // Navigate to Translate tab - verify warning is still hidden after reload
+    await expect(warningMessage).not.toBeVisible();
 
-    // Verify the saved values are still there
+    // Verify variant controls still visible
+    await expect(variantSelect).toBeVisible();
+
+    // Step 6: Navigate to settings to verify the saved credentials
+    await navigateToTab(extensionPage, 'settings', 0);
+
     const savedApiKey = await extensionPage
       .getByTestId('input-api-key')
       .inputValue();
@@ -84,278 +97,302 @@ test.describe('Settings Flow - First Time User', () => {
     expect(savedApiKey).toBe('test-api-key-12345');
     expect(savedRegion).toBe('westeurope');
   });
-
-  test('warning disappears after entering valid API key', async ({
-    extensionPage,
-  }) => {
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Navigate to Settings tab
-    const settingsTab = extensionPage.getByTestId('tab-settings');
-    await settingsTab.click();
-
-    // Enter API credentials
-    await extensionPage.getByTestId('input-api-key').fill('test-api-key');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-
-    // Save
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(500);
-
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-
-    // Verify warning is no longer shown
-    const warningMessage = extensionPage.getByText(
-      /configure.*azure.*api.*credentials/i,
-    );
-    await expect(warningMessage).not.toBeVisible();
-  });
-
-  test('creates default variant on first use', async ({
-    extensionPage,
-    localStorage,
-  }) => {
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Enter API credentials
-    const settingsTab = extensionPage.getByTestId('tab-settings');
-    await settingsTab.click();
-    await extensionPage.getByTestId('input-api-key').fill('test-api-key');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(500);
-
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
-
-    // Verify variant selector exists and has a default option
-    const variantSelect = extensionPage.getByTestId('select-variant');
-    await expect(variantSelect).toBeVisible();
-
-    // The store should have created a default variant
-    // Verify by checking if we can access variant management
-    const saveAsButton = extensionPage.getByTestId('button-save-as-variant');
-    await expect(saveAsButton).toBeVisible();
-  });
 });
 
-test.describe('Settings Flow - Variant Management', () => {
+test.describe('Settings Flow - Configuration Management', () => {
   test.beforeEach(async ({ extensionPage }) => {
     await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
+
     // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
 
     // Setup API credentials via UI (save to real KV store)
-    await extensionPage.getByTestId('tab-settings').click();
-    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
-    await extensionPage.waitForTimeout(1000);
+    await configureApiCredentials(extensionPage);
 
-    // Navigate back to translate tab for variant tests
-    await extensionPage.getByTestId('tab-translate').click();
-    await extensionPage.waitForTimeout(500);
+    // Navigate to Translate tab
+    await navigateToTab(extensionPage, 'translate');
   });
 
-  // Cleanup after all tests in this block
-  test.afterAll(async ({ extensionPage }) => {
-    await cleanupE2EData(extensionPage);
-  });
-
-  test('creates a new variant with custom settings', async ({
+  test('configures presentation mode based on language count and show input language setting', async ({
     extensionPage,
   }) => {
     await extensionPage.waitForLoadState('networkidle');
 
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
+    // Expand Presentation Options
+    const presentationOptionsButton = extensionPage.getByRole('button', {
+      name: /Presentation Options/i,
+    });
+    const presentationOptionsExpanded =
+      (await presentationOptionsButton.getAttribute('aria-expanded')) ===
+      'true';
+    if (!presentationOptionsExpanded) {
+      await presentationOptionsButton.click();
+      await extensionPage.waitForTimeout(300);
+    }
+
+    const presentationModeSelect = extensionPage.locator('#presentation-mode');
+
+    // Step 1: With only 1 output language, presentation mode should be disabled
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German'],
+    });
+
     await extensionPage.waitForTimeout(500);
+    // PrimeVue Select uses data-p attribute with "disabled" value when disabled
+    await expect(presentationModeSelect).toHaveAttribute('data-p', 'disabled');
 
-    // Click "Save As..." to create new variant
-    const saveAsButton = extensionPage.getByTestId('button-save-as-variant');
-    await saveAsButton.click();
+    // Step 2: Add second output language - presentation mode should be enabled
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German', '🇫🇷 French'],
+    });
 
-    // Dialog should open
-    const dialog = extensionPage.getByTestId('dialog-save-as-variant');
-    await expect(dialog).toBeVisible();
-
-    // Enter variant name
-    const variantNameInput = extensionPage.getByTestId('input-variant-name');
-    await variantNameInput.fill('Sunday Service');
-
-    // Confirm save
-    const confirmButton = extensionPage.getByTestId('button-confirm-save-as');
-    await confirmButton.click();
-
-    // Wait for dialog to close and save to complete
-    await expect(dialog).not.toBeVisible();
     await extensionPage.waitForTimeout(500);
+    // PrimeVue Select - when enabled, data-p attribute should not be "disabled"
+    await expect(presentationModeSelect).not.toHaveAttribute(
+      'data-p',
+      'disabled',
+    );
 
-    // Verify variant appears in selector
-    // Note: The actual verification depends on how variants are displayed in the dropdown
-    const variantSelect = extensionPage.getByTestId('select-variant');
-    await expect(variantSelect).toBeVisible();
-  });
-
-  test('switches between variants', async ({ extensionPage }) => {
-    // Note: This test requires understanding the actual storage format for variants
-    // The test is implemented but may need adjustment based on actual persistence format
-
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
-
-    // Verify variant selector is visible
-    const variantSelect = extensionPage.getByTestId('select-variant');
-    await expect(variantSelect).toBeVisible();
-
-    // The actual variant switching would require clicking the dropdown
-    // and selecting an option, which depends on PrimeVue's Select component
-    // This is a placeholder for the interaction
-    await variantSelect.click();
-
-    // After implementation, verify settings update accordingly
-  });
-
-  test('saves changes to current variant', async ({ extensionPage }) => {
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
-
-    // Make a change to settings (e.g., change input language)
-    // This would trigger the "unsaved changes" state
-
-    // Save button should become enabled when there are unsaved changes
-    const saveButton = extensionPage.getByTestId('button-save-variant');
-
-    // Note: The button may be disabled initially if no changes are made
-    // This test would need to make actual changes to the form first
-  });
-
-  test('deletes a variant with confirmation', async ({ extensionPage }) => {
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
-
-    // Create a new variant first
-    const saveAsButton = extensionPage.getByTestId('button-save-as-variant');
-    await saveAsButton.click();
-
-    const dialog = extensionPage.getByTestId('dialog-save-as-variant');
-    await expect(dialog).toBeVisible();
-
-    const variantNameInput = extensionPage.getByTestId('input-variant-name');
-    await variantNameInput.fill('Variant to Delete');
-
-    await extensionPage.getByTestId('button-confirm-save-as').click();
-    await expect(dialog).not.toBeVisible();
-    await extensionPage.waitForTimeout(500);
-
-    // Now try to delete it
-    const deleteButton = extensionPage.getByTestId('button-delete-variant');
-    await deleteButton.click();
-
-    // Confirmation dialog should appear (PrimeVue ConfirmDialog)
-    // The actual selector depends on PrimeVue's implementation
+    // Step 3: Change to split-screen mode
+    await presentationModeSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByRole('option', { name: /Split-screen/i }).click();
     await extensionPage.waitForTimeout(300);
 
-    // Look for confirmation dialog
-    const confirmDialog = extensionPage.locator('[role="dialog"]').last();
-    await expect(confirmDialog).toBeVisible();
+    // Verify the selection by checking the displayed text
+    await expect(presentationModeSelect).toContainText('Split-screen');
+
+    // Step 4: Change to multi-window mode
+    await presentationModeSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByRole('option', { name: /Multi-window/i }).click();
+    await extensionPage.waitForTimeout(300);
+
+    // Verify the selection by checking the displayed text
+    await expect(presentationModeSelect).toContainText('Multi-window');
+
+    // Step 5: Test interaction with "Show Input Language" checkbox
+    // Expand presentation options again if collapsed
+    const showInputLangCheckbox = extensionPage.locator('#show-input-language');
+    // PrimeVue Checkbox - check if not already checked, then click
+    const isChecked =
+      await showInputLangCheckbox.getAttribute('data-p-checked');
+    if (isChecked !== 'true') {
+      await showInputLangCheckbox.click();
+    }
+    await extensionPage.waitForTimeout(300);
+
+    // Verify presentation mode is still enabled with 2 output + 1 input = 3 languages
+    await expect(presentationModeSelect).not.toHaveAttribute(
+      'data-p',
+      'disabled',
+    );
+
+    // Step 6: Switch back to split-screen mode to test language limit warning
+    await presentationModeSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByRole('option', { name: /Split-screen/i }).click();
+    await extensionPage.waitForTimeout(300);
+
+    // Step 7: Add 4 more output languages (total 6 output + 1 input = 7) and verify warning
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: [
+        '🇩🇪 German',
+        '🇫🇷 French',
+        '🇪🇸 Spanish',
+        '🇮🇹 Italian',
+        '🇵🇹 Portuguese',
+        '🇳🇱 Dutch',
+      ],
+    });
+
+    // Check for the warning about too many languages for split mode (with input language)
+    const tooManyLanguagesWithInputWarning = extensionPage.getByText(
+      /Split-screen presentation mode supports up to 6 languages total.*1 input/i,
+    );
+    await expect(tooManyLanguagesWithInputWarning).toBeVisible();
+
+    // Step 8: Uncheck "Show Input Language" - warning should disappear
+    // (6 output languages without input = exactly at the limit, not exceeding)
+    // PrimeVue Checkbox - click if currently checked to uncheck it
+    const isStillChecked =
+      await showInputLangCheckbox.getAttribute('data-p-checked');
+    if (isStillChecked === 'true') {
+      await showInputLangCheckbox.click();
+    }
+    await extensionPage.waitForTimeout(300);
+
+    // Warning should disappear (6 output languages is exactly the limit, not over)
+    await expect(tooManyLanguagesWithInputWarning).not.toBeVisible();
+
+    // Step 9: Add one more language to exceed the limit without input language
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: [
+        '🇩🇪 German',
+        '🇫🇷 French',
+        '🇪🇸 Spanish',
+        '🇮🇹 Italian',
+        '🇵🇹 Portuguese',
+        '🇳🇱 Dutch',
+        '🇷🇺 Russian',
+      ],
+    });
+
+    // Check for different warning message (without input language)
+    const tooManyOutputLanguagesWarning = extensionPage.getByText(
+      /Split-screen presentation mode supports up to 6 output languages.*You have 7 selected/i,
+    );
+    await expect(tooManyOutputLanguagesWarning).toBeVisible();
+
+    // Step 10: Switch to multi-window mode - warning should disappear
+    await presentationModeSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage.getByRole('option', { name: /Multi-window/i }).click();
+    await extensionPage.waitForTimeout(300);
+
+    await expect(tooManyOutputLanguagesWarning).not.toBeVisible();
   });
 
-  test('prevents deleting last variant', async ({ extensionPage }) => {
+  test('manages variants: create, modify, save, switch, and delete', async ({
+    extensionPage,
+  }) => {
     await extensionPage.waitForLoadState('networkidle');
 
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
-    await extensionPage.waitForTimeout(500);
+    // Step 1: Verify default variant exists and delete button is disabled
+    const variantSelect = extensionPage.getByTestId('select-variant');
+    await expect(variantSelect).toBeVisible();
 
-    // If only one variant exists, delete button should be disabled
     const deleteButton = extensionPage.getByTestId('button-delete-variant');
+    await expect(deleteButton).toBeDisabled(); // Can't delete the only/default variant
 
-    // The button might be disabled based on the settingVariants.length <= 1 condition
-    const isDisabled = await deleteButton.isDisabled();
-    expect(isDisabled).toBeTruthy();
-  });
-});
+    // Step 2: Create first custom variant "Sunday Service"
+    await createVariant(extensionPage, 'Sunday Service');
 
-test.describe('Settings Flow - Language Configuration', () => {
-  test.beforeEach(async ({ extensionPage }) => {
-    await authenticateChurchTools(extensionPage);
-    // Navigate to extension
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
+    // Verify the variant was created and is now selected
+    await extensionPage.waitForTimeout(500);
+    const selectedVariantText = await variantSelect.textContent();
+    expect(selectedVariantText).toContain('Sunday Service');
 
-    // Setup API credentials via UI (save to real KV store)
-    await extensionPage.getByTestId('tab-settings').click();
-    await extensionPage.getByTestId('input-api-key').fill('mock-api-key-12345');
-    await extensionPage.getByTestId('input-api-region').fill('westeurope');
-    await extensionPage.getByTestId('button-save-settings').click();
+    // Step 3: Make changes to trigger unsaved state
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇩🇪 German (Germany)',
+      outputLangs: ['🇬🇧 English', '🇫🇷 French'],
+    });
+
+    // Verify unsaved changes warning appears
+    const unsavedWarning = extensionPage.getByText(/you have unsaved changes/i);
+    await expect(unsavedWarning).toBeVisible();
+
+    // Step 4: Save the changes
+    const saveButton = extensionPage.getByTestId('button-save-variant');
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await extensionPage.waitForTimeout(1000); // Wait for save
+
+    // Verify unsaved warning disappears
+    await expect(unsavedWarning).not.toBeVisible();
+
+    // Step 5: Create second custom variant "Wednesday Evening"
+    await createVariant(extensionPage, 'Wednesday Evening');
+
+    // Verify the variant was created and is now selected
+    await extensionPage.waitForTimeout(500);
+    const selectedWednesdayText = await variantSelect.textContent();
+    expect(selectedWednesdayText).toContain('Wednesday Evening');
+
+    // Configure different settings for this variant
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German', '🇪🇸 Spanish'],
+    });
+
+    // Save it
+    await saveButton.click();
     await extensionPage.waitForTimeout(1000);
-  });
 
-  // Cleanup after all tests in this block
-  test.afterAll(async ({ extensionPage }) => {
-    await cleanupE2EData(extensionPage);
-  });
+    // Step 6: Switch between variants
+    // Click variant selector and select "Sunday Service"
+    await variantSelect.click();
+    await extensionPage.waitForTimeout(300);
 
-  test('validates language selection', async ({ extensionPage }) => {
-    await extensionPage.waitForLoadState('networkidle');
+    // Verify "Sunday Service" option exists in the listbox
+    const sundayServiceOption = extensionPage
+      .locator('[role="listbox"]')
+      .getByText('Sunday Service');
+    await expect(sundayServiceOption).toBeVisible();
 
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
+    await sundayServiceOption.click();
     await extensionPage.waitForTimeout(500);
 
-    // The UI should show a warning if invalid languages are selected
-    // Look for the warning message about invalid languages
-    const invalidWarning = extensionPage.getByText(
-      /invalid language configuration/i,
-    );
+    // Step 7: Delete the "Sunday Service" variant
+    await expect(deleteButton).toBeEnabled(); // Should be enabled now
+    await deleteButton.click();
 
-    // If languages become invalid (e.g., after extension update), warning should show
-    // This test verifies the warning mechanism exists
-    const warningExists = await invalidWarning.count();
-    // Warning may or may not be visible depending on current configuration
-    expect(typeof warningExists).toBe('number');
-  });
-
-  test('supports multiple output languages', async ({ extensionPage }) => {
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Navigate to Translate tab
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await translateTab.click();
+    // Wait for PrimeVue ConfirmDialog to appear - it uses a portal with role="alertdialog"
     await extensionPage.waitForTimeout(500);
 
-    // The multiselect for output languages should be visible
-    const outputLanguagesSelect = extensionPage.getByTestId(
-      'multiselect-output-langs',
-    );
-    await expect(outputLanguagesSelect).toBeVisible();
+    // PrimeVue ConfirmDialog uses role="alertdialog" not "dialog"
+    const confirmDialog = extensionPage.locator('[role="alertdialog"]');
+    await confirmDialog.waitFor({ state: 'visible', timeout: 10000 });
 
-    // The component should allow multiple selections
-    // Actual interaction depends on PrimeVue Multiselect implementation
-    await outputLanguagesSelect.click();
+    // Find and click the delete/accept button in the dialog
+    const confirmButton = confirmDialog.getByRole('button', {
+      name: /delete/i,
+    });
+    await confirmButton.click();
+    await extensionPage.waitForTimeout(1000);
 
-    // After clicking, a dropdown should appear with language options
-    // This is handled by PrimeVue's Multiselect component
+    // Step 8: Switch to "Wednesday Evening" variant
+    await variantSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage
+      .locator('[role="listbox"]')
+      .getByText('Wednesday Evening')
+      .click();
+    await extensionPage.waitForTimeout(500);
+
+    // Step 9: Delete the "Wednesday Evening" variant
+    await deleteButton.click();
+    await extensionPage.waitForTimeout(500);
+    const secondConfirmDialog = extensionPage.locator('[role="alertdialog"]');
+    await secondConfirmDialog.waitFor({ state: 'visible', timeout: 10000 });
+    const secondConfirmButton = secondConfirmDialog.getByRole('button', {
+      name: /delete/i,
+    });
+    await secondConfirmButton.click();
+    await extensionPage.waitForTimeout(1000);
+
+    // Step 10: Verify we're back to default variant and delete is disabled
+    await expect(deleteButton).toBeDisabled(); // Can't delete last variant
+  });
+
+  test.skip('configures presentation styling options (font, colors, background, etc.)', async ({
+    extensionPage,
+  }) => {
+    // TODO: Implement comprehensive test for presentation styling options
+    // This test should verify that all presentation options apply correctly:
+    // - Font family selection
+    // - Font size
+    // - Paragraph margin
+    // - Text color
+    // - Live text color
+    // - Background (color, image, gradient)
+    //
+    // Test approach:
+    // 1. Configure various presentation styling options
+    // 2. Save the configuration
+    // 3. Open test presentation window
+    // 4. Verify styles are applied in presentation view by:
+    //    - Reading computed styles from presentation window elements
+    //    - Checking CSS properties match configured values
+    //
+    // Note: This requires inspecting the presentation window's DOM
+    // and computed styles to verify the settings are applied correctly.
   });
 });

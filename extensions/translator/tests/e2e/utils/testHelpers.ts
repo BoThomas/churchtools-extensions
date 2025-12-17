@@ -22,9 +22,16 @@ export async function configureTranslationSettings(
   await page.getByTestId('tab-translate').click();
   await page.waitForTimeout(500);
 
-  // Expand Translation Options
-  await page.getByRole('button', { name: /Translation Options/i }).click();
-  await page.waitForTimeout(300);
+  // Expand Translation Options if not already expanded
+  const translationOptionsButton = page.getByRole('button', {
+    name: /Translation Options/i,
+  });
+  const translationOptionsExpanded =
+    (await translationOptionsButton.getAttribute('aria-expanded')) === 'true';
+  if (!translationOptionsExpanded) {
+    await translationOptionsButton.click();
+    await page.waitForTimeout(300);
+  }
 
   // Set input language
   const inputLangSelect = page.getByTestId('select-input-lang');
@@ -64,8 +71,16 @@ export async function configureTranslationSettings(
   // Set presentation mode if specified and there are 2+ output languages
   // (presentation mode is disabled for single language)
   if (config.presentationMode && config.outputLangs.length >= 2) {
-    await page.getByRole('button', { name: /Presentation Options/i }).click();
-    await page.waitForTimeout(300);
+    const presentationOptionsButton = page.getByRole('button', {
+      name: /Presentation Options/i,
+    });
+    const presentationOptionsExpanded =
+      (await presentationOptionsButton.getAttribute('aria-expanded')) ===
+      'true';
+    if (!presentationOptionsExpanded) {
+      await presentationOptionsButton.click();
+      await page.waitForTimeout(300);
+    }
 
     const presentationModeSelect = page.locator('#presentation-mode');
     // Verify the select is enabled before trying to click
