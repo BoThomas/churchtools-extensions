@@ -1,0 +1,63 @@
+/**
+ * Azure Mock Setup for E2E Tests
+ *
+ * Since Playwright runs in a real browser, we need to inject Azure SDK mocks
+ * at the browser context level. ChurchTools API calls are NOT mocked - tests
+ * use a real ChurchTools instance for authentic integration testing.
+ *
+ * This approach:
+ * - Mocks Azure Speech SDK (stable, no costs, fast)
+ * - Uses real ChurchTools instance (tests auth, persistence, API compatibility)
+ */
+
+import type { BrowserContext } from '@playwright/test';
+
+/**
+ * Setup Azure mocks for E2E testing at the CONTEXT level
+ *
+ * This function configures Playwright to inject scenario configuration
+ * into the browser window, which the mock SDK will read.
+ *
+ * The mock SDK is loaded via Vite's resolve.alias (see vite.config.ts)
+ * which replaces 'microsoft-cognitiveservices-speech-sdk' with
+ * the browser-compatible mock during E2E mode.
+ *
+ * @param context - Playwright browser context
+ * @param options - Mock configuration options
+ */
+export async function setupAzureMocksForContext(
+  context: BrowserContext,
+  options: {
+    azureScenario?: string;
+  } = {},
+) {
+  const { azureScenario = 'basic' } = options;
+
+  // Inject scenario configuration into browser window
+  // This runs before any page loads in this context
+  await context.addInitScript((scenarioName) => {
+    (window as any).__MOCK_AZURE_SCENARIO__ = scenarioName;
+  }, azureScenario);
+
+  console.log(
+    `🎭 Azure Speech SDK mock configured (scenario: ${azureScenario})`,
+  );
+  console.log('   Real SDK replaced with mock via Vite alias');
+}
+
+/**
+ * Azure mock scenarios available for testing
+ *
+ * These correspond to scenarios in src/__mocks__/azureSpeechSdk.ts
+ */
+export const AZURE_SCENARIOS = {
+  basic: 'basic' as const,
+  multiLanguage: 'multiLanguage' as const,
+  error: 'error' as const,
+  networkError: 'networkError' as const,
+  noSpeech: 'noSpeech' as const,
+  profanity: 'profanity' as const,
+  longPause: 'longPause' as const,
+  multipleUtterances: 'multipleUtterances' as const,
+  canceledRecognition: 'canceledRecognition' as const,
+};

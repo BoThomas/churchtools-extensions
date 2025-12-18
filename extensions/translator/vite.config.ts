@@ -7,11 +7,17 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default ({ mode }: { mode: string }) => {
-  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+  // Load environment variables based on mode
+  // When mode is 'e2e', Vite will automatically load .env.e2e
+  const env = loadEnv(mode, process.cwd(), '');
+
+  // Determine if we're in E2E test mode
+  const isE2EMode = mode === 'e2e' || env.VITE_E2E === 'true';
+
   return defineConfig({
-    base: `/ccm/${process.env.VITE_KEY}/`,
+    base: `/ccm/${env.VITE_KEY}/`,
     server: {
-      port: Number(process.env.VITE_PORT) || 5173,
+      port: Number(env.VITE_PORT) || 5173,
       https: {
         key: fs.readFileSync(
           path.resolve(__dirname, '../../certs/localhost-key.pem'),
@@ -22,7 +28,7 @@ export default ({ mode }: { mode: string }) => {
       },
       proxy: {
         '/api': {
-          target: process.env.VITE_EXTERNAL_API_URL,
+          target: env.VITE_EXTERNAL_API_URL,
           changeOrigin: true,
           secure: true,
         },
@@ -30,7 +36,21 @@ export default ({ mode }: { mode: string }) => {
     },
     plugins: [vue(), tailwindcss(), versionInfoPlugin()],
     resolve: {
-      alias: [{ find: '@', replacement: path.resolve(__dirname, './src') }],
+      alias: [
+        { find: '@', replacement: path.resolve(__dirname, './src') },
+        // In E2E mode, replace Azure SDK with browser-compatible mock
+        ...(isE2EMode
+          ? [
+              {
+                find: 'microsoft-cognitiveservices-speech-sdk',
+                replacement: path.resolve(
+                  __dirname,
+                  './src/__mocks__/azureSpeechSdk.browser.ts',
+                ),
+              },
+            ]
+          : []),
+      ],
     },
   });
 };

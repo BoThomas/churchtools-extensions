@@ -7,7 +7,6 @@
     "build": "turbo build",
     "type-check": "turbo type-check",
     "test": "turbo test",
-    "test:ui": "turbo test -- --ui",
     "test:coverage": "turbo test -- --coverage",
     "deploy": "turbo deploy",
     "release": "ct-release",
@@ -17,6 +16,7 @@
     "@churchtools-extensions/build-tools": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/node": "^24.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitest/coverage-v8": "^4.0.15",

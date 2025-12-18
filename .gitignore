@@ -12,9 +12,10 @@ dist
 dist-ssr
 *.local
 
+# E2E test environment files
+.env.e2e
+
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -28,5 +29,5 @@ certs
 # Turborepo
 .turbo
 
-# Test coverage
-coverage
+# Test outputs
+test-results

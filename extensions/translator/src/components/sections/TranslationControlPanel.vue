@@ -17,10 +17,10 @@
         :closable="true"
         icon="pi pi-info-circle"
       >
-        <strong>Browser Popup Blocker:</strong> Multi-window mode opens multiple
-        browser windows. Most browsers block this by default. If windows don't
-        open, look for a popup blocker icon in your browser's address bar and
-        allow popups for this site.
+        Browser Popup Blocker: Multi-window mode opens multiple browser windows.
+        Most browsers block this by default. If windows don't open, look for a
+        popup blocker icon in your browser's address bar and allow popups for
+        this site.
       </Message>
 
       <!-- Warning for too many languages in split mode -->
@@ -63,6 +63,7 @@
                 hasInvalidLanguages
               "
               class="test-button w-full"
+              data-testid="button-test-translation"
             />
             <SecondaryButton
               label="Test Presentation"
@@ -77,6 +78,7 @@
                 hasInvalidLanguages
               "
               severity="secondary"
+              data-testid="button-test-presentation"
             />
           </div>
         </div>
@@ -100,6 +102,7 @@
                 hasInvalidLanguages
               "
               severity="secondary"
+              data-testid="button-presentation"
             />
             <DangerButton
               v-if="
@@ -110,6 +113,7 @@
               label="Start Recording"
               icon="pi pi-microphone"
               @click="$emit('start-recording')"
+              data-testid="button-start-recording"
             />
             <DangerButton
               v-if="
@@ -120,6 +124,7 @@
               label="Start Test"
               icon="pi pi-compass"
               @click="$emit('start-test-generation')"
+              data-testid="button-start-test-generation"
             />
             <Button
               v-if="isPaused"
@@ -134,6 +139,7 @@
                     !presentationWindowsOpenedButNotStarted)
                 )
               "
+              data-testid="button-resume"
             />
             <Button
               v-else
@@ -149,6 +155,7 @@
                 )
               "
               severity="warning"
+              data-testid="button-pause"
             />
             <Button
               label="Stop"
@@ -164,6 +171,7 @@
               "
               severity="danger"
               outlined
+              data-testid="button-stop"
             />
           </div>
         </div>
@@ -196,6 +204,7 @@
                 @change="$emit('variant-change', $event)"
                 :disabled="inputsDisabled"
                 class="flex-1"
+                data-testid="select-variant"
               />
               <Button
                 icon="pi pi-trash"
@@ -208,6 +217,7 @@
                   isDefaultVariantSelected
                 "
                 v-tooltip.top="'Delete variant'"
+                data-testid="button-delete-variant"
               />
             </div>
           </div>
@@ -226,6 +236,7 @@
                 hasInvalidLanguages
               "
               :loading="settingsSaving"
+              data-testid="button-save-variant"
             />
             <ContrastButton
               label="Save As..."
@@ -233,6 +244,7 @@
               variant="outlined"
               @click="$emit('prompt-save-as-new-variant')"
               :disabled="inputsDisabled || hasInvalidLanguages"
+              data-testid="button-save-as-variant"
             />
           </div>
         </div>

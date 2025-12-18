@@ -1,0 +1,8 @@
+{
+  "vitest.maximumConfigs": 10,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "turbo.json,pnpm-workspace.yaml,pnpm-lock.yaml,tsconfig*.json,vite.config.*,vitest.config.*,playwright.config.*,prettier*,.prettier*",
+    ".env": ".env.*"
+  }
+}
