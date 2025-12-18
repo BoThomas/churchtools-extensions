@@ -138,11 +138,26 @@
         </div>
       </template>
 
+      <div class="mb-4">
+        <InputText
+          v-model="userSearchText"
+          placeholder="Search users by name or email..."
+          class="w-full"
+        >
+          <template #prefix>
+            <i class="pi pi-search"></i>
+          </template>
+        </InputText>
+      </div>
+
       <DataTable
         :value="filteredStats"
         :loading="store.sessionsLoading"
         removableSort
         stripedRows
+        paginator
+        :rows="10"
+        :rowsPerPageOptions="[10, 25, 50]"
         v-model:expandedRows="expandedRows"
         dataKey="userId"
         v-model:sortField="statsSortField"
@@ -202,6 +217,92 @@
           </div>
         </template>
       </DataTable>
+    </Fieldset>
+
+    <!-- Language Usage Statistics -->
+    <Fieldset>
+      <template #legend>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-language"></i>
+          <span class="font-semibold">Language Usage</span>
+        </div>
+      </template>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Input Languages -->
+        <div>
+          <h4 class="font-semibold mb-3">Input Languages</h4>
+          <div class="flex justify-center">
+            <Chart
+              type="doughnut"
+              :data="inputLanguageChartData"
+              :options="languageChartOptions"
+              class="h-72 w-full max-w-sm"
+            />
+          </div>
+          <DataTable
+            :value="inputLanguageStats"
+            class="mt-4"
+            size="small"
+            paginator
+            :rows="5"
+            :rowsPerPageOptions="[5, 10, 20]"
+          >
+            <Column field="displayName" header="Language" sortable>
+              <template #body="{ data }">
+                {{ data.displayName }}
+              </template>
+            </Column>
+            <Column field="count" header="Sessions" sortable>
+              <template #body="{ data }">
+                <Chip :label="String(data.count)" />
+              </template>
+            </Column>
+            <Column field="percentage" header="%" sortable>
+              <template #body="{ data }">
+                <span class="text-sm">{{ data.percentage.toFixed(1) }}%</span>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+
+        <!-- Output Languages -->
+        <div>
+          <h4 class="font-semibold mb-3">Output Languages</h4>
+          <div class="flex justify-center">
+            <Chart
+              type="doughnut"
+              :data="outputLanguageChartData"
+              :options="languageChartOptions"
+              class="h-72 w-full max-w-sm"
+            />
+          </div>
+          <DataTable
+            :value="outputLanguageStats"
+            class="mt-4"
+            size="small"
+            paginator
+            :rows="5"
+            :rowsPerPageOptions="[5, 10, 20]"
+          >
+            <Column field="displayName" header="Language" sortable>
+              <template #body="{ data }">
+                {{ data.displayName }}
+              </template>
+            </Column>
+            <Column field="count" header="Sessions" sortable>
+              <template #body="{ data }">
+                <Chip :label="String(data.count)" />
+              </template>
+            </Column>
+            <Column field="percentage" header="%" sortable>
+              <template #body="{ data }">
+                <span class="text-sm">{{ data.percentage.toFixed(1) }}%</span>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+      </div>
     </Fieldset>
 
     <!-- All Sessions Table -->
@@ -362,6 +463,7 @@ const filters = ref({
   mode: null as string | null,
 });
 const sessionSearchText = ref<string>('');
+const userSearchText = ref<string>('');
 
 // Sort state for statistics table
 const statsSortField = ref<string | undefined>(undefined);
@@ -453,75 +555,241 @@ const filteredSessions = computed(() => {
 });
 
 const filteredStats = computed(() => {
-  if (
-    !filters.value.startDate &&
-    !filters.value.endDate &&
-    !filters.value.mode
-  ) {
-    return usageStats.value;
+  let stats = usageStats.value;
+
+  // Apply date/mode filters if any are set
+  if (filters.value.startDate || filters.value.endDate || filters.value.mode) {
+    // Recalculate stats based on filtered sessions
+    const userMap = new Map<number, UsageStats>();
+
+    filteredSessions.value.forEach(
+      (sessionWrapper: CategoryValue<TranslationSession>) => {
+        const session = sessionWrapper.value;
+        const userId = session.userId;
+
+        if (!userMap.has(userId)) {
+          userMap.set(userId, {
+            userId: session.userId,
+            userEmail: session.userEmail,
+            userName: session.userName,
+            totalMinutes: 0,
+            activeMinutes: 0,
+            pausedMinutes: 0,
+            sessionCount: 0,
+            lastUsed: session.startTime,
+            sessions: [],
+          });
+        }
+
+        const userStats = userMap.get(userId)!;
+        userStats.sessionCount++;
+
+        // Use smart duration calculation
+        const totalDuration = SessionLogger.calculateSessionDuration(session);
+        const activeDuration = SessionLogger.calculateActiveDuration(session);
+        const pausedDuration = session.pausedDurationMinutes || 0;
+
+        userStats.totalMinutes += totalDuration;
+        userStats.activeMinutes += activeDuration;
+        userStats.pausedMinutes += pausedDuration;
+
+        if (new Date(session.startTime) > new Date(userStats.lastUsed)) {
+          userStats.lastUsed = session.startTime;
+        }
+
+        const date = session.startTime.split('T')[0];
+        const existingDay = userStats.sessions.find((s) => s.date === date);
+        if (existingDay) {
+          existingDay.activeMinutes += activeDuration;
+          existingDay.pausedMinutes += pausedDuration;
+        } else {
+          userStats.sessions.push({
+            date,
+            activeMinutes: activeDuration,
+            pausedMinutes: pausedDuration,
+          });
+        }
+      },
+    );
+
+    userMap.forEach((userStats) => {
+      userStats.sessions.sort((a, b) => b.date.localeCompare(a.date));
+    });
+
+    stats = Array.from(userMap.values()).sort(
+      (a, b) => b.activeMinutes - a.activeMinutes,
+    );
   }
 
-  // Recalculate stats based on filtered sessions
-  const userMap = new Map<number, UsageStats>();
+  // Apply user text search filter
+  if (userSearchText.value.trim()) {
+    const searchLower = userSearchText.value.toLowerCase().trim();
+    stats = stats.filter((user) => {
+      return (
+        user.userName.toLowerCase().includes(searchLower) ||
+        user.userEmail.toLowerCase().includes(searchLower)
+      );
+    });
+  }
+
+  return stats;
+});
+
+// Language statistics
+const inputLanguageStats = computed(() => {
+  const languageCount = new Map<string, number>();
+
+  filteredSessions.value.forEach(
+    (sessionWrapper: CategoryValue<TranslationSession>) => {
+      const lang = sessionWrapper.value.inputLanguage;
+      languageCount.set(lang, (languageCount.get(lang) || 0) + 1);
+    },
+  );
+
+  const total = filteredSessions.value.length;
+  return Array.from(languageCount.entries())
+    .map(([language, count]) => ({
+      language,
+      displayName: getLanguageDisplayName(language, 'input'),
+      count,
+      percentage: total > 0 ? (count / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+});
+
+const outputLanguageStats = computed(() => {
+  const languageCount = new Map<string, number>();
 
   filteredSessions.value.forEach(
     (sessionWrapper: CategoryValue<TranslationSession>) => {
       const session = sessionWrapper.value;
-      const userId = session.userId;
+      const outputLangs = SessionLogger.getOutputLanguages(session);
 
-      if (!userMap.has(userId)) {
-        userMap.set(userId, {
-          userId: session.userId,
-          userEmail: session.userEmail,
-          userName: session.userName,
-          totalMinutes: 0,
-          activeMinutes: 0,
-          pausedMinutes: 0,
-          sessionCount: 0,
-          lastUsed: session.startTime,
-          sessions: [],
-        });
-      }
-
-      const stats = userMap.get(userId)!;
-      stats.sessionCount++;
-
-      // Use smart duration calculation
-      const totalDuration = SessionLogger.calculateSessionDuration(session);
-      const activeDuration = SessionLogger.calculateActiveDuration(session);
-      const pausedDuration = session.pausedDurationMinutes || 0;
-
-      stats.totalMinutes += totalDuration;
-      stats.activeMinutes += activeDuration;
-      stats.pausedMinutes += pausedDuration;
-
-      if (new Date(session.startTime) > new Date(stats.lastUsed)) {
-        stats.lastUsed = session.startTime;
-      }
-
-      const date = session.startTime.split('T')[0];
-      const existingDay = stats.sessions.find((s) => s.date === date);
-      if (existingDay) {
-        existingDay.activeMinutes += activeDuration;
-        existingDay.pausedMinutes += pausedDuration;
-      } else {
-        stats.sessions.push({
-          date,
-          activeMinutes: activeDuration,
-          pausedMinutes: pausedDuration,
-        });
-      }
+      outputLangs.forEach((lang) => {
+        languageCount.set(lang, (languageCount.get(lang) || 0) + 1);
+      });
     },
   );
 
-  userMap.forEach((stats) => {
-    stats.sessions.sort((a, b) => b.date.localeCompare(a.date));
-  });
-
-  return Array.from(userMap.values()).sort(
-    (a, b) => b.activeMinutes - a.activeMinutes,
+  const total = Array.from(languageCount.values()).reduce(
+    (sum, count) => sum + count,
+    0,
   );
+  return Array.from(languageCount.entries())
+    .map(([language, count]) => ({
+      language,
+      displayName: getLanguageDisplayName(language, 'output'),
+      count,
+      percentage: total > 0 ? (count / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
 });
+
+// Chart data for language usage
+const MAX_CHART_LANGUAGES = 7; // Show top 7, group rest as "Others"
+
+const colorPalette = [
+  'rgba(99, 102, 241, 0.8)', // Indigo
+  'rgba(168, 85, 247, 0.8)', // Purple
+  'rgba(236, 72, 153, 0.8)', // Pink
+  'rgba(251, 146, 60, 0.8)', // Orange
+  'rgba(34, 197, 94, 0.8)', // Green
+  'rgba(59, 130, 246, 0.8)', // Blue
+  'rgba(244, 63, 94, 0.8)', // Red
+  'rgba(156, 163, 175, 0.6)', // Gray for "Others"
+];
+
+// Helper to prepare chart data with "Others" category
+function prepareChartData(
+  stats: Array<{ displayName: string; count: number }>,
+) {
+  if (stats.length <= MAX_CHART_LANGUAGES) {
+    return {
+      labels: stats.map((s) => s.displayName),
+      data: stats.map((s) => s.count),
+      colors: colorPalette.slice(0, stats.length),
+    };
+  }
+
+  const topLanguages = stats.slice(0, MAX_CHART_LANGUAGES);
+  const othersCount = stats
+    .slice(MAX_CHART_LANGUAGES)
+    .reduce((sum, s) => sum + s.count, 0);
+
+  return {
+    labels: [...topLanguages.map((s) => s.displayName), 'Others'],
+    data: [...topLanguages.map((s) => s.count), othersCount],
+    colors: colorPalette.slice(0, MAX_CHART_LANGUAGES + 1),
+  };
+}
+
+const inputLanguageChartData = computed(() => {
+  const chartData = prepareChartData(inputLanguageStats.value);
+  return {
+    labels: chartData.labels,
+    datasets: [
+      {
+        data: chartData.data,
+        backgroundColor: chartData.colors,
+        borderWidth: 2,
+        borderColor: '#fff',
+      },
+    ],
+  };
+});
+
+const outputLanguageChartData = computed(() => {
+  const chartData = prepareChartData(outputLanguageStats.value);
+  return {
+    labels: chartData.labels,
+    datasets: [
+      {
+        data: chartData.data,
+        backgroundColor: chartData.colors,
+        borderWidth: 2,
+        borderColor: '#fff',
+      },
+    ],
+  };
+});
+
+const languageChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  layout: {
+    padding: {
+      bottom: 10,
+    },
+  },
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: {
+        padding: 10,
+        font: {
+          size: 10,
+        },
+        boxWidth: 12,
+        boxHeight: 12,
+      },
+    },
+    tooltip: {
+      callbacks: {
+        label: (context: any) => {
+          const value = context.parsed || 0;
+          const dataset = context.dataset.data;
+          const total = dataset.reduce(
+            (sum: number, val: number) => sum + val,
+            0,
+          );
+          const percentage =
+            total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+          return `${value} sessions (${percentage}%)`;
+        },
+      },
+    },
+  },
+};
 
 // Helper functions for session display
 function getOutputLanguagesDisplay(session: TranslationSession): string {

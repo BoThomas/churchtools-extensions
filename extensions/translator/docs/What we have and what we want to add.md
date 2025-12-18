@@ -62,7 +62,6 @@
 
 ## Next TODOs
 
-- add report for which language is used for input and output and how often
 - use the way test mode is displaying things optionally for the presentation window as well so the operator can see what is captured in original tone and in the translated languages. this should also work for test presentation with the lorem ipsum in the same way.
 - Storing all `finalizedParagraphsByLang` could exceed 5-10MB limit in long sessions. We Should implement sliding window (keep only last N paragraphs)
 
@@ -75,3 +74,4 @@
 - Added autoscroll for translation test outputs
 - Added browser compatibility alert for non-Chromium browsers
 - Added unit, integration, and e2e tests
+- Added language usage report
