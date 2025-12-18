@@ -35,16 +35,18 @@ test.describe('Presentation Mode - Split Screen', () => {
     await configureApiCredentials(extensionPage);
   });
 
-  test('opens split presentation window with multiple languages', async ({
+  test('real split-screen end-to-end (uses Azure SDK mock)', async ({
     extensionPage,
     windowHelper,
   }) => {
     // Configure 2+ output languages to enable split view
+    // Use same config as test-mode to match mock scenario
     await configureTranslationSettings(extensionPage, {
-      inputLang: '🇩🇪 German (Germany)',
-      outputLangs: ['🇬🇧 English', '🇫🇷 French'],
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German', '🇫🇷 French'],
     });
 
+    // Start presentation window
     const presentationButton = extensionPage.getByTestId('button-presentation');
     const windowPromise = windowHelper.waitForWindow();
     await presentationButton.click();
@@ -52,168 +54,145 @@ test.describe('Presentation Mode - Split Screen', () => {
     const presentationWindow = await windowPromise;
     await presentationWindow.waitForLoadState('networkidle');
 
-    // Verify presentation window opened
-    expect(windowHelper.getWindowCount()).toBe(1);
-
-    // Verify window has split-view presentation content (2+ languages)
+    // Verify split view is present
     const splitView = presentationWindow.getByTestId('split-view-container');
     await expect(splitView).toBeVisible();
-  });
 
-  test('propagates translations via localStorage', async ({
-    extensionPage,
-    windowHelper,
-    localStorage,
-  }) => {
-    // Configure 2+ languages for split view
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇩🇪 German (Germany)',
-      outputLangs: ['🇬🇧 English', '🇫🇷 French'],
-    });
-
-    // Start presentation mode
-    const presentationButton = extensionPage.getByTestId('button-presentation');
-    const windowPromise = windowHelper.waitForWindow();
-    await presentationButton.click();
-
-    const presentationWindow = await windowPromise;
-    await presentationWindow.waitForLoadState('networkidle');
-
-    // Get the session ID from localStorage (generated when presentation starts)
-    const settingsKeys = await localStorage.keys();
-    const sessionKey = settingsKeys.find((key) =>
-      key.startsWith('translator_settings_'),
-    );
-    expect(sessionKey).toBeDefined();
-
-    const sessionId = sessionKey!.replace('translator_settings_', '');
-
-    // Simulate translations for both languages
-    await localStorage.setItem(`translator_presentation_${sessionId}`, {
-      translations: { en: 'Hello World', fr: 'Bonjour le monde' },
-      finalized: { en: [], fr: [] },
-      isLive: true,
-    });
-
-    // Wait for the presentation window to react to storage event
-    await presentationWindow.waitForTimeout(500);
-
-    // Check if presentation window displays the live translations
-    const liveTranslationEN = presentationWindow.getByTestId(
-      'live-translation-en',
-    );
-    await expect(liveTranslationEN).toContainText('Hello World');
-
-    const liveTranslationFR = presentationWindow.getByTestId(
-      'live-translation-fr',
-    );
-    await expect(liveTranslationFR).toContainText('Bonjour le monde');
-  });
-
-  test('clears display when paused', async ({
-    extensionPage,
-    windowHelper,
-    localStorage,
-  }) => {
-    await navigateToTab(extensionPage, 'translate');
-
-    // Start presentation mode
-    const presentationButton = extensionPage.getByTestId('button-presentation');
-    const windowPromise = windowHelper.waitForWindow();
-    await presentationButton.click();
-
-    const presentationWindow = await windowPromise;
-    await presentationWindow.waitForLoadState('networkidle');
-
-    // Get session ID
-    const settingsKeys = await localStorage.keys();
-    const sessionKey = settingsKeys.find((key) =>
-      key.startsWith('translator_settings_'),
-    );
-    const sessionId = sessionKey!.replace('translator_settings_', '');
-
-    // Start recording first
+    // Start recording to trigger Azure SDK mock outputs
     const startRecordingButton = extensionPage.getByTestId(
       'button-start-recording',
     );
     await startRecordingButton.click();
-    await extensionPage.waitForTimeout(300);
 
-    // Add some content
-    await localStorage.setItem(`translator_presentation_${sessionId}`, {
-      translations: { en: 'Test content' },
-      finalized: { en: ['Finalized paragraph'] },
-      isLive: true,
-    });
+    // Wait for mocked Azure SDK to produce translations
+    await extensionPage.waitForTimeout(1500);
 
-    await presentationWindow.waitForTimeout(300);
+    // Check for expected mocked translations in split view columns
+    // Mock 'basic' scenario produces: "Hello world" → de: "Hallo Welt", fr: "Bonjour le monde"
+    // Content may be in live translation or finalized paragraph depending on timing
+    const germanPane = presentationWindow.getByTestId('language-pane-de');
+    const frenchPane = presentationWindow.getByTestId('language-pane-fr');
 
-    // Verify content is visible
-    const liveTranslation = presentationWindow.getByTestId('live-translation');
-    await expect(liveTranslation).toBeVisible();
+    await expect(germanPane).toBeVisible();
+    const germanContent = await germanPane.textContent();
+    expect(germanContent).toContain('Hallo');
 
-    // Now pause
+    await expect(frenchPane).toBeVisible();
+    const frenchContent = await frenchPane.textContent();
+    expect(frenchContent).toContain('Bonjour');
+
+    // Pause to verify clearing behavior
     const pauseButton = extensionPage.getByTestId('button-pause');
     await pauseButton.click();
     await presentationWindow.waitForTimeout(300);
 
-    // Verify presentation window is cleared
-    await expect(liveTranslation).not.toBeVisible();
-  });
+    // After pause, content should be cleared
+    const germanContentAfterPause = await germanPane.textContent();
+    const frenchContentAfterPause = await frenchPane.textContent();
+    expect(germanContentAfterPause).not.toContain('Hallo');
+    expect(frenchContentAfterPause).not.toContain('Bonjour');
 
-  test('handles window closing gracefully', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    await navigateToTab(extensionPage, 'translate');
+    // Resume to verify content reappears
+    const resumeButton = extensionPage.getByTestId('button-resume');
+    await resumeButton.click();
+    await extensionPage.waitForTimeout(1500);
 
-    // Start presentation
-    const presentationButton = extensionPage.getByTestId('button-presentation');
-    const windowPromise = windowHelper.waitForWindow();
-    await presentationButton.click();
+    // Verify content reappears after resume
+    const germanContentAfterResume = await germanPane.textContent();
+    const frenchContentAfterResume = await frenchPane.textContent();
+    expect(germanContentAfterResume).toContain('Hallo');
+    expect(frenchContentAfterResume).toContain('Bonjour');
 
-    const presentationWindow = await windowPromise;
-    await presentationWindow.waitForLoadState('networkidle');
-
-    // Close the presentation window
+    // Close window and verify main window remains functional
     await presentationWindow.close();
-
-    // Verify the window is closed
     expect(presentationWindow.isClosed()).toBeTruthy();
-
-    // Main window should still be functional
-    await extensionPage.waitForTimeout(500);
-    const translateTab = extensionPage.getByTestId('tab-translate');
-    await expect(translateTab).toBeVisible();
-
-    // Presentation button should be enabled again
+    await extensionPage.waitForTimeout(300);
     const presentationButtonAfter = extensionPage.getByTestId(
       'button-presentation',
     );
     await expect(presentationButtonAfter).toBeEnabled();
   });
-});
 
-test.describe('Presentation Mode - Split Screen Test', () => {
-  test.beforeEach(async ({ extensionPage }) => {
-    await authenticateChurchTools(extensionPage);
-    await cleanupE2EData(extensionPage);
+  test('stop button closes split-screen window with confirm', async ({
+    extensionPage,
+    windowHelper,
+  }) => {
+    // Configure 2+ output languages to enable split view
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German', '🇫🇷 French'],
+    });
 
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
+    // Start presentation window
+    const presentationButton = extensionPage.getByTestId('button-presentation');
+    const windowPromise = windowHelper.waitForWindow();
+    await presentationButton.click();
 
-    // Setup API credentials
-    await configureApiCredentials(extensionPage);
+    const presentationWindow = await windowPromise;
+    await presentationWindow.waitForLoadState('networkidle');
+
+    // Verify split view is present
+    const splitView = presentationWindow.getByTestId('split-view-container');
+    await expect(splitView).toBeVisible();
+
+    // Start recording
+    const startRecordingButton = extensionPage.getByTestId(
+      'button-start-recording',
+    );
+    await startRecordingButton.click();
+
+    // Wait for mocked Azure SDK to produce translations
+    await extensionPage.waitForTimeout(1500);
+
+    // Verify content is present
+    const germanPane = presentationWindow.getByTestId('language-pane-de');
+    await expect(germanPane).toBeVisible();
+    const germanContent = await germanPane.textContent();
+    expect(germanContent).toContain('Hallo');
+
+    // Click stop button to trigger confirm dialog
+    const stopButton = extensionPage.getByTestId('button-stop');
+    await stopButton.click();
+
+    // Wait for PrimeVue confirm dialog to appear
+    const confirmDialog = extensionPage.locator('[role="alertdialog"]');
+    await expect(confirmDialog).toBeVisible();
+
+    // Verify dialog content
+    await expect(confirmDialog).toContainText('stop');
+
+    // Click the "Stop" button in the dialog
+    const dialogStopButton = confirmDialog.getByRole('button', {
+      name: /stop/i,
+    });
+
+    // Set up close listener before clicking to catch fast closure
+    const closePromise = presentationWindow.waitForEvent('close', {
+      timeout: 5000,
+    });
+    await dialogStopButton.click();
+
+    // Wait for window to close after confirmation
+    await closePromise;
+    expect(presentationWindow.isClosed()).toBeTruthy();
+
+    // Verify recording has stopped
+    await extensionPage.waitForTimeout(300);
+    await expect(stopButton).toBeDisabled();
+    const presentationButtonAfter = extensionPage.getByTestId(
+      'button-presentation',
+    );
+    await expect(presentationButtonAfter).toBeEnabled();
   });
 
-  test('opens split test window with lorem ipsum', async ({
+  test('test split-screen end-to-end (lorem ipsum)', async ({
     extensionPage,
     windowHelper,
   }) => {
     // Configure 2+ languages for split view
     await configureTranslationSettings(extensionPage, {
-      inputLang: '🇩🇪 German (Germany)',
-      outputLangs: ['🇬🇧 English', '🇫🇷 French'],
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German', '🇫🇷 French'],
     });
 
     const windows = await openTestPresentationWindows(
@@ -226,35 +205,64 @@ test.describe('Presentation Mode - Split Screen Test', () => {
     // Verify split-view container is present (2+ languages)
     const splitView = testWindow.getByTestId('split-view-container');
     await expect(splitView).toBeVisible();
-  });
 
-  test('generates lorem ipsum content in split test mode', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    // Configure 2+ languages for split view
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇩🇪 German (Germany)',
-      outputLangs: ['🇬🇧 English', '🇫🇷 French'],
-    });
-
-    const windows = await openTestPresentationWindows(
-      extensionPage,
-      windowHelper,
-      1,
-    );
-    const testWindow = windows[0];
-
-    // Start test generation
+    // Start lorem ipsum generation
     await startTestRecording(extensionPage);
 
     // Wait for lorem ipsum generation
     await extensionPage.waitForTimeout(3000);
 
     // Verify content appears in test window
-    const content = await testWindow.locator('body').textContent();
-    expect(content).toBeTruthy();
-    expect(content!.length).toBeGreaterThan(0);
+    const germanPane = testWindow.getByTestId('language-pane-de');
+    const frenchPane = testWindow.getByTestId('language-pane-fr');
+
+    await expect(germanPane).toBeVisible();
+    const germanContent = await germanPane.textContent();
+    expect(germanContent).toBeTruthy();
+    expect(germanContent!.length).toBeGreaterThan(0);
+
+    await expect(frenchPane).toBeVisible();
+    const frenchContent = await frenchPane.textContent();
+    expect(frenchContent).toBeTruthy();
+    expect(frenchContent!.length).toBeGreaterThan(0);
+
+    // Pause to verify clearing behavior
+    const pauseButton = extensionPage.getByTestId('button-pause');
+    await pauseButton.click();
+    await testWindow.waitForTimeout(300);
+
+    // After pause, content should be cleared
+    const germanContentAfterPause = await germanPane.textContent();
+    const frenchContentAfterPause = await frenchPane.textContent();
+    expect(germanContentAfterPause?.length || 0).toBeLessThan(
+      germanContent!.length,
+    );
+    expect(frenchContentAfterPause?.length || 0).toBeLessThan(
+      frenchContent!.length,
+    );
+
+    // Resume to verify content reappears
+    const resumeButton = extensionPage.getByTestId('button-resume');
+    await resumeButton.click();
+    await extensionPage.waitForTimeout(2000);
+
+    // Verify content reappears after resume
+    const germanContentAfterResume = await germanPane.textContent();
+    const frenchContentAfterResume = await frenchPane.textContent();
+    expect(germanContentAfterResume!.length).toBeGreaterThan(
+      germanContentAfterPause?.length || 0,
+    );
+    expect(frenchContentAfterResume!.length).toBeGreaterThan(
+      frenchContentAfterPause?.length || 0,
+    );
+
+    // Close test window and ensure button is enabled again
+    await testWindow.close();
+    expect(testWindow.isClosed()).toBeTruthy();
+    const testPresentationButton = extensionPage.getByTestId(
+      'button-test-presentation',
+    );
+    await expect(testPresentationButton).toBeEnabled();
   });
 });
 
@@ -263,149 +271,98 @@ test.describe('Presentation Mode - Multi-Window', () => {
     await authenticateChurchTools(extensionPage);
     await cleanupE2EData(extensionPage);
 
+    // Navigate to extension
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
 
-    // Setup API credentials
+    // Setup API credentials via UI (save to real KV store)
     await configureApiCredentials(extensionPage);
   });
 
-  test('opens multiple windows for multiple languages', async ({
+  test('real multi-window end-to-end (uses Azure SDK mock)', async ({
     extensionPage,
     windowHelper,
   }) => {
+    // Configure for multi-window mode with 3 output languages
     await configureTranslationSettings(extensionPage, {
       inputLang: '🇬🇧 English (United Kingdom)',
       outputLangs: ['🇩🇪 German', '🇫🇷 French', '🇪🇸 Spanish'],
       presentationMode: 'Multi-window',
     });
 
+    // Open presentation windows - one per output language
     const windows = await openPresentationWindows(
       extensionPage,
       windowHelper,
       3,
     );
 
-    // Verify 3 windows opened (one per output language)
+    // Verify correct number of windows opened
     expect(windows.length).toBe(3);
     expect(windowHelper.getWindowCount()).toBe(3);
 
-    // Verify each has language parameter
-    for (const win of windows) {
-      const url = win.url();
-      expect(url).toMatch(/[?&]lang=[a-z]{2}(-[A-Z]{2})?/);
-    }
-  });
-
-  test('windows have unique URLs with language parameters', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇬🇧 English (United Kingdom)',
-      outputLangs: ['🇩🇪 German', '🇫🇷 French'],
-      presentationMode: 'Multi-window',
-    });
-
-    const windows = await openPresentationWindows(
-      extensionPage,
-      windowHelper,
-      2,
-    );
-
-    // Extract language parameters from URLs
+    // Verify each window has unique language parameter in URL
     const langParams = extractLanguageParams(windows);
-
-    // Each should have unique language parameter
-    expect(langParams[0]).not.toBe(langParams[1]);
+    expect(new Set(langParams).size).toBe(3); // All unique
     expect(langParams).toContain('de');
     expect(langParams).toContain('fr');
-  });
+    expect(langParams).toContain('es');
 
-  test('each window shows only its assigned language', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇬🇧 English (United Kingdom)',
-      outputLangs: ['🇩🇪 German', '🇫🇷 French'],
-      presentationMode: 'Multi-window',
-    });
-
-    const windows = await openPresentationWindows(
-      extensionPage,
-      windowHelper,
-      2,
-    );
-
-    // Extract language parameters to identify windows
-    const langParams = extractLanguageParams(windows);
+    // Identify windows by their language parameter
     const deWindowIndex = langParams.indexOf('de');
     const frWindowIndex = langParams.indexOf('fr');
 
-    // Start recording - Azure SDK is mocked and will produce translations
+    // Start recording to trigger Azure SDK mock outputs
     const startRecordingButton = extensionPage.getByTestId(
       'button-start-recording',
     );
     await startRecordingButton.click();
 
     // Wait for mocked Azure SDK to produce translations
-    // Mock 'basic' scenario: recognizing at 500ms, recognized at 1000ms
+    // Mock 'basic' scenario produces: "Hello world" → de: "Hallo Welt", fr: "Bonjour le monde"
     await extensionPage.waitForTimeout(1500);
 
-    // Check for either live translation or finalized paragraph containing the text
+    // Verify German window shows only German content
     const deWindow = windows[deWindowIndex];
-    const frWindow = windows[frWindowIndex];
-
-    // Verify German window shows German content
     const deContainer = deWindow.getByTestId('single-language-container');
     await expect(deContainer).toBeVisible();
-
-    // Content could be in live translation or finalized paragraph
     const deContent = await deContainer.textContent();
     expect(deContent).toContain('Hallo Welt');
 
-    // Verify French window shows French content
+    // Verify French window shows only French content
+    const frWindow = windows[frWindowIndex];
     const frContainer = frWindow.getByTestId('single-language-container');
     await expect(frContainer).toBeVisible();
-
     const frContent = await frContainer.textContent();
     expect(frContent).toContain('Bonjour le monde');
-  });
-
-  test('closing one window closes all windows and stops recording', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇬🇧 English (United Kingdom)',
-      outputLangs: ['🇩🇪 German', '🇫🇷 French', '🇪🇸 Spanish'],
-      presentationMode: 'Multi-window',
-    });
-
-    const windows = await openPresentationWindows(
-      extensionPage,
-      windowHelper,
-      3,
-    );
-
-    // Verify all 3 windows are open
-    expect(windows[0].isClosed()).toBeFalsy();
-    expect(windows[1].isClosed()).toBeFalsy();
-    expect(windows[2].isClosed()).toBeFalsy();
-
-    // Start recording
-    const startRecordingButton = extensionPage.getByTestId(
-      'button-start-recording',
-    );
-    await startRecordingButton.click();
-    await extensionPage.waitForTimeout(500);
 
     // Verify recording is active
     const stopButton = extensionPage.getByTestId('button-stop');
     await expect(stopButton).toBeEnabled();
 
-    // Close one window
+    // Pause to verify clearing behavior
+    const pauseButton = extensionPage.getByTestId('button-pause');
+    await pauseButton.click();
+    await deWindow.waitForTimeout(300);
+
+    // After pause, content should be cleared in all windows
+    const deContentAfterPause = await deContainer.textContent();
+    const frContentAfterPause = await frContainer.textContent();
+    expect(deContentAfterPause).not.toContain('Hallo Welt');
+    expect(frContentAfterPause).not.toContain('Bonjour le monde');
+
+    // Resume to verify content reappears
+    const resumeButton = extensionPage.getByTestId('button-resume');
+    await resumeButton.click();
+    await extensionPage.waitForTimeout(1500);
+
+    // Verify content reappears after resume in all windows
+    const deContentAfterResume = await deContainer.textContent();
+    const frContentAfterResume = await frContainer.textContent();
+    expect(deContentAfterResume).toContain('Hallo Welt');
+    expect(frContentAfterResume).toContain('Bonjour le monde');
+
+    // Close one window - should close all windows and stop recording
     await windows[1].close();
 
     // Wait for cleanup and cross-window communication
@@ -416,6 +373,82 @@ test.describe('Presentation Mode - Multi-Window', () => {
       windows[0].waitForEvent('close', { timeout: 2000 }).catch(() => {}),
       windows[2].waitForEvent('close', { timeout: 2000 }).catch(() => {}),
     ]);
+
+    // Verify ALL windows are now closed
+    expect(windows[0].isClosed()).toBeTruthy();
+    expect(windows[1].isClosed()).toBeTruthy();
+    expect(windows[2].isClosed()).toBeTruthy();
+
+    // Verify recording has stopped and button is enabled again
+    const presentationButton = extensionPage.getByTestId('button-presentation');
+    await expect(presentationButton).toBeEnabled();
+    await expect(stopButton).toBeDisabled();
+  });
+
+  test('stop button closes all multi-windows with confirm', async ({
+    extensionPage,
+    windowHelper,
+  }) => {
+    // Configure for multi-window mode with 3 output languages
+    await configureTranslationSettings(extensionPage, {
+      inputLang: '🇬🇧 English (United Kingdom)',
+      outputLangs: ['🇩🇪 German', '🇫🇷 French', '🇪🇸 Spanish'],
+      presentationMode: 'Multi-window',
+    });
+
+    // Open presentation windows - one per output language
+    const windows = await openPresentationWindows(
+      extensionPage,
+      windowHelper,
+      3,
+    );
+
+    // Verify correct number of windows opened
+    expect(windows.length).toBe(3);
+    expect(windowHelper.getWindowCount()).toBe(3);
+
+    // Start recording
+    const startRecordingButton = extensionPage.getByTestId(
+      'button-start-recording',
+    );
+    await startRecordingButton.click();
+
+    // Wait for mocked Azure SDK to produce translations
+    await extensionPage.waitForTimeout(1500);
+
+    // Verify content is present in at least one window
+    const langParams = extractLanguageParams(windows);
+    const deWindowIndex = langParams.indexOf('de');
+    const deWindow = windows[deWindowIndex];
+    const deContainer = deWindow.getByTestId('single-language-container');
+    await expect(deContainer).toBeVisible();
+    const deContent = await deContainer.textContent();
+    expect(deContent).toContain('Hallo Welt');
+
+    // Click stop button to trigger confirm dialog
+    const stopButton = extensionPage.getByTestId('button-stop');
+    await stopButton.click();
+
+    // Wait for PrimeVue confirm dialog to appear
+    const confirmDialog = extensionPage.locator('[role="alertdialog"]');
+    await expect(confirmDialog).toBeVisible();
+
+    // Verify dialog content
+    await expect(confirmDialog).toContainText('stop');
+
+    // Click the "Stop" button in the dialog
+    const dialogStopButton = confirmDialog.getByRole('button', {
+      name: /stop/i,
+    });
+
+    // Set up close listeners before clicking to catch fast closures
+    const closePromises = windows.map((w) =>
+      w.waitForEvent('close', { timeout: 5000 }).catch(() => {}),
+    );
+    await dialogStopButton.click();
+
+    // Wait for all windows to close after confirmation
+    await Promise.all(closePromises);
 
     // Verify ALL windows are now closed
     expect(windows[0].isClosed()).toBeTruthy();
@@ -423,135 +456,90 @@ test.describe('Presentation Mode - Multi-Window', () => {
     expect(windows[2].isClosed()).toBeTruthy();
 
     // Verify recording has stopped
+    await extensionPage.waitForTimeout(300);
+    await expect(stopButton).toBeDisabled();
     const presentationButton = extensionPage.getByTestId('button-presentation');
     await expect(presentationButton).toBeEnabled();
-    await expect(stopButton).toBeDisabled();
-  });
-});
-
-test.describe('Presentation Mode - Multi-Window Test', () => {
-  test.beforeEach(async ({ extensionPage }) => {
-    await authenticateChurchTools(extensionPage);
-    await cleanupE2EData(extensionPage);
-
-    await extensionPage.goto('/');
-    await extensionPage.waitForLoadState('networkidle');
-
-    // Setup API credentials
-    await configureApiCredentials(extensionPage);
   });
 
-  test('opens multiple test windows with lorem ipsum', async ({
+  test('test multi-window end-to-end (lorem ipsum)', async ({
     extensionPage,
     windowHelper,
   }) => {
+    // Configure for multi-window mode with 3 output languages
     await configureTranslationSettings(extensionPage, {
       inputLang: '🇬🇧 English (United Kingdom)',
       outputLangs: ['🇩🇪 German', '🇫🇷 French', '🇪🇸 Spanish'],
       presentationMode: 'Multi-window',
     });
 
+    // Open test presentation windows
     const windows = await openTestPresentationWindows(
       extensionPage,
       windowHelper,
       3,
     );
 
-    // Verify 3 windows opened
+    // Verify correct number of windows opened
     expect(windows.length).toBe(3);
     expect(windowHelper.getWindowCount()).toBe(3);
 
-    // Verify each has language parameter
-    for (const win of windows) {
-      const url = win.url();
-      expect(url).toMatch(/[?&]lang=[a-z]{2}(-[A-Z]{2})?/);
-    }
-  });
-
-  test('test windows have unique language parameters', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇬🇧 English (United Kingdom)',
-      outputLangs: ['🇩🇪 German', '🇫🇷 French'],
-      presentationMode: 'Multi-window',
-    });
-
-    const windows = await openTestPresentationWindows(
-      extensionPage,
-      windowHelper,
-      2,
-    );
-
-    // Extract language parameters from URLs
+    // Verify each window has unique language parameter in URL
     const langParams = extractLanguageParams(windows);
-
-    // Each should have unique language parameter
-    expect(langParams[0]).not.toBe(langParams[1]);
+    expect(new Set(langParams).size).toBe(3); // All unique
     expect(langParams).toContain('de');
     expect(langParams).toContain('fr');
-  });
+    expect(langParams).toContain('es');
 
-  test('generates lorem ipsum content in multi-window test mode', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇬🇧 English (United Kingdom)',
-      outputLangs: ['🇩🇪 German'],
-      presentationMode: 'Multi-window',
-    });
-
-    const windows = await openTestPresentationWindows(
-      extensionPage,
-      windowHelper,
-      1,
-    );
-    const testWindow = windows[0];
-
-    // Start test generation
+    // Start lorem ipsum generation
     await startTestRecording(extensionPage);
 
-    // Wait for lorem ipsum generation
+    // Wait for lorem ipsum content to be generated
     await extensionPage.waitForTimeout(3000);
 
-    // Verify content appears in test window
-    const content = await testWindow.locator('body').textContent();
-    expect(content).toBeTruthy();
-    expect(content!.length).toBeGreaterThan(0);
-  });
-
-  test('closing one test window closes all test windows', async ({
-    extensionPage,
-    windowHelper,
-  }) => {
-    await configureTranslationSettings(extensionPage, {
-      inputLang: '🇬🇧 English (United Kingdom)',
-      outputLangs: ['🇩🇪 German', '🇫🇷 French', '🇪🇸 Spanish'],
-      presentationMode: 'Multi-window',
-    });
-
-    const windows = await openTestPresentationWindows(
-      extensionPage,
-      windowHelper,
-      3,
-    );
-
-    // Verify all 3 windows are open
-    expect(windows[0].isClosed()).toBeFalsy();
-    expect(windows[1].isClosed()).toBeFalsy();
-    expect(windows[2].isClosed()).toBeFalsy();
-
-    // Start test generation
-    await startTestRecording(extensionPage);
-    await extensionPage.waitForTimeout(500);
+    // Verify content appears in all test windows and store containers
+    const containers = [];
+    const contentsBefore = [];
+    for (const testWindow of windows) {
+      const container = testWindow.getByTestId('single-language-container');
+      await expect(container).toBeVisible();
+      const content = await container.textContent();
+      expect(content).toBeTruthy();
+      expect(content!.length).toBeGreaterThan(0);
+      containers.push(container);
+      contentsBefore.push(content!);
+    }
 
     // Verify test is running
     const stopButton = extensionPage.getByTestId('button-stop');
     await expect(stopButton).toBeEnabled();
 
-    // Close one window
+    // Pause to verify clearing behavior
+    const pauseButton = extensionPage.getByTestId('button-pause');
+    await pauseButton.click();
+    await windows[0].waitForTimeout(300);
+
+    // After pause, content should be cleared in all windows
+    for (let i = 0; i < containers.length; i++) {
+      const contentAfterPause = await containers[i].textContent();
+      expect(contentAfterPause?.length || 0).toBeLessThan(
+        contentsBefore[i].length,
+      );
+    }
+
+    // Resume to verify content reappears
+    const resumeButton = extensionPage.getByTestId('button-resume');
+    await resumeButton.click();
+    await extensionPage.waitForTimeout(2000);
+
+    // Verify content reappears after resume in all windows
+    for (const container of containers) {
+      const contentAfterResume = await container.textContent();
+      expect(contentAfterResume).toBeTruthy();
+      expect(contentAfterResume!.length).toBeGreaterThan(0);
+    }
+
+    // Close one window - should close all windows and stop test
     await windows[1].close();
 
     // Wait for cleanup and cross-window communication
@@ -568,7 +556,7 @@ test.describe('Presentation Mode - Multi-Window Test', () => {
     expect(windows[1].isClosed()).toBeTruthy();
     expect(windows[2].isClosed()).toBeTruthy();
 
-    // Verify test has stopped
+    // Verify test has stopped and button is enabled again
     const testPresentationButton = extensionPage.getByTestId(
       'button-test-presentation',
     );
