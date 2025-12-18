@@ -29,9 +29,5 @@ certs
 # Turborepo
 .turbo
 
-# Test coverage
-coverage
-
-# Playwright
-playwright-report
+# Test outputs
 test-results

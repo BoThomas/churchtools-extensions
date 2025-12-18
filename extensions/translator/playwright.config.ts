@@ -69,18 +69,25 @@ export default defineConfig({
   retries: 0,
   workers: 1,
 
-  // Reporting
-  reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
+  // Reporting - unified test-results structure
+  reporter: [
+    ['html', { outputFolder: 'test-results/playwright/report' }],
+    ['list'],
+  ],
+
+  // Test results output directory
+  outputDir: 'test-results/playwright/traces',
 
   // Test settings
   use: {
     // E2E dev server on dedicated port (automatically started by Playwright)
     baseURL: 'https://localhost:5163',
 
-    // Tracing and debugging
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    // Tracing and debugging - on-demand via PLAYWRIGHT_TRACE env variable
+    // Set PLAYWRIGHT_TRACE=1 in .env.e2e for full debugging artifacts
+    trace: process.env.PLAYWRIGHT_TRACE ? 'on' : 'off',
+    screenshot: process.env.PLAYWRIGHT_TRACE ? 'on' : 'off',
+    video: process.env.PLAYWRIGHT_TRACE ? 'on' : 'off',
 
     // Timeouts - increased for real API calls
     actionTimeout: 15000, // Increased from 10s for real API operations
