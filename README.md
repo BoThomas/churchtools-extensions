@@ -257,45 +257,39 @@ For local development, configure CORS in your ChurchTools instance:
 
 #### Testing
 
-This monorepo uses [Vitest](https://vitest.dev/) for unit and integration testing.
+This monorepo uses Unit, Integration, and End-to-End (E2E) tests.
 
-**Run all tests:**
+> [!NOTE]
+> Currently only the Translator extension has tests set up.
+
+**Unit & Integration Tests (Vitest):**
 
 ```bash
+# Run all unit/integration tests
 pnpm test
-```
 
-**Run tests for a specific extension:**
-
-```bash
+# Run for a specific extension
 pnpm test --filter=ct-translator
+
+# Run with coverage
+pnpm test:coverage
 ```
 
-**Run tests with coverage:**
+**End-to-End Tests (Playwright):**
+
+E2E tests are extension-specific and run in a real browser environment. They typically require specific configuration (like `.env.e2e` files).
 
 ```bash
-# All extensions
-pnpm test:coverage
+# Run E2E tests for translator extension
+cd extensions/translator
+pnpm test:e2e # or `pnpm test:e2e:[ui|headed|debug]`
 ```
 
 **Writing tests:**
 
-- Test files should be co-located with source files (e.g., `src/utils/helper.test.ts` next to `helper.ts`)
-- Use `.test.ts` or `.test.tsx` extensions for test files
-- Vitest is configured with globals enabled, so you can use `describe`, `it`, `expect` without imports
-- For Vue component testing, `@vue/test-utils` is available
-
-**Example test:**
-
-```ts
-import { describe, it, expect } from 'vitest';
-
-describe('My Feature', () => {
-  it('should work correctly', () => {
-    expect(1 + 1).toBe(2);
-  });
-});
-```
+- **Unit**: Co-locate `.test.ts` files with source files. Use `vitest` globals (`describe`, `it`, `expect`).
+- **Integration**: Located in `tests/integration/` within each extension. Use `vitest`.
+- **E2E**: Located in `tests/e2e/` within each extension. Use `playwright` with real ChurchTools instance and mocks as needed.
 
 #### Local packaging (optional)
 
