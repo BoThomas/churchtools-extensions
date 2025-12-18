@@ -229,6 +229,7 @@ const {
   openPresentationWindows,
   cleanupPresentationStorage,
   setPausedFlag,
+  setPresentationStartedFlag,
 } = usePresentationWindow();
 const {
   startSession: startSessionTracking,
@@ -519,6 +520,11 @@ async function startRecording() {
     state.value.isRecordingStarted = true;
     state.value.presentationWindowsOpenedButNotStarted = false;
 
+    // Signal to presentation windows that recording has started
+    if (presentationSessionId.value) {
+      setPresentationStartedFlag(presentationSessionId.value);
+    }
+
     // Create captioning service
     captioningService = new CaptioningService(
       {
@@ -571,6 +577,11 @@ function startTestGeneration() {
   try {
     state.value.isRecordingStarted = true;
     state.value.presentationWindowsOpenedButNotStarted = false;
+
+    // Signal to presentation windows that test generation has started
+    if (presentationSessionId.value) {
+      setPresentationStartedFlag(presentationSessionId.value);
+    }
 
     // Start generating lorem ipsum content using composable
     // Create reactive ref for isPaused that the interval can check

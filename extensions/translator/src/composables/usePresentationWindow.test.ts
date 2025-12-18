@@ -299,6 +299,58 @@ describe('usePresentationWindow', () => {
 
       expect(presentationWindow.presentationSessionId.value).toBe(sessionId);
     });
+
+    it('should store test mode flag when isTest is true', () => {
+      const sessionId = 'session_test_303';
+      const settings = { ...mockDefaultSettings };
+      const languages = [{ code: 'en', isInput: false }];
+
+      presentationWindow.openPresentationWindows(
+        sessionId,
+        settings,
+        languages,
+        {
+          isTest: true,
+          multiWindowSummary: '',
+          multiWindowDetail: '',
+          singleWindowSummary: '',
+          singleWindowDetail: '',
+        },
+      );
+
+      const key = `translator_test_mode_${sessionId}`;
+      const stored = mockLocalStorage.get(key);
+      expect(stored).toBeDefined();
+
+      const data = JSON.parse(stored!);
+      expect(data.isTest).toBe(true);
+    });
+
+    it('should store test mode flag when isTest is false', () => {
+      const sessionId = 'session_test_404';
+      const settings = { ...mockDefaultSettings };
+      const languages = [{ code: 'en', isInput: false }];
+
+      presentationWindow.openPresentationWindows(
+        sessionId,
+        settings,
+        languages,
+        {
+          isTest: false,
+          multiWindowSummary: '',
+          multiWindowDetail: '',
+          singleWindowSummary: '',
+          singleWindowDetail: '',
+        },
+      );
+
+      const key = `translator_test_mode_${sessionId}`;
+      const stored = mockLocalStorage.get(key);
+      expect(stored).toBeDefined();
+
+      const data = JSON.parse(stored!);
+      expect(data.isTest).toBe(false);
+    });
   });
 
   describe('cleanupPresentationStorage', () => {
@@ -309,6 +361,8 @@ describe('usePresentationWindow', () => {
       mockLocalStorage.set(`translator_settings_${sessionId}`, '{}');
       mockLocalStorage.set(`translator_paused_${sessionId}`, '{}');
       mockLocalStorage.set(`translator_presentation_${sessionId}`, '{}');
+      mockLocalStorage.set(`translator_test_mode_${sessionId}`, '{}');
+      mockLocalStorage.set(`translator_started_${sessionId}`, '{}');
 
       presentationWindow.cleanupPresentationStorage(sessionId);
 
@@ -319,6 +373,12 @@ describe('usePresentationWindow', () => {
         false,
       );
       expect(mockLocalStorage.has(`translator_presentation_${sessionId}`)).toBe(
+        false,
+      );
+      expect(mockLocalStorage.has(`translator_test_mode_${sessionId}`)).toBe(
+        false,
+      );
+      expect(mockLocalStorage.has(`translator_started_${sessionId}`)).toBe(
         false,
       );
     });
@@ -356,6 +416,38 @@ describe('usePresentationWindow', () => {
       expect(mockLocalStorage.has(`translator_paused_${sessionId}`)).toBe(
         false,
       );
+    });
+  });
+
+  describe('setPresentationStartedFlag', () => {
+    it('should set presentation started flag in localStorage', () => {
+      const sessionId = 'session_test_started';
+
+      presentationWindow.setPresentationStartedFlag(sessionId);
+
+      const key = `translator_started_${sessionId}`;
+      const stored = mockLocalStorage.get(key);
+      expect(stored).toBeDefined();
+
+      const data = JSON.parse(stored!);
+      expect(data.started).toBe(true);
+      expect(data.timestamp).toBeGreaterThan(0);
+    });
+
+    it('should include timestamp when setting started flag', () => {
+      const sessionId = 'session_test_started_time';
+      vi.useFakeTimers();
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      presentationWindow.setPresentationStartedFlag(sessionId);
+
+      const key = `translator_started_${sessionId}`;
+      const stored = mockLocalStorage.get(key);
+      const data = JSON.parse(stored!);
+      expect(data.timestamp).toBe(now);
+
+      vi.useRealTimers();
     });
   });
 
