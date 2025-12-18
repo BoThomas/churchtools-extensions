@@ -79,6 +79,12 @@ export function usePresentationWindow() {
     );
     localStorage.removeItem(`translator_paused_${sessionId}`);
 
+    // Store test mode flag so presentation window knows which message to show
+    localStorage.setItem(
+      `translator_test_mode_${sessionId}`,
+      JSON.stringify({ isTest: options.isTest }),
+    );
+
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
 
     // Open presentation windows based on mode
@@ -122,6 +128,8 @@ export function usePresentationWindow() {
     localStorage.removeItem(`translator_settings_${sessionId}`);
     localStorage.removeItem(`translator_paused_${sessionId}`);
     localStorage.removeItem(`translator_presentation_${sessionId}`);
+    localStorage.removeItem(`translator_test_mode_${sessionId}`);
+    localStorage.removeItem(`translator_started_${sessionId}`);
   }
 
   /**
@@ -139,6 +147,17 @@ export function usePresentationWindow() {
   }
 
   /**
+   * Signal that presentation has started (recording/test generation began)
+   * This dismisses the waiting overlay immediately without waiting for first data
+   */
+  function setPresentationStartedFlag(sessionId: string) {
+    localStorage.setItem(
+      `translator_started_${sessionId}`,
+      JSON.stringify({ started: true, timestamp: Date.now() }),
+    );
+  }
+
+  /**
    * Reset presentation session
    */
   function resetSession() {
@@ -153,6 +172,7 @@ export function usePresentationWindow() {
     openPresentationWindows,
     cleanupPresentationStorage,
     setPausedFlag,
+    setPresentationStartedFlag,
     resetSession,
   };
 }

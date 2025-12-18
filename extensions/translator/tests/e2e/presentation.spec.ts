@@ -58,11 +58,30 @@ test.describe('Presentation Mode - Split Screen', () => {
     const splitView = presentationWindow.getByTestId('split-view-container');
     await expect(splitView).toBeVisible();
 
+    // Verify waiting overlay is visible with correct message
+    const waitingOverlay = presentationWindow.getByTestId('waiting-overlay');
+    await expect(waitingOverlay).toBeVisible();
+    const overlayText = await waitingOverlay.textContent();
+    expect(overlayText).toContain('Start Recording');
+    expect(overlayText).toContain('control panel');
+
+    // Fullscreen instructions should be visible initially
+    const fullscreenHint = presentationWindow.getByTestId(
+      'fullscreen-instructions',
+    );
+    await expect(fullscreenHint).toBeVisible();
+
     // Start recording to trigger Azure SDK mock outputs
     const startRecordingButton = extensionPage.getByTestId(
       'button-start-recording',
     );
     await startRecordingButton.click();
+
+    // Verify waiting overlay disappears after starting recording
+    await expect(waitingOverlay).not.toBeVisible();
+
+    // Verify fullscreen hint also disappears when recording starts
+    await expect(fullscreenHint).not.toBeVisible();
 
     // Wait for mocked Azure SDK to produce translations
     await extensionPage.waitForTimeout(1500);
@@ -206,8 +225,25 @@ test.describe('Presentation Mode - Split Screen', () => {
     const splitView = testWindow.getByTestId('split-view-container');
     await expect(splitView).toBeVisible();
 
+    // Verify waiting overlay is visible with "Start Test" message
+    const waitingOverlay = testWindow.getByTestId('waiting-overlay');
+    await expect(waitingOverlay).toBeVisible();
+    const overlayText = await waitingOverlay.textContent();
+    expect(overlayText).toContain('Start Test');
+    expect(overlayText).toContain('control panel');
+
+    // Fullscreen instructions should be visible initially
+    const fullscreenHint = testWindow.getByTestId('fullscreen-instructions');
+    await expect(fullscreenHint).toBeVisible();
+
     // Start lorem ipsum generation
     await startTestRecording(extensionPage);
+
+    // Verify waiting overlay disappears after starting test
+    await expect(waitingOverlay).not.toBeVisible();
+
+    // Verify fullscreen hint also disappears when test starts
+    await expect(fullscreenHint).not.toBeVisible();
 
     // Wait for lorem ipsum generation
     await extensionPage.waitForTimeout(3000);
@@ -311,6 +347,30 @@ test.describe('Presentation Mode - Multi-Window', () => {
     // Identify windows by their language parameter
     const deWindowIndex = langParams.indexOf('de');
     const frWindowIndex = langParams.indexOf('fr');
+    const deWindow = windows[deWindowIndex];
+    const frWindow = windows[frWindowIndex];
+
+    // Verify waiting overlay is visible in German window with language name
+    const deWaitingOverlay = deWindow.getByTestId('waiting-overlay');
+    await expect(deWaitingOverlay).toBeVisible();
+    const deOverlayText = await deWaitingOverlay.textContent();
+    expect(deOverlayText).toContain('German');
+    expect(deOverlayText).toContain('Start Recording');
+    expect(deOverlayText).toContain('control panel');
+
+    // Verify waiting overlay is visible in French window with language name
+    const frWaitingOverlay = frWindow.getByTestId('waiting-overlay');
+    await expect(frWaitingOverlay).toBeVisible();
+    const frOverlayText = await frWaitingOverlay.textContent();
+    expect(frOverlayText).toContain('French');
+    expect(frOverlayText).toContain('Start Recording');
+    expect(frOverlayText).toContain('control panel');
+
+    // Fullscreen instructions should be visible initially in all windows
+    const deFullscreenHint = deWindow.getByTestId('fullscreen-instructions');
+    const frFullscreenHint = frWindow.getByTestId('fullscreen-instructions');
+    await expect(deFullscreenHint).toBeVisible();
+    await expect(frFullscreenHint).toBeVisible();
 
     // Start recording to trigger Azure SDK mock outputs
     const startRecordingButton = extensionPage.getByTestId(
@@ -318,19 +378,25 @@ test.describe('Presentation Mode - Multi-Window', () => {
     );
     await startRecordingButton.click();
 
+    // Verify waiting overlays disappear in all windows after starting recording
+    await expect(deWaitingOverlay).not.toBeVisible();
+    await expect(frWaitingOverlay).not.toBeVisible();
+
+    // Verify fullscreen hints also disappear when recording starts
+    await expect(deFullscreenHint).not.toBeVisible();
+    await expect(frFullscreenHint).not.toBeVisible();
+
     // Wait for mocked Azure SDK to produce translations
     // Mock 'basic' scenario produces: "Hello world" → de: "Hallo Welt", fr: "Bonjour le monde"
     await extensionPage.waitForTimeout(1500);
 
     // Verify German window shows only German content
-    const deWindow = windows[deWindowIndex];
     const deContainer = deWindow.getByTestId('single-language-container');
     await expect(deContainer).toBeVisible();
     const deContent = await deContainer.textContent();
     expect(deContent).toContain('Hallo Welt');
 
     // Verify French window shows only French content
-    const frWindow = windows[frWindowIndex];
     const frContainer = frWindow.getByTestId('single-language-container');
     await expect(frContainer).toBeVisible();
     const frContent = await frContainer.textContent();
@@ -491,8 +557,41 @@ test.describe('Presentation Mode - Multi-Window', () => {
     expect(langParams).toContain('fr');
     expect(langParams).toContain('es');
 
+    // Verify waiting overlay is visible in all windows with "Start Test" message
+    const deWindowIndex = langParams.indexOf('de');
+    const deWindow = windows[deWindowIndex];
+    const deWaitingOverlay = deWindow.getByTestId('waiting-overlay');
+    await expect(deWaitingOverlay).toBeVisible();
+    const deOverlayText = await deWaitingOverlay.textContent();
+    expect(deOverlayText).toContain('German');
+    expect(deOverlayText).toContain('Start Test');
+    expect(deOverlayText).toContain('control panel');
+
+    const frWindowIndex = langParams.indexOf('fr');
+    const frWindow = windows[frWindowIndex];
+    const frWaitingOverlay = frWindow.getByTestId('waiting-overlay');
+    await expect(frWaitingOverlay).toBeVisible();
+    const frOverlayText = await frWaitingOverlay.textContent();
+    expect(frOverlayText).toContain('French');
+    expect(frOverlayText).toContain('Start Test');
+    expect(frOverlayText).toContain('control panel');
+
+    // Fullscreen instructions should be visible initially in all windows
+    const deFullscreenHint = deWindow.getByTestId('fullscreen-instructions');
+    const frFullscreenHint = frWindow.getByTestId('fullscreen-instructions');
+    await expect(deFullscreenHint).toBeVisible();
+    await expect(frFullscreenHint).toBeVisible();
+
     // Start lorem ipsum generation
     await startTestRecording(extensionPage);
+
+    // Verify waiting overlays disappear in all windows after starting test
+    await expect(deWaitingOverlay).not.toBeVisible();
+    await expect(frWaitingOverlay).not.toBeVisible();
+
+    // Verify fullscreen hints also disappear when test starts
+    await expect(deFullscreenHint).not.toBeVisible();
+    await expect(frFullscreenHint).not.toBeVisible();
 
     // Wait for lorem ipsum content to be generated
     await extensionPage.waitForTimeout(3000);

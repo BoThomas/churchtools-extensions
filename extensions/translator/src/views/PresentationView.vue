@@ -11,10 +11,47 @@
       '--presentation-live-color': presentationSettings.liveColor,
     }"
   >
+    <!-- Waiting for Recording Overlay -->
+    <div
+      v-if="showWaitingOverlay"
+      class="fixed inset-0 flex items-start justify-center pt-32 z-40 waiting-overlay"
+      data-testid="waiting-overlay"
+    >
+      <div
+        class="waiting-message px-6 py-4 rounded-lg"
+        style="font-size: 16px !important"
+      >
+        <div class="flex items-start gap-3">
+          <i class="pi pi-info-circle" style="font-size: 18px !important"></i>
+          <div class="flex-1">
+            <p
+              v-if="specificLanguage"
+              class="font-medium mb-0.5"
+              style="font-size: 16px !important"
+            >
+              {{ getLanguageDisplayName(specificLanguage) }}
+            </p>
+            <p class="text-sm" style="font-size: 14px !important">
+              {{ waitingMessage }}
+            </p>
+          </div>
+          <button
+            @click="dismissWaitingOverlay"
+            class="waiting-close-button cursor-pointer"
+            style="font-size: 16px !important"
+            data-testid="close-waiting-overlay"
+          >
+            <i class="pi pi-times" style="font-size: 16px !important"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Fullscreen Instructions -->
     <div
       v-if="showFullscreenInstructions"
       class="fixed inset-0 flex items-center justify-center z-50"
+      data-testid="fullscreen-instructions"
     >
       <div
         class="bg-primary text-primary-contrast px-8 py-6 rounded-lg shadow-2xl max-w-2xl relative overflow-hidden"
@@ -28,13 +65,6 @@
           <div class="flex-1">
             <p class="font-semibold mb-1" style="font-size: 16px !important">
               Enter Fullscreen Mode
-            </p>
-            <p
-              v-if="specificLanguage"
-              class="text-sm font-medium mb-1"
-              style="font-size: 14px !important"
-            >
-              Language: {{ getLanguageDisplayName(specificLanguage) }}
             </p>
             <p class="text-sm" style="font-size: 14px !important">
               <span v-if="osType === 'mac'"
@@ -169,6 +199,16 @@ const specificLanguage = urlParams.get('lang') || null; // For multi-window mode
 const showFullscreenInstructions = ref(true);
 const osType = ref<'mac' | 'windows' | 'linux'>('windows');
 
+// Waiting for recording overlay
+const showWaitingOverlay = ref(true);
+const isTestMode = ref(false);
+
+// Computed message for waiting overlay
+const waitingMessage = computed(() => {
+  const action = isTestMode.value ? 'Start Test' : 'Start Recording';
+  return `Press "${action}" in the control panel to begin`;
+});
+
 // Detect OS for fullscreen instructions
 function detectOS() {
   const platform = navigator.platform.toLowerCase();
@@ -185,6 +225,10 @@ function detectOS() {
 
 function dismissFullscreenInstructions() {
   showFullscreenInstructions.value = false;
+}
+
+function dismissWaitingOverlay() {
+  showWaitingOverlay.value = false;
 }
 
 // Default presentation settings
@@ -260,6 +304,7 @@ function handleStorageEvent(e: StorageEvent) {
   const settingsKey = `translator_settings_${sessionId}`;
   const pausedKey = `translator_paused_${sessionId}`;
   const closeKey = `translator_close_${sessionId}`;
+  const startedKey = `translator_started_${sessionId}`;
 
   // Listen for close signal from another window
   if (e.key === closeKey && e.newValue) {
@@ -267,9 +312,35 @@ function handleStorageEvent(e: StorageEvent) {
     return;
   }
 
+  // Listen for presentation started signal
+  if (e.key === startedKey && e.newValue) {
+    try {
+      const data = JSON.parse(e.newValue);
+      if (data.started) {
+        // Dismiss waiting overlay immediately when recording/test starts
+        showWaitingOverlay.value = false;
+        // Also dismiss fullscreen hint when recording/test starts
+        showFullscreenInstructions.value = false;
+      }
+    } catch (err) {
+      console.error('Failed to parse presentation started data', err);
+    }
+    return;
+  }
+
   if (e.key === presentationKey && e.newValue) {
     try {
       const data = JSON.parse(e.newValue);
+
+      // Dismiss waiting overlay when first data arrives (backup to started signal)
+      if (showWaitingOverlay.value) {
+        showWaitingOverlay.value = false;
+      }
+
+      // Dismiss fullscreen hint when first data arrives
+      if (showFullscreenInstructions.value) {
+        showFullscreenInstructions.value = false;
+      }
 
       if (data.isLive) {
         // Filter to specific language if in multi-window mode
@@ -360,9 +431,31 @@ function checkExistingData() {
         } else {
           finalizedParagraphsByLang.value = data.finalized;
         }
+        // Only hide overlay if there's actual content (not just an empty object)
+        if (showWaitingOverlay.value) {
+          const hasContent = Object.keys(data.finalized).some(
+            (lang) =>
+              Array.isArray(data.finalized[lang]) &&
+              data.finalized[lang].length > 0,
+          );
+          if (hasContent) {
+            showWaitingOverlay.value = false;
+          }
+        }
       }
     } catch (e) {
       console.error('Failed to load existing presentation data', e);
+    }
+  }
+
+  // Check if this is a test mode presentation
+  const testModeStr = localStorage.getItem(`translator_test_mode_${sessionId}`);
+  if (testModeStr) {
+    try {
+      const data = JSON.parse(testModeStr);
+      isTestMode.value = data.isTest || false;
+    } catch (e) {
+      console.error('Failed to load test mode status', e);
     }
   }
 }
@@ -568,6 +661,40 @@ onUnmounted(() => {
 .language-pane .live-translation {
   margin: var(--presentation-margin) !important;
   font-size: calc(var(--presentation-font-size) * 0.85) !important;
+}
+
+/* Waiting for recording overlay */
+.waiting-overlay {
+  background: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.waiting-message {
+  background: rgba(0, 0, 0, 0.75) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.waiting-message p {
+  color: rgba(255, 255, 255, 0.9) !important;
+  margin: 0 !important;
+}
+
+.waiting-message i {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.waiting-close-button {
+  color: rgba(255, 255, 255, 0.7) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  transition: color 0.2s !important;
+}
+
+.waiting-close-button:hover {
+  color: rgba(255, 255, 255, 1) !important;
 }
 
 /* Fullscreen instructions keyboard shortcut styling */
