@@ -17,10 +17,10 @@
         :closable="true"
         icon="pi pi-info-circle"
       >
-        <strong>Browser Popup Blocker:</strong> Multi-window mode opens multiple
-        browser windows. Most browsers block this by default. If windows don't
-        open, look for a popup blocker icon in your browser's address bar and
-        allow popups for this site.
+        Browser Popup Blocker: Multi-window mode opens multiple browser windows.
+        Most browsers block this by default. If windows don't open, look for a
+        popup blocker icon in your browser's address bar and allow popups for
+        this site.
       </Message>
 
       <!-- Warning for too many languages in split mode -->

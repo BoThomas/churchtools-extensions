@@ -253,10 +253,13 @@ export class SpeechTranslationConfig {
   public speechRecognitionLanguage = '';
   private targetLanguages: string[] = [];
   private properties: Map<string, string> = new Map();
+  //@ts-ignore
   private _profanityOption: number = ProfanityOption.Masked;
 
   private constructor(
+    //@ts-ignore
     private _subscriptionKey: string,
+    //@ts-ignore
     private _region: string,
   ) {}
 
