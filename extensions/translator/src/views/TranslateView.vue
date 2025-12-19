@@ -192,7 +192,6 @@ import { useTestOutput } from '../composables/useTestOutput';
 import { usePresentationWindow } from '../composables/usePresentationWindow';
 import { useSessionManagement } from '../composables/useSessionManagement';
 import { useTestPresentation } from '../composables/useTestPresentation';
-import { PRESENTATION_PARAGRAPH_WINDOW_SIZE } from '../config';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -220,8 +219,11 @@ const {
   presentationLanguages,
   hasTooManyLanguagesForSplit,
 } = useLanguageValidation();
-const { finalizedParagraphsByLang, currentLiveTranslationByLang } =
-  useTestOutput();
+const {
+  finalizedParagraphsByLang,
+  currentLiveTranslationByLang,
+  addFinalizedParagraph,
+} = useTestOutput();
 const {
   presentationSessionId,
   generateSessionId,
@@ -294,47 +296,21 @@ function onTranslating(translations: Record<string, string>, original: string) {
     if (store.settings.presentation.showInputLanguage) {
       presentationTranslations[store.settings.inputLanguage] = original;
     }
-    updatePresentationWindow(
-      presentationTranslations,
-      true,
-      finalizedParagraphsByLang.value,
-    );
+    // Don't send finalized paragraphs during live updates - they haven't changed
+    // This reduces redundant localStorage writes
+    updatePresentationWindow(presentationTranslations, true, {});
   }
 }
 
 function onTranslated(translations: Record<string, string>, original: string) {
   // Add translations to each language's finalized paragraphs (output languages)
+  // Uses centralized addFinalizedParagraph which handles sliding window
   for (const [lang, translation] of Object.entries(translations)) {
-    if (!finalizedParagraphsByLang.value[lang]) {
-      finalizedParagraphsByLang.value[lang] = [];
-    }
-    finalizedParagraphsByLang.value[lang].push(translation);
-    // Apply sliding window: keep only last N paragraphs to prevent memory exhaustion
-    if (
-      finalizedParagraphsByLang.value[lang].length >
-      PRESENTATION_PARAGRAPH_WINDOW_SIZE
-    ) {
-      finalizedParagraphsByLang.value[lang] = finalizedParagraphsByLang.value[
-        lang
-      ].slice(-PRESENTATION_PARAGRAPH_WINDOW_SIZE);
-    }
+    addFinalizedParagraph(lang, translation);
   }
 
   // Always add input language for operator monitoring
-  if (!finalizedParagraphsByLang.value[store.settings.inputLanguage]) {
-    finalizedParagraphsByLang.value[store.settings.inputLanguage] = [];
-  }
-  finalizedParagraphsByLang.value[store.settings.inputLanguage].push(original);
-  // Apply sliding window for input language too
-  if (
-    finalizedParagraphsByLang.value[store.settings.inputLanguage].length >
-    PRESENTATION_PARAGRAPH_WINDOW_SIZE
-  ) {
-    finalizedParagraphsByLang.value[store.settings.inputLanguage] =
-      finalizedParagraphsByLang.value[store.settings.inputLanguage].slice(
-        -PRESENTATION_PARAGRAPH_WINDOW_SIZE,
-      );
-  }
+  addFinalizedParagraph(store.settings.inputLanguage, original);
 
   // Clear live translations
   currentLiveTranslationByLang.value = {};
@@ -610,13 +586,13 @@ function startTestGeneration() {
       isPausedRef,
       operatorLanguages.value,
       presentationLanguages.value,
-      finalizedParagraphsByLang,
+      addFinalizedParagraph,
       currentLiveTranslationByLang,
       (translations, isLive) =>
         updatePresentationWindow(
           translations,
           isLive,
-          finalizedParagraphsByLang.value,
+          isLive ? {} : finalizedParagraphsByLang.value,
         ),
     );
 

@@ -26,7 +26,7 @@ export function useTestPresentation() {
    * @param isPaused - Reactive ref to pause state
    * @param operatorLanguages - All languages for operator view
    * @param presentationLanguages - Filtered languages for presentation view
-   * @param finalizedParagraphsByLang - Store for finalized paragraphs
+   * @param addFinalizedParagraph - Callback to add a finalized paragraph (handles sliding window)
    * @param currentLiveTranslationByLang - Store for live translations
    * @param updatePresentationWindow - Callback to update presentation window
    */
@@ -34,7 +34,7 @@ export function useTestPresentation() {
     isPaused: { value: boolean },
     operatorLanguages: LanguageConfig[],
     presentationLanguages: LanguageConfig[],
-    finalizedParagraphsByLang: { value: Record<string, string[]> },
+    addFinalizedParagraph: (languageCode: string, text: string) => void,
     currentLiveTranslationByLang: { value: Record<string, string> },
     updatePresentationWindow: (
       translations: Record<string, string>,
@@ -68,10 +68,6 @@ export function useTestPresentation() {
           // Finalize the paragraph - different text per language with line numbers
           // Generate for ALL languages (operator view)
           for (const lang of operatorLanguages) {
-            // Ensure array exists for this language
-            if (!finalizedParagraphsByLang.value[lang.code]) {
-              finalizedParagraphsByLang.value[lang.code] = [];
-            }
             // Initialize counter if not present
             if (!absoluteParagraphCounters[lang.code]) {
               absoluteParagraphCounters[lang.code] = 0;
@@ -82,7 +78,8 @@ export function useTestPresentation() {
 
             const paragraph = lorem.generateParagraphs(1);
             const numberedParagraph = `${lineNumber}. ${paragraph}`;
-            finalizedParagraphsByLang.value[lang.code].push(numberedParagraph);
+            // Use callback which handles sliding window internally
+            addFinalizedParagraph(lang.code, numberedParagraph);
           }
 
           currentLiveTranslationByLang.value = {};
