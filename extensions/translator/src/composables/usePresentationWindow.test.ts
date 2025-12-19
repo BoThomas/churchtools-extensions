@@ -148,6 +148,56 @@ describe('usePresentationWindow', () => {
 
       expect(mockLocalStorage.size).toBe(0);
     });
+
+    it('should store all paragraphs when already within window size', () => {
+      const sessionId = 'session_test_123';
+      presentationWindow.presentationSessionId.value = sessionId;
+
+      // Create 100 paragraphs (at window limit, already trimmed at source)
+      const paragraphSet: Record<string, string[]> = {
+        en: Array.from({ length: 100 }, (_, i) => `Paragraph ${i + 1}`),
+        de: Array.from({ length: 100 }, (_, i) => `Absatz ${i + 1}`),
+      };
+
+      presentationWindow.updatePresentationWindow({}, false, paragraphSet);
+
+      const key = `translator_presentation_${sessionId}`;
+      const stored = mockLocalStorage.get(key);
+      expect(stored).toBeDefined();
+
+      const data = JSON.parse(stored!);
+
+      // Should store all 100 paragraphs (no trimming in updatePresentationWindow)
+      expect(data.finalized.en).toHaveLength(100);
+      expect(data.finalized.de).toHaveLength(100);
+
+      // Should be exactly what was passed in
+      expect(data.finalized.en[0]).toBe('Paragraph 1');
+      expect(data.finalized.en[99]).toBe('Paragraph 100');
+      expect(data.finalized.de[0]).toBe('Absatz 1');
+      expect(data.finalized.de[99]).toBe('Absatz 100');
+    });
+
+    it('should store paragraphs as-is when below window size', () => {
+      const sessionId = 'session_test_123';
+      presentationWindow.presentationSessionId.value = sessionId;
+
+      // Create only 50 paragraphs (below limit)
+      const smallParagraphSet: Record<string, string[]> = {
+        en: Array.from({ length: 50 }, (_, i) => `Paragraph ${i + 1}`),
+      };
+
+      presentationWindow.updatePresentationWindow({}, false, smallParagraphSet);
+
+      const key = `translator_presentation_${sessionId}`;
+      const stored = mockLocalStorage.get(key);
+      const data = JSON.parse(stored!);
+
+      // Should keep all 50 paragraphs
+      expect(data.finalized.en).toHaveLength(50);
+      expect(data.finalized.en[0]).toBe('Paragraph 1');
+      expect(data.finalized.en[49]).toBe('Paragraph 50');
+    });
   });
 
   describe('openPresentationWindows', () => {

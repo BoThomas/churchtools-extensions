@@ -10,3 +10,11 @@ const keyFromProcess =
     : undefined;
 
 export const KEY = keyFromImportMeta || keyFromProcess || 'translator';
+
+/**
+ * Maximum number of finalized paragraphs to keep per language.
+ * Applied as sliding window to prevent memory exhaustion and
+ * localStorage size issues in long sessions. Both operator and presentation views
+ * are limited to this size.
+ */
+export const PRESENTATION_PARAGRAPH_WINDOW_SIZE = 10;

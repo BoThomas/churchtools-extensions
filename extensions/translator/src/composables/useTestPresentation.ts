@@ -19,6 +19,7 @@ export function useTestPresentation() {
   });
 
   let testPresentationInterval: ReturnType<typeof setInterval> | null = null;
+  const absoluteParagraphCounters: Record<string, number> = {};
 
   /**
    * Start generating lorem ipsum content for test presentation
@@ -71,9 +72,15 @@ export function useTestPresentation() {
             if (!finalizedParagraphsByLang.value[lang.code]) {
               finalizedParagraphsByLang.value[lang.code] = [];
             }
+            // Initialize counter if not present
+            if (!absoluteParagraphCounters[lang.code]) {
+              absoluteParagraphCounters[lang.code] = 0;
+            }
+            // Increment absolute counter (continues beyond array window)
+            absoluteParagraphCounters[lang.code]++;
+            const lineNumber = absoluteParagraphCounters[lang.code];
+
             const paragraph = lorem.generateParagraphs(1);
-            const lineNumber =
-              finalizedParagraphsByLang.value[lang.code].length + 1;
             const numberedParagraph = `${lineNumber}. ${paragraph}`;
             finalizedParagraphsByLang.value[lang.code].push(numberedParagraph);
           }
@@ -93,6 +100,10 @@ export function useTestPresentation() {
     if (testPresentationInterval) {
       clearInterval(testPresentationInterval);
       testPresentationInterval = null;
+    }
+    // Reset absolute counters
+    for (const key in absoluteParagraphCounters) {
+      delete absoluteParagraphCounters[key];
     }
   }
 

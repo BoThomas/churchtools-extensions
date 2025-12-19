@@ -192,6 +192,7 @@ import { useTestOutput } from '../composables/useTestOutput';
 import { usePresentationWindow } from '../composables/usePresentationWindow';
 import { useSessionManagement } from '../composables/useSessionManagement';
 import { useTestPresentation } from '../composables/useTestPresentation';
+import { PRESENTATION_PARAGRAPH_WINDOW_SIZE } from '../config';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -308,6 +309,15 @@ function onTranslated(translations: Record<string, string>, original: string) {
       finalizedParagraphsByLang.value[lang] = [];
     }
     finalizedParagraphsByLang.value[lang].push(translation);
+    // Apply sliding window: keep only last N paragraphs to prevent memory exhaustion
+    if (
+      finalizedParagraphsByLang.value[lang].length >
+      PRESENTATION_PARAGRAPH_WINDOW_SIZE
+    ) {
+      finalizedParagraphsByLang.value[lang] = finalizedParagraphsByLang.value[
+        lang
+      ].slice(-PRESENTATION_PARAGRAPH_WINDOW_SIZE);
+    }
   }
 
   // Always add input language for operator monitoring
@@ -315,6 +325,16 @@ function onTranslated(translations: Record<string, string>, original: string) {
     finalizedParagraphsByLang.value[store.settings.inputLanguage] = [];
   }
   finalizedParagraphsByLang.value[store.settings.inputLanguage].push(original);
+  // Apply sliding window for input language too
+  if (
+    finalizedParagraphsByLang.value[store.settings.inputLanguage].length >
+    PRESENTATION_PARAGRAPH_WINDOW_SIZE
+  ) {
+    finalizedParagraphsByLang.value[store.settings.inputLanguage] =
+      finalizedParagraphsByLang.value[store.settings.inputLanguage].slice(
+        -PRESENTATION_PARAGRAPH_WINDOW_SIZE,
+      );
+  }
 
   // Clear live translations
   currentLiveTranslationByLang.value = {};
