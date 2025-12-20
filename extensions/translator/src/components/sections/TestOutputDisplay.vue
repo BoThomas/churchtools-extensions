@@ -1,6 +1,14 @@
 <template>
-  <div v-if="isTestRunning" class="grid gap-4 grid-cols-1 md:grid-cols-2" data-testid="test-output-display">
-    <Fieldset v-for="lang in languages" :key="lang.code" :data-testid="`test-output-${lang.code}`">
+  <div
+    v-if="isTestRunning"
+    class="grid gap-4 grid-cols-1 md:grid-cols-2"
+    data-testid="test-output-display"
+  >
+    <Fieldset
+      v-for="lang in languages"
+      :key="lang.code"
+      :data-testid="`test-output-${lang.code}`"
+    >
       <template #legend>
         <span class="font-semibold">
           {{
