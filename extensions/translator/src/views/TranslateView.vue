@@ -219,8 +219,11 @@ const {
   presentationLanguages,
   hasTooManyLanguagesForSplit,
 } = useLanguageValidation();
-const { finalizedParagraphsByLang, currentLiveTranslationByLang } =
-  useTestOutput();
+const {
+  finalizedParagraphsByLang,
+  currentLiveTranslationByLang,
+  addFinalizedParagraph,
+} = useTestOutput();
 const {
   presentationSessionId,
   generateSessionId,
@@ -230,6 +233,7 @@ const {
   cleanupPresentationStorage,
   setPausedFlag,
   setPresentationStartedFlag,
+  cleanupStaleSessions,
 } = usePresentationWindow();
 const {
   startSession: startSessionTracking,
@@ -293,28 +297,21 @@ function onTranslating(translations: Record<string, string>, original: string) {
     if (store.settings.presentation.showInputLanguage) {
       presentationTranslations[store.settings.inputLanguage] = original;
     }
-    updatePresentationWindow(
-      presentationTranslations,
-      true,
-      finalizedParagraphsByLang.value,
-    );
+    // Don't send finalized paragraphs during live updates - they haven't changed
+    // This reduces redundant localStorage writes
+    updatePresentationWindow(presentationTranslations, true, {});
   }
 }
 
 function onTranslated(translations: Record<string, string>, original: string) {
   // Add translations to each language's finalized paragraphs (output languages)
+  // Uses centralized addFinalizedParagraph which handles sliding window
   for (const [lang, translation] of Object.entries(translations)) {
-    if (!finalizedParagraphsByLang.value[lang]) {
-      finalizedParagraphsByLang.value[lang] = [];
-    }
-    finalizedParagraphsByLang.value[lang].push(translation);
+    addFinalizedParagraph(lang, translation);
   }
 
   // Always add input language for operator monitoring
-  if (!finalizedParagraphsByLang.value[store.settings.inputLanguage]) {
-    finalizedParagraphsByLang.value[store.settings.inputLanguage] = [];
-  }
-  finalizedParagraphsByLang.value[store.settings.inputLanguage].push(original);
+  addFinalizedParagraph(store.settings.inputLanguage, original);
 
   // Clear live translations
   currentLiveTranslationByLang.value = {};
@@ -590,13 +587,13 @@ function startTestGeneration() {
       isPausedRef,
       operatorLanguages.value,
       presentationLanguages.value,
-      finalizedParagraphsByLang,
+      addFinalizedParagraph,
       currentLiveTranslationByLang,
       (translations, isLive) =>
         updatePresentationWindow(
           translations,
           isLive,
-          finalizedParagraphsByLang.value,
+          isLive ? {} : finalizedParagraphsByLang.value,
         ),
     );
 
@@ -815,6 +812,8 @@ async function handleStorageEvent(e: StorageEvent) {
 // Setup storage event listener
 onMounted(() => {
   window.addEventListener('storage', handleStorageEvent);
+  // Clean up any stale sessions from previous crashes/abandoned sessions
+  cleanupStaleSessions();
 });
 
 onBeforeUnmount(() => {

@@ -1,5 +1,6 @@
 import { ref, nextTick } from 'vue';
 import type { LanguageConfig } from '../types/language';
+import { PRESENTATION_PARAGRAPH_WINDOW_SIZE } from '../config';
 
 export function useTestOutput() {
   const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
@@ -18,7 +19,11 @@ export function useTestOutput() {
     if (!finalizedParagraphsByLang.value[languageCode]) {
       finalizedParagraphsByLang.value[languageCode] = [];
     }
-    finalizedParagraphsByLang.value[languageCode].push(text);
+    // Use spread to create new array for reliable reactivity, then apply sliding window
+    const paragraphs = [...finalizedParagraphsByLang.value[languageCode], text];
+    finalizedParagraphsByLang.value[languageCode] = paragraphs.slice(
+      -PRESENTATION_PARAGRAPH_WINDOW_SIZE,
+    );
     scrollTestOutputToBottom(languageCode);
   };
 

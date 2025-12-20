@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 /**
  * Helper class for managing localStorage operations in Playwright tests
- * 
+ *
  * Provides methods to interact with localStorage across different windows/pages
  * Handles JSON serialization/deserialization automatically
  */
@@ -15,7 +15,7 @@ export class LocalStorageHelper {
   async setItem(key: string, value: any): Promise<void> {
     await this.page.evaluate(
       ({ k, v }) => localStorage.setItem(k, JSON.stringify(v)),
-      { k: key, v: value }
+      { k: key, v: value },
     );
   }
 
@@ -23,13 +23,10 @@ export class LocalStorageHelper {
    * Get an item from localStorage with automatic JSON deserialization
    */
   async getItem(key: string): Promise<any> {
-    return this.page.evaluate(
-      (k) => {
-        const value = localStorage.getItem(k);
-        return value ? JSON.parse(value) : null;
-      },
-      key
-    );
+    return this.page.evaluate((k) => {
+      const value = localStorage.getItem(k);
+      return value ? JSON.parse(value) : null;
+    }, key);
   }
 
   /**
@@ -39,7 +36,7 @@ export class LocalStorageHelper {
     await this.page.waitForFunction(
       (k) => localStorage.getItem(k) !== null,
       key,
-      { timeout }
+      { timeout },
     );
     return this.getItem(key);
   }
@@ -50,7 +47,7 @@ export class LocalStorageHelper {
   async waitForValue(
     key: string,
     expectedValue: any,
-    timeout = 5000
+    timeout = 5000,
   ): Promise<void> {
     await this.page.waitForFunction(
       ({ k, v }) => {
@@ -64,7 +61,7 @@ export class LocalStorageHelper {
         }
       },
       { k: key, v: expectedValue },
-      { timeout }
+      { timeout },
     );
   }
 

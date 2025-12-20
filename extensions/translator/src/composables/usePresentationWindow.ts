@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import type { TranslatorSettings } from '../stores/translator';
 import type { LanguageConfig } from '../types/language';
+import { SESSION_MAX_AGE_MS } from '../config';
 
 /**
  * Composable for managing presentation windows and localStorage communication
@@ -164,6 +165,42 @@ export function usePresentationWindow() {
     presentationSessionId.value = null;
   }
 
+  /**
+   * Clean up stale presentation sessions from localStorage.
+   * Removes any translator_* keys where the session timestamp is older than SESSION_MAX_AGE_MS.
+   * Should be called on mount to garbage collect abandoned sessions (e.g., from browser crashes).
+   */
+  function cleanupStaleSessions() {
+    const now = Date.now();
+    const keysToRemove: string[] = [];
+
+    // Iterate through all localStorage keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      // Match translator session keys: translator_*_session_{timestamp}_{random}
+      const sessionMatch = key.match(/^translator_\w+_session_(\d+)_/);
+      if (sessionMatch) {
+        const sessionTimestamp = parseInt(sessionMatch[1], 10);
+        if (now - sessionTimestamp > SESSION_MAX_AGE_MS) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+
+    // Remove stale keys
+    for (const key of keysToRemove) {
+      localStorage.removeItem(key);
+    }
+
+    if (keysToRemove.length > 0) {
+      console.log(
+        `[usePresentationWindow] Cleaned up ${keysToRemove.length} stale session keys`,
+      );
+    }
+  }
+
   return {
     presentationSessionId,
     generateSessionId,
@@ -174,5 +211,6 @@ export function usePresentationWindow() {
     setPausedFlag,
     setPresentationStartedFlag,
     resetSession,
+    cleanupStaleSessions,
   };
 }

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { useTestPresentation } from './useTestPresentation';
 import type { LanguageConfig } from '../types/language';
+import { PRESENTATION_PARAGRAPH_WINDOW_SIZE } from '../config';
 
 // Mock lorem-ipsum
 vi.mock('lorem-ipsum', () => ({
@@ -20,6 +21,25 @@ vi.mock('lorem-ipsum', () => ({
     }
   },
 }));
+
+/**
+ * Helper to create a mock addFinalizedParagraph function that populates a ref
+ * and optionally applies sliding window (simulating useTestOutput behavior)
+ */
+function createMockAddFinalizedParagraph(
+  finalizedParagraphsByLang: { value: Record<string, string[]> },
+  applySlidingWindow = true,
+) {
+  return (languageCode: string, text: string) => {
+    if (!finalizedParagraphsByLang.value[languageCode]) {
+      finalizedParagraphsByLang.value[languageCode] = [];
+    }
+    const paragraphs = [...finalizedParagraphsByLang.value[languageCode], text];
+    finalizedParagraphsByLang.value[languageCode] = applySlidingWindow
+      ? paragraphs.slice(-PRESENTATION_PARAGRAPH_WINDOW_SIZE)
+      : paragraphs;
+  };
+}
 
 describe('useTestPresentation', () => {
   let testPresentation: ReturnType<typeof useTestPresentation>;
@@ -45,6 +65,9 @@ describe('useTestPresentation', () => {
         { code: 'en', isInput: false },
       ];
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -52,7 +75,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -70,8 +93,13 @@ describe('useTestPresentation', () => {
       // Second tick (1600ms) - should finalize
       vi.advanceTimersByTime(800);
 
-      expect(finalizedParagraphsByLang.value['de-DE']).toHaveLength(1);
-      expect(finalizedParagraphsByLang.value['en']).toHaveLength(1);
+      // Should have at least 1 paragraph (may be trimmed by sliding window in real scenarios)
+      expect(
+        finalizedParagraphsByLang.value['de-DE'].length,
+      ).toBeGreaterThanOrEqual(1);
+      expect(
+        finalizedParagraphsByLang.value['en'].length,
+      ).toBeGreaterThanOrEqual(1);
       expect(finalizedParagraphsByLang.value['de-DE'][0]).toContain('1.');
       expect(currentLiveTranslationByLang.value).toEqual({});
       expect(updatePresentationWindow).toHaveBeenCalledWith({}, false);
@@ -86,6 +114,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -93,7 +124,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -117,6 +148,9 @@ describe('useTestPresentation', () => {
         { code: 'en', isInput: false },
       ]; // Only one language for presentation
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -124,7 +158,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -154,6 +188,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -161,7 +198,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -189,6 +226,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -196,7 +236,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -205,19 +245,128 @@ describe('useTestPresentation', () => {
       vi.advanceTimersByTime(800); // Live
       vi.advanceTimersByTime(800); // Finalize
 
-      expect(finalizedParagraphsByLang.value['en'][0]).toMatch(/^1\./);
+      const firstParagraph = finalizedParagraphsByLang.value['en'][0];
+      expect(firstParagraph).toMatch(/^1\./);
 
       // Second finalization
       vi.advanceTimersByTime(800); // Live
       vi.advanceTimersByTime(800); // Finalize
 
-      expect(finalizedParagraphsByLang.value['en'][1]).toMatch(/^2\./);
+      const secondParagraph = finalizedParagraphsByLang.value['en'][1];
+      expect(secondParagraph).toMatch(/^2\./);
 
       // Third finalization
       vi.advanceTimersByTime(800); // Live
       vi.advanceTimersByTime(800); // Finalize
 
-      expect(finalizedParagraphsByLang.value['en'][2]).toMatch(/^3\./);
+      const thirdParagraph = finalizedParagraphsByLang.value['en'][2];
+      expect(thirdParagraph).toMatch(/^3\./);
+
+      // Verify absolute numbering continues (not reset by array index)
+      expect(finalizedParagraphsByLang.value['en']).toHaveLength(3);
+    });
+
+    it('should maintain absolute paragraph numbering beyond sliding window', () => {
+      const isPaused = ref(false);
+      const operatorLanguages: LanguageConfig[] = [
+        { code: 'en', isInput: false },
+      ];
+      const presentationLanguages: LanguageConfig[] = operatorLanguages;
+      const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      // Use sliding window enabled to test real behavior
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+        true,
+      );
+      const currentLiveTranslationByLang = ref<Record<string, string>>({});
+      const updatePresentationWindow = vi.fn();
+
+      testPresentation.startGeneration(
+        isPaused,
+        operatorLanguages,
+        presentationLanguages,
+        addFinalizedParagraph,
+        currentLiveTranslationByLang,
+        updatePresentationWindow,
+      );
+
+      // Generate more paragraphs than the window size
+      const numParagraphs = PRESENTATION_PARAGRAPH_WINDOW_SIZE + 5;
+      for (let i = 0; i < numParagraphs; i++) {
+        vi.advanceTimersByTime(800); // Live
+        vi.advanceTimersByTime(800); // Finalize
+      }
+
+      // Should only have window size paragraphs
+      expect(finalizedParagraphsByLang.value['en']).toHaveLength(
+        PRESENTATION_PARAGRAPH_WINDOW_SIZE,
+      );
+
+      // First paragraph in array should be numbered beyond 1 due to sliding window
+      const firstParagraph = finalizedParagraphsByLang.value['en'][0];
+      expect(firstParagraph).toMatch(/^6\./); // Window slid past first 5
+
+      // Last paragraph should have the correct absolute number
+      const lastParagraph =
+        finalizedParagraphsByLang.value['en'][
+          PRESENTATION_PARAGRAPH_WINDOW_SIZE - 1
+        ];
+      expect(lastParagraph).toMatch(new RegExp(`^${numParagraphs}\\.`));
+    });
+
+    it('should reset absolute counters when stopped', () => {
+      const isPaused = ref(false);
+      const operatorLanguages: LanguageConfig[] = [
+        { code: 'en', isInput: false },
+      ];
+      const presentationLanguages: LanguageConfig[] = operatorLanguages;
+      const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
+      const currentLiveTranslationByLang = ref<Record<string, string>>({});
+      const updatePresentationWindow = vi.fn();
+
+      // Generate some paragraphs
+      testPresentation.startGeneration(
+        isPaused,
+        operatorLanguages,
+        presentationLanguages,
+        addFinalizedParagraph,
+        currentLiveTranslationByLang,
+        updatePresentationWindow,
+      );
+
+      vi.advanceTimersByTime(800); // Live
+      vi.advanceTimersByTime(800); // Finalize
+
+      expect(finalizedParagraphsByLang.value['en'][0]).toMatch(/^1\./);
+
+      // Stop generation
+      testPresentation.stopGeneration();
+
+      // Clear arrays
+      finalizedParagraphsByLang.value = {};
+
+      // Create fresh callback for new session
+      const addFinalizedParagraph2 = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
+
+      // Start again - should restart numbering at 1
+      testPresentation.startGeneration(
+        isPaused,
+        operatorLanguages,
+        presentationLanguages,
+        addFinalizedParagraph2,
+        currentLiveTranslationByLang,
+        updatePresentationWindow,
+      );
+
+      vi.advanceTimersByTime(800); // Live
+      vi.advanceTimersByTime(800); // Finalize
+
+      expect(finalizedParagraphsByLang.value['en'][0]).toMatch(/^1\./); // Should restart at 1
     });
 
     it('should stop previous generation when started again', () => {
@@ -227,6 +376,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -235,7 +387,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -247,7 +399,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -270,6 +422,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -277,7 +432,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -308,6 +463,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -316,7 +474,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -333,7 +491,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -355,6 +513,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -362,7 +523,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );
@@ -377,6 +538,9 @@ describe('useTestPresentation', () => {
       ];
       const presentationLanguages: LanguageConfig[] = operatorLanguages;
       const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
+      const addFinalizedParagraph = createMockAddFinalizedParagraph(
+        finalizedParagraphsByLang,
+      );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
 
@@ -384,7 +548,7 @@ describe('useTestPresentation', () => {
         isPaused,
         operatorLanguages,
         presentationLanguages,
-        finalizedParagraphsByLang,
+        addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
       );

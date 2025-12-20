@@ -52,7 +52,7 @@ churchtools-extensions/
 - **Framework**: Vue 3 with Composition API and `<script setup>`
 - **Language**: TypeScript (strict mode)
 - **Build Tool**: Vite
-- **Testing**: Vitest with @vue/test-utils
+- **Testing**: Vitest with @vue/test-utils & playwright for e2e tests
 - **Monorepo**: pnpm workspaces + Turborepo
 - **State Management**: Pinia stores
 - **UI Components**: PrimeVue/Volt via `@churchtools-extensions/prime-volt`
@@ -137,6 +137,7 @@ await category.delete(id);
 3. **Run tests**: `pnpm test --filter=<extension-name>` or `pnpm test` for all
 4. **Build**: `pnpm build` or `turbo build --filter=<extension-name>`
 5. **Package for deployment**: `pnpm deploy` in extension directory
+6. DONT run e2e tests with playwright as they take too long. Promt the user to run them by himself if needed.
 
 ## Testing
 
@@ -150,10 +151,6 @@ pnpm test
 
 # Run tests for a specific extension
 pnpm test --filter=ct-translator
-
-# Run with coverage (from extension directory)
-cd extensions/translator
-pnpm test:coverage
 ```
 
 ### Writing Tests
