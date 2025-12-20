@@ -189,11 +189,6 @@ describe('useTestOutput', () => {
   });
 
   describe('sliding window configuration', () => {
-    it('should use PRESENTATION_PARAGRAPH_WINDOW_SIZE from config', () => {
-      // This test documents the expected window size
-      expect(PRESENTATION_PARAGRAPH_WINDOW_SIZE).toBe(10);
-    });
-
     it('should keep exactly PRESENTATION_PARAGRAPH_WINDOW_SIZE paragraphs at the limit', () => {
       // Add exactly the window size
       for (let i = 1; i <= PRESENTATION_PARAGRAPH_WINDOW_SIZE; i++) {

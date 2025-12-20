@@ -233,6 +233,7 @@ const {
   cleanupPresentationStorage,
   setPausedFlag,
   setPresentationStartedFlag,
+  cleanupStaleSessions,
 } = usePresentationWindow();
 const {
   startSession: startSessionTracking,
@@ -811,6 +812,8 @@ async function handleStorageEvent(e: StorageEvent) {
 // Setup storage event listener
 onMounted(() => {
   window.addEventListener('storage', handleStorageEvent);
+  // Clean up any stale sessions from previous crashes/abandoned sessions
+  cleanupStaleSessions();
 });
 
 onBeforeUnmount(() => {

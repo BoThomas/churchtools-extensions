@@ -4,6 +4,7 @@ import {
   mockDefaultSettings,
   mockMultiLanguageSettings,
 } from '../__mocks__/fixtures';
+import { SESSION_MAX_AGE_MS } from '../config';
 
 // Mock PrimeVue toast
 vi.mock('primevue/usetoast', () => ({
@@ -17,7 +18,7 @@ describe('usePresentationWindow', () => {
   let mockLocalStorage: Map<string, string>;
 
   beforeEach(() => {
-    // Mock localStorage
+    // Mock localStorage with proper length and key support
     mockLocalStorage = new Map();
     global.localStorage = {
       getItem: vi.fn((key: string) => mockLocalStorage.get(key) || null),
@@ -30,8 +31,13 @@ describe('usePresentationWindow', () => {
       clear: vi.fn(() => {
         mockLocalStorage.clear();
       }),
-      length: 0,
-      key: vi.fn(),
+      get length() {
+        return mockLocalStorage.size;
+      },
+      key: vi.fn((index: number) => {
+        const keys = Array.from(mockLocalStorage.keys());
+        return keys[index] || null;
+      }),
     } as any;
 
     // Mock window.open
@@ -560,6 +566,166 @@ describe('usePresentationWindow', () => {
       const calls = (window.open as any).mock.calls;
       expect(calls[0][0]).toContain('lang=de');
       expect(calls[1][0]).toContain('lang=es');
+    });
+  });
+
+  describe('cleanupStaleSessions', () => {
+    it('should remove stale session keys older than SESSION_MAX_AGE_MS', () => {
+      const now = Date.now();
+      const staleTimestamp = now - SESSION_MAX_AGE_MS - 1000; // 1 second older than max age
+      const freshTimestamp = now - 1000; // 1 second ago
+
+      // Add stale keys
+      mockLocalStorage.set(
+        `translator_presentation_session_${staleTimestamp}_abc123`,
+        '{}',
+      );
+      mockLocalStorage.set(
+        `translator_settings_session_${staleTimestamp}_abc123`,
+        '{}',
+      );
+
+      // Add fresh keys
+      mockLocalStorage.set(
+        `translator_presentation_session_${freshTimestamp}_def456`,
+        '{}',
+      );
+
+      // Add non-translator keys (should not be touched)
+      mockLocalStorage.set('other_key', 'value');
+
+      presentationWindow.cleanupStaleSessions();
+
+      // Stale keys should be removed
+      expect(
+        mockLocalStorage.has(
+          `translator_presentation_session_${staleTimestamp}_abc123`,
+        ),
+      ).toBe(false);
+      expect(
+        mockLocalStorage.has(
+          `translator_settings_session_${staleTimestamp}_abc123`,
+        ),
+      ).toBe(false);
+
+      // Fresh keys should remain
+      expect(
+        mockLocalStorage.has(
+          `translator_presentation_session_${freshTimestamp}_def456`,
+        ),
+      ).toBe(true);
+
+      // Non-translator keys should remain
+      expect(mockLocalStorage.has('other_key')).toBe(true);
+    });
+
+    it('should not remove keys within the max age', () => {
+      const now = Date.now();
+      const recentTimestamp = now - SESSION_MAX_AGE_MS / 2; // Half the max age
+
+      mockLocalStorage.set(
+        `translator_presentation_session_${recentTimestamp}_abc123`,
+        '{}',
+      );
+      mockLocalStorage.set(
+        `translator_paused_session_${recentTimestamp}_abc123`,
+        '{}',
+      );
+
+      presentationWindow.cleanupStaleSessions();
+
+      // All keys should remain
+      expect(
+        mockLocalStorage.has(
+          `translator_presentation_session_${recentTimestamp}_abc123`,
+        ),
+      ).toBe(true);
+      expect(
+        mockLocalStorage.has(
+          `translator_paused_session_${recentTimestamp}_abc123`,
+        ),
+      ).toBe(true);
+    });
+
+    it('should handle empty localStorage', () => {
+      expect(() => {
+        presentationWindow.cleanupStaleSessions();
+      }).not.toThrow();
+    });
+
+    it('should handle keys that do not match the session pattern', () => {
+      // Keys without session pattern should be ignored
+      mockLocalStorage.set('translator_some_other_key', '{}');
+      mockLocalStorage.set('random_key', 'value');
+
+      presentationWindow.cleanupStaleSessions();
+
+      // Both keys should remain
+      expect(mockLocalStorage.has('translator_some_other_key')).toBe(true);
+      expect(mockLocalStorage.has('random_key')).toBe(true);
+    });
+
+    it('should clean up all types of session keys', () => {
+      const staleTimestamp = Date.now() - SESSION_MAX_AGE_MS - 1000;
+      const sessionId = `session_${staleTimestamp}_xyz789`;
+
+      // Add all types of session keys
+      mockLocalStorage.set(`translator_presentation_${sessionId}`, '{}');
+      mockLocalStorage.set(`translator_settings_${sessionId}`, '{}');
+      mockLocalStorage.set(`translator_paused_${sessionId}`, '{}');
+      mockLocalStorage.set(`translator_started_${sessionId}`, '{}');
+      mockLocalStorage.set(`translator_test_mode_${sessionId}`, '{}');
+
+      presentationWindow.cleanupStaleSessions();
+
+      // All stale session keys should be removed
+      expect(mockLocalStorage.has(`translator_presentation_${sessionId}`)).toBe(
+        false,
+      );
+      expect(mockLocalStorage.has(`translator_settings_${sessionId}`)).toBe(
+        false,
+      );
+      expect(mockLocalStorage.has(`translator_paused_${sessionId}`)).toBe(
+        false,
+      );
+      expect(mockLocalStorage.has(`translator_started_${sessionId}`)).toBe(
+        false,
+      );
+      expect(mockLocalStorage.has(`translator_test_mode_${sessionId}`)).toBe(
+        false,
+      );
+    });
+
+    it('should log cleanup count when keys are removed', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const staleTimestamp = Date.now() - SESSION_MAX_AGE_MS - 1000;
+
+      mockLocalStorage.set(
+        `translator_presentation_session_${staleTimestamp}_abc`,
+        '{}',
+      );
+      mockLocalStorage.set(
+        `translator_settings_session_${staleTimestamp}_abc`,
+        '{}',
+      );
+
+      presentationWindow.cleanupStaleSessions();
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Cleaned up 2 stale session keys'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should not log when no keys are removed', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      presentationWindow.cleanupStaleSessions();
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
     });
   });
 });
