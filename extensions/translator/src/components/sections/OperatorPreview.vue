@@ -9,10 +9,13 @@
     <!-- Placeholder when nothing is running -->
     <div
       v-if="!isActive"
-      class="text-surface-500 text-sm py-4"
+      class="flex flex-col items-center justify-center py-8 text-surface-500"
       data-testid="operator-preview-placeholder"
     >
-      Start a translation test or presentation to see the live preview here.
+      <i class="pi pi-language text-4xl mb-3 opacity-50"></i>
+      <p class="text-sm text-center">
+        Start a translation test or presentation to see the live preview here.
+      </p>
     </div>
 
     <!-- Active translation grid -->
