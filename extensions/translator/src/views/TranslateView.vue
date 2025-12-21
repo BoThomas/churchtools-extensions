@@ -112,13 +112,15 @@
         @prompt-save-as-new-variant="promptSaveAsNewVariant"
       />
 
-      <!-- Test Mode Output -->
-      <TestOutputDisplay
-        ref="testOutputDisplay"
-        :is-test-running="state.isTestRunning"
+      <!-- Operator Preview -->
+      <OperatorPreview
+        ref="operatorPreview"
+        :is-open="operatorPreviewOpen"
+        :is-active="isOperatorPreviewActive"
         :languages="operatorLanguages"
         :finalized-paragraphs-by-lang="finalizedParagraphsByLang"
         :current-live-translation-by-lang="currentLiveTranslationByLang"
+        @toggle="operatorPreviewOpen = !$event.value"
       />
     </div>
   </div>
@@ -183,12 +185,12 @@ import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import TranslationOptionsSection from '../components/sections/TranslationOptionsSection.vue';
 import PresentationOptionsSection from '../components/sections/PresentationOptionsSection.vue';
-import TestOutputDisplay from '../components/sections/TestOutputDisplay.vue';
+import OperatorPreview from '../components/sections/OperatorPreview.vue';
 import TranslationControlPanel from '../components/sections/TranslationControlPanel.vue';
 import { useVariantManagement } from '../composables/useVariantManagement';
 import { useTranslationState } from '../composables/useTranslationState';
 import { useLanguageValidation } from '../composables/useLanguageValidation';
-import { useTestOutput } from '../composables/useTestOutput';
+import { useOperatorPreview } from '../composables/useOperatorPreview';
 import { usePresentationWindow } from '../composables/usePresentationWindow';
 import { useSessionManagement } from '../composables/useSessionManagement';
 import { useTestPresentation } from '../composables/useTestPresentation';
@@ -223,7 +225,7 @@ const {
   finalizedParagraphsByLang,
   currentLiveTranslationByLang,
   addFinalizedParagraph,
-} = useTestOutput();
+} = useOperatorPreview();
 const {
   presentationSessionId,
   generateSessionId,
@@ -257,9 +259,18 @@ const {
 // Captioning service instance
 let captioningService: CaptioningService | null = null;
 
-// Ref for TestOutputDisplay component
-const testOutputDisplay = ref<InstanceType<typeof TestOutputDisplay> | null>(
-  null,
+// Ref for OperatorPreview component
+const operatorPreview = ref<InstanceType<typeof OperatorPreview> | null>(null);
+
+// Operator Preview state
+const operatorPreviewOpen = ref(true);
+
+// Computed: is any translation mode active (running or paused)
+const isOperatorPreviewActive = computed(
+  () =>
+    state.value.isTestRunning ||
+    state.value.isPresentationRunning ||
+    state.value.isTestPresentationRunning,
 );
 
 // Computed
@@ -285,9 +296,9 @@ function onTranslating(translations: Record<string, string>, original: string) {
   // Store full operator view
   currentLiveTranslationByLang.value = operatorTranslations;
 
-  // Scroll test output to bottom
+  // Scroll operator preview to bottom
   if (state.value.isTestRunning) {
-    scrollTestOutputToBottom();
+    scrollOperatorPreviewToBottom();
   }
 
   // Update presentation window if running (filter for audience)
@@ -316,9 +327,9 @@ function onTranslated(translations: Record<string, string>, original: string) {
   // Clear live translations
   currentLiveTranslationByLang.value = {};
 
-  // Scroll test output to bottom
+  // Scroll operator preview to bottom
   if (state.value.isTestRunning) {
-    scrollTestOutputToBottom();
+    scrollOperatorPreviewToBottom();
   }
 
   // Update presentation window if running
@@ -341,12 +352,12 @@ function onError(errorMsg: string) {
   stop();
 }
 
-// Scroll test output containers to bottom
-function scrollTestOutputToBottom() {
+// Scroll operator preview containers to bottom
+function scrollOperatorPreviewToBottom() {
   nextTick(() => {
-    // Scroll all language containers via the TestOutputDisplay component
-    if (testOutputDisplay.value?.langRefs) {
-      Object.values(testOutputDisplay.value.langRefs).forEach((element) => {
+    // Scroll all language containers via the OperatorPreview component
+    if (operatorPreview.value?.langRefs) {
+      Object.values(operatorPreview.value.langRefs).forEach((element) => {
         if (element) {
           element.scrollTop = element.scrollHeight;
         }
@@ -365,6 +376,9 @@ async function startTest() {
   // Clear previous test output
   finalizedParagraphsByLang.value = {};
   currentLiveTranslationByLang.value = {};
+
+  // Auto-open operator preview if it's closed
+  operatorPreviewOpen.value = true;
 
   try {
     // Create captioning service

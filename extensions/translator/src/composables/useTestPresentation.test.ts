@@ -24,7 +24,7 @@ vi.mock('lorem-ipsum', () => ({
 
 /**
  * Helper to create a mock addFinalizedParagraph function that populates a ref
- * and optionally applies sliding window (simulating useTestOutput behavior)
+ * and optionally applies sliding window (simulating useOperatorPreview behavior)
  */
 function createMockAddFinalizedParagraph(
   finalizedParagraphsByLang: { value: Record<string, string[]> },
