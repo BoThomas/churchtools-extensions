@@ -64,7 +64,9 @@
         :disabled="inputsDisabled"
         :input-language-valid="inputLanguageValid"
         :output-languages-valid="outputLanguagesValid"
+        :collapsed="translationOptionsCollapsed"
         @change="store.markSettingsChanged()"
+        @toggle="toggleTranslationOptions"
       />
 
       <!-- Presentation Options -->
@@ -72,7 +74,9 @@
         v-model="store.settings"
         :disabled="inputsDisabled"
         :presentation-languages-count="presentationLanguages.length"
+        :collapsed="presentationOptionsCollapsed"
         @change="store.markSettingsChanged()"
+        @toggle="togglePresentationOptions"
       />
 
       <!-- Controls -->
@@ -115,12 +119,12 @@
       <!-- Operator Preview -->
       <OperatorPreview
         ref="operatorPreview"
-        :is-open="operatorPreviewOpen"
+        :is-open="!operatorPreviewCollapsed"
         :is-active="isOperatorPreviewActive"
         :languages="operatorLanguages"
         :finalized-paragraphs-by-lang="finalizedParagraphsByLang"
         :current-live-translation-by-lang="currentLiveTranslationByLang"
-        @toggle="operatorPreviewOpen = !$event.value"
+        @toggle="toggleOperatorPreview"
       />
     </div>
   </div>
@@ -194,6 +198,7 @@ import { useOperatorPreview } from '../composables/useOperatorPreview';
 import { usePresentationWindow } from '../composables/usePresentationWindow';
 import { useSessionManagement } from '../composables/useSessionManagement';
 import { useTestPresentation } from '../composables/useTestPresentation';
+import { useFieldsetState } from '../composables/useFieldsetState';
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -245,6 +250,15 @@ const {
 } = useSessionManagement(user);
 const { startGeneration, stopGeneration } = useTestPresentation();
 const {
+  translationOptionsCollapsed,
+  presentationOptionsCollapsed,
+  operatorPreviewCollapsed,
+  toggleTranslationOptions,
+  togglePresentationOptions,
+  toggleOperatorPreview,
+  openOperatorPreview,
+} = useFieldsetState();
+const {
   selectedVariantForDisplay,
   saveAsDialogVisible,
   newVariantName,
@@ -261,9 +275,6 @@ let captioningService: CaptioningService | null = null;
 
 // Ref for OperatorPreview component
 const operatorPreview = ref<InstanceType<typeof OperatorPreview> | null>(null);
-
-// Operator Preview state
-const operatorPreviewOpen = ref(true);
 
 // Computed: is any translation mode active (running or paused)
 const isOperatorPreviewActive = computed(
@@ -374,7 +385,7 @@ async function startTest() {
   currentLiveTranslationByLang.value = {};
 
   // Auto-open operator preview if it's closed
-  operatorPreviewOpen.value = true;
+  openOperatorPreview();
 
   try {
     // Create captioning service

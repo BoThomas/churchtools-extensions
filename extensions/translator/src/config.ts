@@ -17,7 +17,7 @@ export const KEY = keyFromImportMeta || keyFromProcess || 'translator';
  * localStorage size issues in long sessions. Both operator and presentation views
  * are limited to this size.
  */
-export const PRESENTATION_PARAGRAPH_WINDOW_SIZE = 50;
+export const PRESENTATION_PARAGRAPH_WINDOW_SIZE = 100;
 /**
  * Maximum age for abandoned presentation sessions in localStorage.
  * Sessions older than this will be cleaned up on mount.

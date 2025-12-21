@@ -1,5 +1,10 @@
 <template>
-  <Fieldset legend="Translation Options" :collapsed="true" :toggleable="true">
+  <Fieldset
+    legend="Translation Options"
+    :collapsed="collapsed"
+    :toggleable="true"
+    @toggle="$emit('toggle', $event)"
+  >
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <!-- Input Language -->
       <LanguageSelectField
@@ -145,6 +150,7 @@ interface Props {
   disabled?: boolean;
   inputLanguageValid?: boolean;
   outputLanguagesValid?: boolean;
+  collapsed?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -152,6 +158,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   'update:modelValue': [value: TranslatorSettings];
   change: [];
+  toggle: [event: { value: boolean }];
 }>();
 
 const inputLanguages = translationOptions.inputLanguages;
