@@ -29,6 +29,7 @@ export function useTestPresentation() {
    * @param addFinalizedParagraph - Callback to add a finalized paragraph (handles sliding window)
    * @param currentLiveTranslationByLang - Store for live translations
    * @param updatePresentationWindow - Callback to update presentation window
+   * @param scrollToBottom - Optional callback to scroll operator preview to bottom
    */
   function startGeneration(
     isPaused: { value: boolean },
@@ -40,6 +41,7 @@ export function useTestPresentation() {
       translations: Record<string, string>,
       isLive: boolean,
     ) => void,
+    scrollToBottom?: () => void,
   ) {
     stopGeneration();
 
@@ -64,6 +66,9 @@ export function useTestPresentation() {
               liveTranslations[lang.code];
           }
           updatePresentationWindow(presentationLiveTranslations, true);
+
+          // Scroll after live update
+          scrollToBottom?.();
         } else {
           // Finalize the paragraph - different text per language with line numbers
           // Generate for ALL languages (operator view)
@@ -84,6 +89,9 @@ export function useTestPresentation() {
 
           currentLiveTranslationByLang.value = {};
           updatePresentationWindow({}, false);
+
+          // Scroll after finalized paragraphs
+          scrollToBottom?.();
         }
         showLive = !showLive;
       }

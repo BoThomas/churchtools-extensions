@@ -24,7 +24,7 @@ vi.mock('lorem-ipsum', () => ({
 
 /**
  * Helper to create a mock addFinalizedParagraph function that populates a ref
- * and optionally applies sliding window (simulating useTestOutput behavior)
+ * and optionally applies sliding window (simulating useOperatorPreview behavior)
  */
 function createMockAddFinalizedParagraph(
   finalizedParagraphsByLang: { value: Record<string, string[]> },
@@ -70,6 +70,7 @@ describe('useTestPresentation', () => {
       );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
+      const scrollToBottom = vi.fn();
 
       testPresentation.startGeneration(
         isPaused,
@@ -78,6 +79,7 @@ describe('useTestPresentation', () => {
         addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
+        scrollToBottom,
       );
 
       // First tick (800ms) - should show live
@@ -119,6 +121,7 @@ describe('useTestPresentation', () => {
       );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
+      const scrollToBottom = vi.fn();
 
       testPresentation.startGeneration(
         isPaused,
@@ -127,6 +130,7 @@ describe('useTestPresentation', () => {
         addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
+        scrollToBottom,
       );
 
       // First tick - live translation

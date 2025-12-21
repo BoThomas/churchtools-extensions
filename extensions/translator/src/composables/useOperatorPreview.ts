@@ -2,14 +2,14 @@ import { ref, nextTick } from 'vue';
 import type { LanguageConfig } from '../types/language';
 import { PRESENTATION_PARAGRAPH_WINDOW_SIZE } from '../config';
 
-export function useTestOutput() {
+export function useOperatorPreview() {
   const finalizedParagraphsByLang = ref<Record<string, string[]>>({});
   const currentLiveTranslationByLang = ref<Record<string, string>>({});
-  const testOutputLangRefs = ref<Record<string, HTMLDivElement>>({});
+  const operatorPreviewLangRefs = ref<Record<string, HTMLDivElement>>({});
 
-  const scrollTestOutputToBottom = async (languageCode: string) => {
+  const scrollToBottom = async (languageCode: string) => {
     await nextTick();
-    const element = testOutputLangRefs.value[languageCode];
+    const element = operatorPreviewLangRefs.value[languageCode];
     if (element) {
       element.scrollTop = element.scrollHeight;
     }
@@ -24,7 +24,6 @@ export function useTestOutput() {
     finalizedParagraphsByLang.value[languageCode] = paragraphs.slice(
       -PRESENTATION_PARAGRAPH_WINDOW_SIZE,
     );
-    scrollTestOutputToBottom(languageCode);
   };
 
   const updateLiveTranslation = (languageCode: string, text: string) => {
@@ -50,11 +49,11 @@ export function useTestOutput() {
   return {
     finalizedParagraphsByLang,
     currentLiveTranslationByLang,
-    testOutputLangRefs,
+    operatorPreviewLangRefs,
     addFinalizedParagraph,
     updateLiveTranslation,
     clearOutput,
-    scrollTestOutputToBottom,
+    scrollToBottom,
     initializeLanguages,
   };
 }
