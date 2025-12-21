@@ -60,19 +60,15 @@
   - Record and store original input audio
   - Store translated audio tracks
 
-## Next TODOs
-
-- use the way test mode is displaying things optionally for the presentation window as well so the operator can see what is captured in original tone and in the translated languages. this should also work for test presentation with the lorem ipsum in the same way. it should be a checkbox next to "show input langauge" saying "operator preview" or similar. we need to find a good name for that thing as "test mode" or "test output display" is off now, as we dont use it only for testing anymore (we use it for testing and for real presentations if the operator wants to see the original input as well).
-- keep track of opened/closed fieldsets in the tranlsate tab in local stprage and apply it on entering that tab again (even after page reload)
-
 ## Finished TODOs in current branch
 
 - Added support for multiple output languages (with split-screen and multi-screen mode)
 - Added the option to show the input language transcription in the presentation
 - Optimized the flow for starting and testing a presentation session
+- Added operator preview for visualizing all inout/output languages inside the translator tab
+- Limit the number of past paragraphs stored to avoid localStorage exhaustion and improve performance
+- Preserve opening/closed state of the fieldsets in translator tab
 - Added support for country-flags under windows (as windows does not support the emoji flags per default)
-- Added autoscroll for translation test outputs
 - Added browser compatibility alert for non-Chromium browsers
 - Added unit, integration, and e2e tests
 - Added language usage report
-- Limit the number of past paragraphs shown in presentation windows to avoid localStorage exhaustion and improve performance
