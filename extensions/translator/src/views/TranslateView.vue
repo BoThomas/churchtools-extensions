@@ -296,10 +296,8 @@ function onTranslating(translations: Record<string, string>, original: string) {
   // Store full operator view
   currentLiveTranslationByLang.value = operatorTranslations;
 
-  // Scroll operator preview to bottom
-  if (state.value.isTestRunning) {
-    scrollOperatorPreviewToBottom();
-  }
+  // Scroll operator preview to bottom (all active modes)
+  scrollOperatorPreviewToBottom();
 
   // Update presentation window if running (filter for audience)
   if (state.value.isPresentationRunning) {
@@ -327,10 +325,8 @@ function onTranslated(translations: Record<string, string>, original: string) {
   // Clear live translations
   currentLiveTranslationByLang.value = {};
 
-  // Scroll operator preview to bottom
-  if (state.value.isTestRunning) {
-    scrollOperatorPreviewToBottom();
-  }
+  // Scroll operator preview to bottom (all active modes)
+  scrollOperatorPreviewToBottom();
 
   // Update presentation window if running
   if (state.value.isPresentationRunning) {
@@ -609,6 +605,7 @@ function startTestGeneration() {
           isLive,
           isLive ? {} : finalizedParagraphsByLang.value,
         ),
+      scrollOperatorPreviewToBottom,
     );
 
     toast.add({

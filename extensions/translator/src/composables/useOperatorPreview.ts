@@ -24,7 +24,6 @@ export function useOperatorPreview() {
     finalizedParagraphsByLang.value[languageCode] = paragraphs.slice(
       -PRESENTATION_PARAGRAPH_WINDOW_SIZE,
     );
-    scrollToBottom(languageCode);
   };
 
   const updateLiveTranslation = (languageCode: string, text: string) => {

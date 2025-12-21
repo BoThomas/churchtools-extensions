@@ -70,6 +70,7 @@ describe('useTestPresentation', () => {
       );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
+      const scrollToBottom = vi.fn();
 
       testPresentation.startGeneration(
         isPaused,
@@ -78,6 +79,7 @@ describe('useTestPresentation', () => {
         addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
+        scrollToBottom,
       );
 
       // First tick (800ms) - should show live
@@ -119,6 +121,7 @@ describe('useTestPresentation', () => {
       );
       const currentLiveTranslationByLang = ref<Record<string, string>>({});
       const updatePresentationWindow = vi.fn();
+      const scrollToBottom = vi.fn();
 
       testPresentation.startGeneration(
         isPaused,
@@ -127,6 +130,7 @@ describe('useTestPresentation', () => {
         addFinalizedParagraph,
         currentLiveTranslationByLang,
         updatePresentationWindow,
+        scrollToBottom,
       );
 
       // First tick - live translation

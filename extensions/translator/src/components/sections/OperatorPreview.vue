@@ -41,7 +41,7 @@
         </template>
         <div
           :ref="(el) => setLangRef(lang.code, el as HTMLDivElement)"
-          class="space-y-2 max-h-96 overflow-y-auto"
+          class="space-y-2 max-h-96 overflow-y-auto scrollbar-hidden"
           :data-testid="`operator-preview-content-${lang.code}`"
         >
           <p
@@ -106,3 +106,15 @@ defineExpose({
   langRefs,
 });
 </script>
+
+<style scoped>
+/* Hide scrollbar while maintaining scroll functionality */
+.scrollbar-hidden {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+</style>
