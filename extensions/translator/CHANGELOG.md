@@ -2,6 +2,79 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2025-12-22 — ct-translator v1.4.0
+
+Doing the things better!
+
+### Changes
+
+- 8c6b494 feat(translator): implement fieldset state management
+- 820aa53 feat(translator): enhance scrolling behavior in operator preview
+- a3b5b49 style(translator): enhance placeholder styling in operator preview
+- df33ac8 feat(translator): implement operator preview based on test preview
+- 332bf69 chore(translator): reformat
+- 2bda09d feat(translator): implement cleanup of stale sessions in localStorage
+- 5550b6f feat(translator): optimize implementation of sliding window and approach for sending translation updates to the presentation view
+- 688fe5e feat(translator): implement sliding window for finalized paragraphs to prevent memory exhaustion (WIP)
+- d652c21 feat(translator): add language usage statistics and charts
+- d91609b feat(translator): add start hint overlay in presentation mode
+- 9abb182 fix(translator): address TypeScript ignore comments and improve message formatting in TranslationControlPanel
+- 2dce8f2 docs(translator): update e2e testing README for Playwright integration
+- 5aecc08 test(translator): enhance E2E tests for split-screen and multi-window presentations
+- 015a5fa test: update test output configurations
+- 12c3818 test(translator): add e2e tests for translation test
+- 4aae044 test(translator): fix multi-window E2E test
+- da70d58 test(translator): implement comprehensive E2E tests for presentation styling options
+- de110f8 test(translator): fix testHelper bug, better settings-flow test
+- ba84f71 refactor(translator): streamline E2E test setup by introducing helper functions for API configuration and tab navigation
+- 003aaca test(translator): consolidate and enhance E2E tests for presentation modes
+- 135d5e4 test(translator): add utility functions for configuring translation and add test presentation tests
+- 57b5fbd test(translator): enhance cleanup and cross-window communication in E2E tests
+- 0366cbb test(translator): add browser-compatible mock for Azure Speech SDK and update E2E test setup
+- 5a07f95 test(translator): fix most of multi-window E2E tests
+- e7d3869 test(translator): enhance E2E tests with cleanup utilities
+- 3b598db test(translator): integrate real ChurchTools API for E2E tests and add authentication/cleanup utilities
+- b618a37 test(translator): add end-to-end tests for multi-window mode, presentation mode, settings flow, and test mode WIP
+- c8ab99f test(translator): integrate Playwright for E2E testing in Translator extension WIP
+- 2627fba refactor(tests): rename test:ui script to test:gui
+- b65f182 refactor(translator): remove unused vitest integration config file
+- bf4d4f3 refactor(translator): replace setTimeout with waitUntil for speedy tests
+- bf1b13d fix(translator): add environment in vitest.config.ts
+- e8d0751 test(translator): enhance integration tests with complete KV store mock and fix other issues
+- 9b13d37 feat: add mock implementation for kv-store with in-memory storage
+- 319313a refactor(translator): remove redundant test scripts and test combine test configs
+- 1e3a5c5 test(translator): add integration tests for settings persistence, translation workflow, and variant management (WIP)
+- 7ef5b46 fix(translator): add validation for variant names, prevent deletion of Default variant, fix duration calculation
+- d8d7aa9 test(translator): enhance mock data and setup utilities for testing
+- d5d18ef docs(translator): document integration and ui testing plan
+- c35925f feat(translator): add unit tests for translation state management, captioning service, session logger, and language helpers
+- 0a508eb feat(translator): add Vitest configuration and testing scripts
+- 4966270 feat(translator): enhance language validation and error handling in forms (#7)
+- 9512f0a Add browser compatibility warning for translator presentation mode (#6)
+- e7a5634 style(translator): enhance fullscreen instructions
+- 098ac7f refactor(translator): add LanguageConfig type
+- e775b74 refactor(translator): major refactoring of TranslateView.vue to use composables, reducing complexity and improving maintainability
+- 9a45c22 feat(translator): add info message for popup blocker in multi-window mode
+- 0938771 docs(translator): add documentation for current features and future enhancements
+- 0dc3c4c feat(translator): replace dummy user data with negative IDs to avoid collisions and only show dummy button in dev
+- 2d65ca5 feat(translator): display selected language in fullscreen instructions and extend auto-dismiss duration
+- ff16545 feat(translator): add feature to show input language in presentation
+- c79cdf9 feat(translator): add scroll functionality for test output containers
+- fe58bd3 style(translator): adjust language header and start test presentation icon
+- 692f556 feat(translator): enhance presentation start flow
+- cf5c74a feat(translator): WIP move testing to settings
+- fb21e6f feat(translator): implement session-based management for multi-window presentations and add multi window support
+- ea48273 feat(translator): implement multi-language presentation modes with split-screen
+- b9e9a73 feat(translator): add country flag emoji polyfill for better cross-platform support
+- 597887f feat(translator): multi-language support in logger and reports + more usage of flags instead of language keys
+- 6d55db5 feat(translator): support multiple output languages in captioning and translation services
+- 5f9b426 fix: use cross-platform archiver for deploy script instead of zip command
+- bec5b7a docs(build-tools): clarify date-prefixed tag format and git integration
+- e432808 docs: update README to reflect Microsoft Foundry branding
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2025-12-06-ct-translator-v1.3.1...2025-12-22-ct-translator-v1.4.0
+
+---
 ## 2025-12-06 — ct-translator v1.3.1
 
 Fixes an issue where switching between setting variants would not properly migrate language settings from the old format to the new format, causing invalid language warnings to appear until the page was reloaded. The migration now correctly applies when selecting any variant.
