@@ -3,17 +3,20 @@
     <label v-if="label" :for="inputId" class="font-medium text-sm">
       {{ label }}
     </label>
-    <div class="flex items-stretch w-full">
+    <div
+      class="flex items-stretch w-full"
+      :class="{ 'has-info': $slots.info || infoContent }"
+    >
       <slot :input-id="inputId" :disabled="disabled" />
       <span
         v-if="$slots.info || infoContent"
-        class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden"
+        class="flex items-center justify-center border-y border-e border-surface-300 dark:border-surface-700 rounded-e-md overflow-hidden bg-surface-50 dark:bg-surface-800/50"
       >
         <Button
           icon="pi pi-question-circle"
           severity="secondary"
           text
-          pt:root="rounded-none"
+          class="rounded-none!"
           @click="(e) => popover?.toggle(e)"
           :disabled="disabled"
         />
@@ -49,3 +52,17 @@ withDefaults(defineProps<Props>(), {
 
 const popover = ref();
 </script>
+
+<style scoped>
+/* Ensure the input takes up the available space */
+:deep(> *:first-child) {
+  flex: 1 1 0%;
+  margin: 0 !important;
+}
+
+/* Remove right border radius when info button is present */
+.has-info :deep(> *:first-child) {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+</style>

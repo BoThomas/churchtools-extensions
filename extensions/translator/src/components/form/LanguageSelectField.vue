@@ -13,7 +13,7 @@
         :disabled="isDisabled"
         :placeholder="placeholder"
         :invalid="invalid"
-        pt:root="flex-1 rounded-e-none"
+        pt:root="w-full"
         :data-testid="inputId ? `select-${inputId}` : undefined"
       />
       <Multiselect
@@ -29,7 +29,7 @@
         :placeholder="placeholder"
         :max-selected-labels="2"
         :invalid="invalid"
-        pt:root="flex-1 rounded-e-none"
+        pt:root="w-full"
         :data-testid="inputId ? `multiselect-${inputId}` : undefined"
       />
     </template>

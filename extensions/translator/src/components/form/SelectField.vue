@@ -15,7 +15,7 @@
         :placeholder="placeholder"
         :option-label="optionLabel"
         :option-value="optionValue"
-        pt:root="flex-1 rounded-e-none"
+        pt:root="w-full"
       >
         <template v-if="$slots.option" #option="slotProps">
           <slot name="option" v-bind="slotProps"></slot>

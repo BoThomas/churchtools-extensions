@@ -12,7 +12,7 @@
         @update:model-value="$emit('update:modelValue', $event)"
         :disabled="isDisabled"
         :placeholder="placeholder"
-        pt:root="flex-1 rounded-e-none"
+        pt:root="w-full"
       />
     </template>
     <template #info>
