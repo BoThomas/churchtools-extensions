@@ -4,7 +4,7 @@ You're migrating from a single app with loosely coupled packages to a proper pnp
 
 ### Steps
 
-1. **Create workspace foundation** by adding `pnpm-workspace.yaml` at root defining `extensions/*` and `packages/*`, then create `turbo.json` with build/dev/deploy tasks configured for the ChurchTools deployment workflow.
+1. **Create workspace foundation** by adding `pnpm-workspace.yaml` at root defining `extensions/*` and `packages/*`, then create `turbo.json` with build/dev/package tasks configured for the ChurchTools deployment workflow.
 
 2. **Add `package.json` files to packages** — create proper package configs for `@churchtools-extensions/ct-utils`, `@churchtools-extensions/persistance`, and `@churchtools-extensions/prime-volt` with correct dependencies (PrimeVue, Vue, Pinia, tailwind-merge, @churchtools/churchtools-client).
 

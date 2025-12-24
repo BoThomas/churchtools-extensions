@@ -11,7 +11,7 @@ Creates a production-ready ZIP archive of your extension for deployment to Churc
 **Usage:**
 
 ```bash
-pnpm deploy
+pnpm package
 ```
 
 This command:

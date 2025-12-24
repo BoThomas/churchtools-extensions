@@ -295,10 +295,10 @@ pnpm test:e2e # or `pnpm test:e2e:[ui|headed|debug]`
 
 ```bash
 # build and package all extensions
-pnpm deploy
+pnpm package
 
 # build and package a specific extension
-pnpm deploy --filter=ct-translator
+pnpm package --filter=ct-translator
 ```
 
 Packaged extensions are placed in the `releases/` directory.

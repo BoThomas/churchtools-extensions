@@ -17,7 +17,7 @@
     "build": "tsc && vite build",
     "type-check": "tsc --noEmit",
     "preview": "vite preview",
-    "deploy": "pnpm build && ct-package"
+    "package": "pnpm build && ct-package"
   },
   "devDependencies": {
     "@churchtools/churchtools-client": "^1.4.2"

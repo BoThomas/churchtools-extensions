@@ -26,7 +26,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "preview": "vite preview",
-    "deploy": "pnpm build && ct-package"
+    "package": "pnpm build && ct-package"
   },
   "devDependencies": {
     "@churchtools/churchtools-client": "^1.4.2"

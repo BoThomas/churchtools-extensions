@@ -136,7 +136,7 @@ await category.delete(id);
 2. **Start dev server**: `pnpm dev --filter=<extension-name>`
 3. **Run tests**: `pnpm test --filter=<extension-name>` or `pnpm test` for all
 4. **Build**: `pnpm build` or `turbo build --filter=<extension-name>`
-5. **Package for deployment**: `pnpm deploy` in extension directory
+5. **Package for deployment**: `pnpm package` in extension directory
 6. DONT run e2e tests with playwright as they take too long. Promt the user to run them by himself if needed.
 
 ## Testing

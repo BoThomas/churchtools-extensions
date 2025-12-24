@@ -559,16 +559,16 @@ async function main() {
         );
       }
 
-      // Run deploy (build + package)
+      // Run package (build + package)
       console.log(c('cyan', '\n   Building and packaging...'));
       try {
-        execSync(`pnpm turbo deploy --filter=${ext.name}`, {
+        execSync(`pnpm turbo package --filter=${ext.name}`, {
           cwd: monorepoRoot,
           stdio: 'inherit',
         });
-        console.log(c('green', '   ✓ Deploy completed'));
+        console.log(c('green', '   ✓ Packaging completed'));
       } catch (error) {
-        console.log(c('red', '   ✗ Deploy failed'));
+        console.log(c('red', '   ✗ Packaging failed'));
         throw error;
       }
 
