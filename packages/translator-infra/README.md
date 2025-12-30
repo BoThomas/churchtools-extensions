@@ -8,6 +8,8 @@ This is an internal CLI tool designed to provision and manage the Azure infrastr
 - **Idempotent**: Safe to run multiple times; it detects existing resources rather than duplicating them.
 - **Auto-Deployment**: Automatically builds and deploys the `@churchtools-extensions/translator-webpubsub-access-function` to Azure.
 - **Secret Management**: Prints secrets (keys, connection strings) once during setup and provides a command to re-fetch them later.
+- **Secret Rotation**: Rotate API keys and secrets for existing resources with a single command.
+- **Code Deployment**: Deploy updated Function App code without reprovisioning infrastructure.
 
 ## Prerequisites
 
@@ -19,9 +21,9 @@ This is an internal CLI tool designed to provision and manage the Azure infrastr
 
 Run the following commands from the monorepo root:
 
-### 1. Initial Infrastructure Setup
+### 1. Infrastructure Setup & Redeployment
 
-Use this to create your Resource Group, Speech Service, and Web PubSub (including the Function App).
+Use this to create your Resource Group, Speech Service, and Web PubSub (including the Function App), or to redeploy the Function App code to existing resources.
 
 ```bash
 pnpm run --filter @churchtools-extensions/translator-infra setup
@@ -34,6 +36,20 @@ If you lost your API keys or connection strings, use this to print them to the c
 ```bash
 pnpm run --filter @churchtools-extensions/translator-infra secrets
 ```
+
+### 3. Rotate Secrets
+
+Rotate API keys and secrets for security compliance or after a suspected breach.
+
+```bash
+pnpm run --filter @churchtools-extensions/translator-infra rotate
+```
+
+This command allows you to rotate:
+
+- **Speech Service Keys**: Primary, secondary, or both API keys
+- **Web PubSub Access Secrets**: Operator and/or reader authentication secrets
+- **Web PubSub Technical Connection Key**: Primary, secondary, or both connection keys (automatically updates Function App)
 
 ## Infrastructure Resources Provisioned
 

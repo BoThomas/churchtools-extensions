@@ -1,10 +1,31 @@
 const { app } = require('@azure/functions');
 const { WebPubSubServiceClient } = require('@azure/web-pubsub');
+const crypto = require('crypto');
 
 const OPERATOR_SECRET = process.env.OPERATOR_SECRET;
 const READER_SECRET = process.env.READER_SECRET;
 const CONNECTION_STRING = process.env.WEBPUBSUB_CONNECTION_STRING;
 const HUB_NAME = 'translator';
+
+/**
+ * Timing-safe comparison of secrets to prevent timing attacks
+ */
+function timingSafeCompare(a, b) {
+  if (!a || !b) return false;
+
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+
+  // If lengths differ, still perform comparison to prevent timing leaks
+  if (bufA.length !== bufB.length) {
+    // Compare against a dummy buffer of the same length as input
+    const dummyBuf = Buffer.alloc(bufA.length);
+    crypto.timingSafeEqual(bufA, dummyBuf);
+    return false;
+  }
+
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 app.http('webpubsub-access', {
   methods: ['POST'],
@@ -32,8 +53,8 @@ app.http('webpubsub-access', {
       const client = new WebPubSubServiceClient(CONNECTION_STRING, HUB_NAME);
       let tokenResponse;
 
-      if (secret === OPERATOR_SECRET) {
-        // Operator: can create rooms, send messages, and read
+      if (timingSafeCompare(secret, OPERATOR_SECRET)) {
+        // Operator: can create addrooms, send messages, and read
         const token = await client.getClientAccessToken({
           userId: userId || `operator_${Date.now()}`,
           roles: [
@@ -50,7 +71,7 @@ app.http('webpubsub-access', {
         };
 
         context.log(`Granted operator access for room: ${roomId}`);
-      } else if (secret === READER_SECRET) {
+      } else if (timingSafeCompare(secret, READER_SECRET)) {
         // Reader: can only join and read from a specific room
         const token = await client.getClientAccessToken({
           userId: userId || `reader_${Date.now()}`,
