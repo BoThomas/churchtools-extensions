@@ -8,7 +8,8 @@
   "scripts": {
     "start": "node --experimental-strip-types src/index.ts",
     "setup": "node --experimental-strip-types src/index.ts setup",
-    "secrets": "node --experimental-strip-types src/index.ts secrets"
+    "secrets": "node --experimental-strip-types src/index.ts secrets",
+    "rotate": "node --experimental-strip-types src/index.ts rotate"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.1.0",
