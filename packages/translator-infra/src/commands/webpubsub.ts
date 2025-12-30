@@ -1,15 +1,58 @@
 import { input, select, confirm } from '@inquirer/prompts';
-import archiver from 'archiver';
-import { createWriteStream } from 'node:fs';
 import ora from 'ora';
 import crypto from 'node:crypto';
 import path from 'node:path';
-import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { SetupContext } from './setup.ts';
 import { resourceExists, selectLocation } from '../utils/az.ts';
 import { exec, execJson } from '../utils/exec.ts';
 import { logger } from '../utils/logger.ts';
+
+/**
+ * Wait for a Function App to be fully ready (provisioned and accessible).
+ * Azure Function Apps can take 30-90 seconds to be fully ready after creation.
+ */
+async function waitForFunctionAppReady(
+  functionAppName: string,
+  resourceGroup: string,
+  subscriptionId: string,
+  maxAttempts: number = 12,
+  delayMs: number = 10000,
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      // Check if the function app is accessible via Azure CLI
+      // Note: For Flex Consumption apps, state is under properties.state
+      const result = await exec(
+        `az functionapp show \
+          --name "${functionAppName}" \
+          --resource-group "${resourceGroup}" \
+          --subscription "${subscriptionId}" \
+          --query "properties.state" \
+          --output tsv`,
+      );
+      const state = result.stdout.trim();
+
+      if (state === 'Running') {
+        return; // Function App is ready
+      }
+
+      // If not running, wait and retry
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    } catch {
+      // App not found yet, wait and retry
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  throw new Error(
+    `Function App "${functionAppName}" did not become ready within ${(maxAttempts * delayMs) / 1000} seconds`,
+  );
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -183,6 +226,22 @@ export async function provisionWebPubSub(ctx: SetupContext): Promise<string[]> {
     spinner.succeed(
       `Function App "${functionAppName}" created with Flex Consumption plan`,
     );
+
+    // Wait for Function App to be fully provisioned before proceeding
+    const readySpinner = ora(
+      'Waiting for Function App to be ready (this may take up to 2 minutes)...',
+    ).start();
+    try {
+      await waitForFunctionAppReady(
+        functionAppName,
+        ctx.resourceGroup,
+        ctx.subscriptionId,
+      );
+      readySpinner.succeed('Function App is ready');
+    } catch (error: any) {
+      readySpinner.fail(error.message);
+      throw error;
+    }
   }
 
   // === 4. Configure Function App Settings ===
@@ -226,28 +285,6 @@ export async function provisionWebPubSub(ctx: SetupContext): Promise<string[]> {
   ];
 }
 
-async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
-  const archive = archiver('zip', { zlib: { level: 9 } });
-  const stream = createWriteStream(outPath);
-
-  return new Promise((resolve, reject) => {
-    archive
-      .directory(path.join(sourceDir, 'dist'), 'dist')
-      .file(path.join(sourceDir, 'host.json'), { name: 'host.json' })
-      .file(path.join(sourceDir, 'package.json'), { name: 'package.json' })
-      .file(path.join(sourceDir, 'package-lock.json'), {
-        name: 'package-lock.json',
-      })
-      // Don't include node_modules - let Azure install them with remote build
-      // This is required for Flex Consumption plans
-      .on('error', (err) => reject(err))
-      .pipe(stream);
-
-    stream.on('close', () => resolve());
-    archive.finalize();
-  });
-}
-
 async function deployFunctionApp(
   functionAppName: string,
   resourceGroup: string,
@@ -259,55 +296,82 @@ async function deployFunctionApp(
     __dirname,
     '../../../translator-webpubsub-access-function',
   );
-  const tempZipPath = path.resolve(__dirname, '../../.func-deploy.zip');
 
   try {
-    // 1. Install & Build
-    spinner.text = 'Building Function App...';
-    await exec(`cd "${functionAppDir}" && pnpm install && pnpm build`);
+    // 1. Install dependencies
+    spinner.text = 'Installing dependencies...';
+    await exec(`cd "${functionAppDir}" && npm install`);
 
-    // 2. Zip using archiver (cross-platform)
-    spinner.text = 'Creating deployment package...';
-    await zipDirectory(functionAppDir, tempZipPath);
+    // 2. Generate fresh package-lock.json (since project uses pnpm, it may be outdated)
+    spinner.text = 'Generating package-lock.json...';
+    await exec(`cd "${functionAppDir}" && npm install --package-lock-only`);
 
-    // 3. Deploy using Azure Functions Core Tools with --nozip (skips buggy remote build)
-    spinner.text = 'Deploying to Azure using func tools...';
-    await exec(
-      `cd "${functionAppDir}" && func azure functionapp publish "${functionAppName}" --nozip`,
-    );
-    spinner.succeed('Function App deployed successfully');
+    // 3. Deploy using Azure Functions Core Tools with retries
+    spinner.text = 'Deploying to Azure...';
 
-    // Clean up
-    if (await fs.stat(tempZipPath).catch(() => false)) {
-      await fs.unlink(tempZipPath);
+    const maxDeployAttempts = 5;
+    const deployRetryDelayMs = 15000;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxDeployAttempts; attempt++) {
+      try {
+        await exec(
+          `cd "${functionAppDir}" && func azure functionapp publish "${functionAppName}"`,
+        );
+        spinner.succeed('Function App deployed successfully');
+        lastError = null;
+        break;
+      } catch (error: any) {
+        lastError = error;
+        const isAppNotFoundError =
+          error.message?.includes("Can't find app with name") ||
+          error.message?.includes('could not be found');
+
+        if (isAppNotFoundError && attempt < maxDeployAttempts) {
+          spinner.text = `Deployment failed (attempt ${attempt}/${maxDeployAttempts}), waiting for Function App to be fully ready...`;
+          await new Promise((resolve) =>
+            setTimeout(resolve, deployRetryDelayMs),
+          );
+        } else if (!isAppNotFoundError) {
+          // Non-retryable error
+          throw error;
+        }
+      }
     }
 
-    // Verify deployment worked by testing the function endpoint
+    if (lastError) {
+      throw lastError;
+    }
+
+    // Verify deployment worked by listing functions
     spinner.text = 'Verifying function deployment...';
+    await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5s for function to initialize
+
     try {
       const result = await exec(
-        `az functionapp function show \
+        `az functionapp function list \
           --name "${functionAppName}" \
           --resource-group "${resourceGroup}" \
           --subscription "${subscriptionId}" \
-          --function-name webpubsub-access \
-          --output table`,
+          --output json`,
       );
-      if (result.stdout.includes('webpubsub-access')) {
-        spinner.succeed('Function App deployed and verified successfully');
+
+      const functions = JSON.parse(result.stdout);
+      if (functions && functions.length > 0) {
+        const functionNames = functions.map((f: any) => f.name).join(', ');
+        spinner.succeed(`Function App verified: ${functionNames} deployed`);
       } else {
-        spinner.succeed('Function App deployed (verification pending)');
+        spinner.warn(
+          'Function App deployed but no functions found yet. May need a moment to initialize.',
+        );
       }
     } catch {
       // Function might not be immediately available after deployment
-      spinner.succeed(
-        'Function App deployed (function may take a moment to initialize)',
+      spinner.warn(
+        'Function App deployed (could not verify functions - may need a moment to initialize)',
       );
     }
   } catch (error: any) {
-    if (await fs.stat(tempZipPath).catch(() => false)) {
-      await fs.unlink(tempZipPath);
-    }
     spinner.fail(`Deployment failed: ${error.message}`);
     throw error;
   }

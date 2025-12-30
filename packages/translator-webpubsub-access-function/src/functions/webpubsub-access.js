@@ -1,37 +1,17 @@
-import {
-  app,
-  HttpRequest,
-  HttpResponseInit,
-  InvocationContext,
-} from '@azure/functions';
-import { WebPubSubServiceClient } from '@azure/web-pubsub';
+const { app } = require('@azure/functions');
+const { WebPubSubServiceClient } = require('@azure/web-pubsub');
 
-interface TokenRequest {
-  secret: string;
-  roomId: string;
-  userId?: string;
-}
-
-interface TokenResponse {
-  url: string;
-  role: 'operator' | 'reader';
-  roomId: string;
-}
-
-const OPERATOR_SECRET = process.env.OPERATOR_SECRET!;
-const READER_SECRET = process.env.READER_SECRET!;
-const CONNECTION_STRING = process.env.WEBPUBSUB_CONNECTION_STRING!;
+const OPERATOR_SECRET = process.env.OPERATOR_SECRET;
+const READER_SECRET = process.env.READER_SECRET;
+const CONNECTION_STRING = process.env.WEBPUBSUB_CONNECTION_STRING;
 const HUB_NAME = 'translator';
 
 app.http('webpubsub-access', {
   methods: ['POST'],
   authLevel: 'anonymous',
-  handler: async (
-    request: HttpRequest,
-    context: InvocationContext,
-  ): Promise<HttpResponseInit> => {
+  handler: async (request, context) => {
     try {
-      const body = (await request.json()) as TokenRequest;
+      const body = await request.json();
       const { secret, roomId, userId } = body;
 
       if (!secret || !roomId) {
@@ -50,7 +30,7 @@ app.http('webpubsub-access', {
       }
 
       const client = new WebPubSubServiceClient(CONNECTION_STRING, HUB_NAME);
-      let tokenResponse: TokenResponse;
+      let tokenResponse;
 
       if (secret === OPERATOR_SECRET) {
         // Operator: can create rooms, send messages, and read

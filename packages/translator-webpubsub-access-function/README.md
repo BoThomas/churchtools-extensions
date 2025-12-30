@@ -43,12 +43,11 @@ If you want to run the function locally for testing:
 
 2. Create a `local.settings.json` by copying [example.local.settings.json](./example.local.settings.json) and filling in the required values.
 
-3. Build and start the function:
+3. Start the function:
 
    ```bash
-   pnpm install
-   pnpm build
-   pnpm start
+   npm install
+   npm start
    ```
 
    The function will be available at `http://localhost:7071/api/webpubsub-access`
@@ -59,4 +58,4 @@ Install the [REST Client extension](https://marketplace.visualstudio.com/items?i
 
 ## Deployment
 
-Deployment is handled automatically by the [translator-infra](../translator-infra) package using the `az functionapp deployment source config-zip` command.
+Deployment is handled automatically by the [translator-infra](../translator-infra) package using `func azure functionapp publish`.

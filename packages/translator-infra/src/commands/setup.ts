@@ -99,7 +99,7 @@ export async function runSetup(): Promise<void> {
   // Step 8: Print secrets ONCE
   if (secrets.length > 0) {
     logger.blank();
-    logger.box('⚠️  IMPORTANT: SECRETS (SHOWN ONCE)', [
+    logger.box('🔐 IMPORTANT: SECRETS (SHOWN ONCE)', [
       'Copy these values NOW. They will not be shown again.',
       "Run 'pnpm run secrets' to fetch them again later.",
       '',

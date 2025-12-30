@@ -1,19 +1,12 @@
 {
-  "name": "@churchtools-extensions/translator-webpubsub-access-function",
+  "name": "translator-webpubsub-access-function",
   "version": "1.0.0",
-  "main": "dist/functions/*.js",
+  "main": "src/functions/*.js",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "start": "func start",
-    "prestart": "npm run build"
+    "start": "func start"
   },
   "dependencies": {
     "@azure/functions": "^4.10.0",
     "@azure/web-pubsub": "^1.2.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.2",
-    "@types/node": "^25.0.3"
   }
 }
