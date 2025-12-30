@@ -1,4 +1,4 @@
-import { input, select } from '@inquirer/prompts';
+import { input, select, confirm } from '@inquirer/prompts';
 import archiver from 'archiver';
 import { createWriteStream } from 'node:fs';
 import ora from 'ora';
@@ -18,12 +18,40 @@ interface WebPubSubKeys {
   secondaryConnectionString: string;
 }
 
-interface FunctionApp {
-  defaultHostName: string;
-}
-
 export async function provisionWebPubSub(ctx: SetupContext): Promise<string[]> {
   logger.step('Configuring Web PubSub...');
+
+  // Check if Azure Functions Core Tools are installed (required for deployment)
+  try {
+    await exec('func --version');
+  } catch {
+    const shouldInstall = await confirm({
+      message:
+        'Azure Functions Core Tools are required but not installed. Install now? (requires sudo)',
+      default: true,
+    });
+
+    if (shouldInstall) {
+      const spinner = ora('Installing Azure Functions Core Tools...').start();
+      try {
+        await exec('npm install -g azure-functions-core-tools@4');
+        spinner.succeed('Azure Functions Core Tools installed successfully');
+      } catch (error: any) {
+        spinner.fail('Failed to install Azure Functions Core Tools');
+        throw new Error(
+          'Installation failed. Please install manually:\n' +
+            'npm install -g azure-functions-core-tools@4\n' +
+            'Or visit: https://docs.microsoft.com/azure/azure-functions/functions-run-local',
+        );
+      }
+    } else {
+      throw new Error(
+        'Azure Functions Core Tools are required for deployment.\n' +
+          'Install with: npm install -g azure-functions-core-tools@4\n' +
+          'Or visit: https://docs.microsoft.com/azure/azure-functions/functions-run-local',
+      );
+    }
+  }
 
   const pubsubName = await input({
     message: 'Web PubSub service name:',
@@ -135,7 +163,7 @@ export async function provisionWebPubSub(ctx: SetupContext): Promise<string[]> {
   );
 
   if (functionExists) {
-    logger.warn(`Function App "${functionAppName}" already exists.`);
+    logger.info(`Function App "${functionAppName}" already exists.`);
   } else {
     const spinner = ora(
       `Creating Flex Consumption Function App "${functionAppName}"...`,
@@ -242,16 +270,10 @@ async function deployFunctionApp(
     spinner.text = 'Creating deployment package...';
     await zipDirectory(functionAppDir, tempZipPath);
 
-    // 3. Deploy with remote build enabled for Flex Consumption
-    spinner.text = 'Uploading to Azure (using zip-deploy with remote build)...';
+    // 3. Deploy using Azure Functions Core Tools with --nozip (skips buggy remote build)
+    spinner.text = 'Deploying to Azure using func tools...';
     await exec(
-      `az functionapp deployment source config-zip \
-        --name "${functionAppName}" \
-        --resource-group "${resourceGroup}" \
-        --src "${tempZipPath}" \
-        --subscription "${subscriptionId}" \
-        --build-remote true \
-        --timeout 600`,
+      `cd "${functionAppDir}" && func azure functionapp publish "${functionAppName}" --nozip`,
     );
     spinner.succeed('Function App deployed successfully');
 
