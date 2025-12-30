@@ -1,4 +1,4 @@
-import { checkbox, confirm } from '@inquirer/prompts';
+import { checkbox, confirm, select } from '@inquirer/prompts';
 import ora from 'ora';
 import {
   ensureAzureCli,
@@ -8,10 +8,11 @@ import {
   resourceGroupExists,
   ensureProvidersRegistered,
 } from '../utils/az.ts';
-import { exec } from '../utils/exec.ts';
+import { exec, execJson } from '../utils/exec.ts';
 import { logger } from '../utils/logger.ts';
 import { provisionSpeechService } from './speech.ts';
 import { provisionWebPubSub } from './webpubsub.ts';
+import { deployFunctionApp } from '../utils/deploy.ts';
 
 export interface SetupContext {
   subscriptionId: string;
@@ -73,6 +74,10 @@ export async function runSetup(): Promise<void> {
         name: 'Web PubSub (for real-time streaming between operators and users)',
         value: 'webpubsub',
       },
+      {
+        name: 'Deploy Function App code only (update existing)',
+        value: 'deploy',
+      },
     ],
   });
 
@@ -82,6 +87,21 @@ export async function runSetup(): Promise<void> {
   }
 
   logger.blank();
+
+  // Handle deploy-only flow
+  if (resources.includes('deploy') && resources.length === 1) {
+    await handleDeployOnly(ctx);
+    return;
+  }
+
+  // Prevent mixing deploy with provisioning
+  if (resources.includes('deploy')) {
+    logger.error(
+      'Cannot combine "Deploy Function App code only" with resource provisioning.',
+    );
+    logger.info('Please run setup again and select only one option.');
+    process.exit(1);
+  }
 
   // Step 7: Provision selected resources
   const secrets: string[] = [];
@@ -109,4 +129,116 @@ export async function runSetup(): Promise<void> {
 
   logger.blank();
   logger.success('Setup complete!');
+}
+
+interface FunctionApp {
+  name: string;
+  location: string;
+}
+
+interface AppSettings {
+  name: string;
+  value: string;
+}
+
+async function handleDeployOnly(ctx: SetupContext): Promise<void> {
+  logger.info(`Looking for Function Apps in "${ctx.resourceGroup}"...`);
+
+  const functionApps = await execJson<FunctionApp[]>(
+    `az functionapp list --resource-group "${ctx.resourceGroup}"`,
+  );
+
+  if (functionApps.length === 0) {
+    logger.blank();
+    logger.error(
+      `No Function Apps found in resource group "${ctx.resourceGroup}".`,
+    );
+    logger.info(
+      'ℹ️  Run the full setup to create Web PubSub + Function App first',
+    );
+    process.exit(1);
+  }
+
+  let functionAppName: string;
+  if (functionApps.length === 1) {
+    functionAppName = functionApps[0].name;
+    logger.info(`Found Function App: ${functionAppName}`);
+  } else {
+    functionAppName = await select({
+      message: 'Select Function App to deploy to:',
+      choices: functionApps.map((f) => ({
+        name: `${f.name} (${f.location})`,
+        value: f.name,
+      })),
+    });
+  }
+
+  // Verify it's a translator function by checking for expected settings
+  logger.blank();
+  logger.info('Validating Function App configuration...');
+
+  const settings = await execJson<AppSettings[]>(
+    `az functionapp config appsettings list --name "${functionAppName}" --resource-group "${ctx.resourceGroup}"`,
+  );
+
+  const hasWebPubSubConnection = settings.some(
+    (s) => s.name === 'WEBPUBSUB_CONNECTION_STRING',
+  );
+  const hasOperatorSecret = settings.some((s) => s.name === 'OPERATOR_SECRET');
+  const hasReaderSecret = settings.some((s) => s.name === 'READER_SECRET');
+
+  if (!hasWebPubSubConnection || !hasOperatorSecret || !hasReaderSecret) {
+    logger.blank();
+    logger.warn(
+      "⚠️  This Function App doesn't have the expected translator settings.",
+    );
+    logger.warn(
+      `   Missing: ${[
+        !hasWebPubSubConnection && 'WEBPUBSUB_CONNECTION_STRING',
+        !hasOperatorSecret && 'OPERATOR_SECRET',
+        !hasReaderSecret && 'READER_SECRET',
+      ]
+        .filter(Boolean)
+        .join(', ')}`,
+    );
+
+    const shouldContinue = await confirm({
+      message: 'Continue anyway?',
+      default: false,
+    });
+
+    if (!shouldContinue) {
+      logger.info('Deployment cancelled.');
+      process.exit(0);
+    }
+  } else {
+    logger.success('✓ Function App has all expected settings');
+  }
+
+  // Deploy the code
+  logger.blank();
+  await deployFunctionApp(
+    functionAppName,
+    ctx.resourceGroup,
+    ctx.subscriptionId,
+  );
+
+  // Get function app URL
+  const result = await exec(
+    `az functionapp show \
+      --name "${functionAppName}" \
+      --resource-group "${ctx.resourceGroup}" \
+      --subscription "${ctx.subscriptionId}" \
+      --query properties.defaultHostName \
+      --output tsv`,
+  );
+  const defaultHostName = result.stdout.trim();
+
+  logger.blank();
+  logger.success('✓ Function App code deployed successfully');
+  logger.blank();
+  logger.info(
+    `ℹ️  Function URL: https://${defaultHostName}/api/webpubsub-access`,
+  );
+  logger.blank();
 }
