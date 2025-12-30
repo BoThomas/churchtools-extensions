@@ -75,6 +75,26 @@ The Translator extension enables real-time translation of spoken language during
 
 ## Azure Setup
 
+You have two options for setting up the required Azure infrastructure:
+
+### Option A: Automated Setup (Recommended)
+
+Use the interactive CLI tool to automatically provision all required Azure resources:
+
+```bash
+pnpm run --filter @churchtools-extensions/translator-infra setup
+```
+
+This will guide you through:
+
+- Creating a Speech Service resource
+- (OPTIONAL) Setting up Web PubSub for real-time communication
+- Generating and displaying all necessary API keys
+
+For detailed documentation, see the [translator-infra README](../../packages/translator-infra/README.md).
+
+### Option B: Manual Setup
+
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Create a "Speech Services" resource
 3. Navigate to "Keys and Endpoint" under the resource overview
