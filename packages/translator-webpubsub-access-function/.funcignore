@@ -1,0 +1,7 @@
+*.js.map
+*.ts
+tsconfig.json
+local.settings.json
+test.http
+.azure-deploy.zip
+node_modules/@types

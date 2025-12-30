@@ -1,0 +1,36 @@
+### Test Web PubSub Access Function
+### Configure these values from your local.settings.json
+
+@baseUrl = http://localhost:7071
+@operatorSecret = your-operator-secret
+@readerSecret = your-reader-secret
+
+### Get operator access token
+POST {{baseUrl}}/api/webpubsub-access
+Content-Type: application/json
+
+{
+  "secret": "{{operatorSecret}}",
+  "roomId": "test-room-1",
+  "userId": "operator-1"
+}
+
+### Get reader access token
+POST {{baseUrl}}/api/webpubsub-access
+Content-Type: application/json
+
+{
+  "secret": "{{readerSecret}}",
+  "roomId": "test-room-1",
+  "userId": "reader-1"
+}
+
+### Invalid secret (should fail)
+POST {{baseUrl}}/api/webpubsub-access
+Content-Type: application/json
+
+{
+  "secret": "invalid-secret",
+  "roomId": "test-room-1",
+  "userId": "user-1"
+}

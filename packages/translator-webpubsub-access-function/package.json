@@ -1,0 +1,12 @@
+{
+  "name": "translator-webpubsub-access-function",
+  "version": "1.0.0",
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.10.0",
+    "@azure/web-pubsub": "^1.2.0"
+  }
+}
