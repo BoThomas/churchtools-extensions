@@ -15,6 +15,15 @@ export interface ApiSettings {
   azureRegion: string;
 }
 
+export interface OperatorSecret {
+  secret: string;
+}
+
+export interface ReaderConfig {
+  authFunctionUrl: string;
+  readerSecret: string;
+}
+
 export interface TranslatorSettings {
   // Translation Options
   inputLanguage: string; // Language code (e.g., 'de-DE')
@@ -80,6 +89,19 @@ export const useTranslatorStore = defineStore('translator', () => {
   const apiSettingsLoading = ref(false);
   const apiSettingsSaving = ref(false);
 
+  // WebPubSub Operator Secret
+  const operatorSecret = ref<OperatorSecret>({ secret: '' });
+  const operatorSecretLoading = ref(false);
+  const operatorSecretSaving = ref(false);
+
+  // WebPubSub Reader Config
+  const readerConfig = ref<ReaderConfig>({
+    authFunctionUrl: '',
+    readerSecret: '',
+  });
+  const readerConfigLoading = ref(false);
+  const readerConfigSaving = ref(false);
+
   // Settings
   const settings = ref<TranslatorSettings>({ ...DEFAULT_SETTINGS });
   const settingsLoading = ref(false);
@@ -110,6 +132,8 @@ export const useTranslatorStore = defineStore('translator', () => {
   let userPreferencesCategory: PersistanceCategory<{
     lastVariantId: number;
   }> | null = null;
+  let operatorSecretCategory: PersistanceCategory<OperatorSecret> | null = null;
+  let readerConfigCategory: PersistanceCategory<ReaderConfig> | null = null;
 
   // Track initialization to prevent duplicate category creation during parallel calls
   let categoriesInitializing: Promise<void> | null = null;
@@ -204,7 +228,9 @@ export const useTranslatorStore = defineStore('translator', () => {
       apiSettingsCategory &&
       settingsCategory &&
       sessionsCategory &&
-      userPreferencesCategory
+      userPreferencesCategory &&
+      operatorSecretCategory &&
+      readerConfigCategory
     ) {
       return;
     }
@@ -237,6 +263,20 @@ export const useTranslatorStore = defineStore('translator', () => {
           extensionkey: KEY,
           categoryShorty: 'user-prefs',
           categoryName: 'User Preferences',
+        });
+      }
+      if (!operatorSecretCategory) {
+        operatorSecretCategory = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'operator-secret',
+          categoryName: 'WebPubSub Operator Secret',
+        });
+      }
+      if (!readerConfigCategory) {
+        readerConfigCategory = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'reader-config',
+          categoryName: 'WebPubSub Reader Configuration',
         });
       }
     })();
@@ -361,6 +401,110 @@ export const useTranslatorStore = defineStore('translator', () => {
       throw e;
     } finally {
       apiSettingsSaving.value = false;
+    }
+  }
+
+  /**
+   * Load operator secret from persistence
+   */
+  async function loadOperatorSecret() {
+    operatorSecretLoading.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!operatorSecretCategory) return;
+
+      const list = await operatorSecretCategory.list<OperatorSecret>();
+      if (list.length > 0) {
+        operatorSecret.value = { ...list[0].value };
+      } else {
+        operatorSecret.value = { secret: '' };
+      }
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to load operator secret';
+      console.error('loadOperatorSecret failed', e);
+    } finally {
+      operatorSecretLoading.value = false;
+    }
+  }
+
+  /**
+   * Save operator secret to persistence
+   */
+  async function saveOperatorSecret(newOperatorSecret: OperatorSecret) {
+    operatorSecretSaving.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!operatorSecretCategory) return;
+
+      const list = await operatorSecretCategory.list<OperatorSecret>();
+
+      if (list.length > 0) {
+        await operatorSecretCategory.update(list[0].id, newOperatorSecret);
+      } else {
+        await operatorSecretCategory.create(newOperatorSecret);
+      }
+
+      operatorSecret.value = { ...newOperatorSecret };
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to save operator secret';
+      console.error('saveOperatorSecret failed', e);
+      throw e;
+    } finally {
+      operatorSecretSaving.value = false;
+    }
+  }
+
+  /**
+   * Load reader config from persistence
+   */
+  async function loadReaderConfig() {
+    readerConfigLoading.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!readerConfigCategory) return;
+
+      const list = await readerConfigCategory.list<ReaderConfig>();
+      if (list.length > 0) {
+        readerConfig.value = { ...list[0].value };
+      } else {
+        readerConfig.value = { authFunctionUrl: '', readerSecret: '' };
+      }
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to load reader config';
+      console.error('loadReaderConfig failed', e);
+    } finally {
+      readerConfigLoading.value = false;
+    }
+  }
+
+  /**
+   * Save reader config to persistence
+   */
+  async function saveReaderConfig(newReaderConfig: ReaderConfig) {
+    readerConfigSaving.value = true;
+    error.value = null;
+    try {
+      await ensureCategories();
+      if (!readerConfigCategory) return;
+
+      const list = await readerConfigCategory.list<ReaderConfig>();
+
+      if (list.length > 0) {
+        await readerConfigCategory.update(list[0].id, newReaderConfig);
+      } else {
+        await readerConfigCategory.create(newReaderConfig);
+      }
+
+      readerConfig.value = { ...newReaderConfig };
+    } catch (e: any) {
+      error.value = e?.message ?? 'Failed to save reader config';
+      console.error('saveReaderConfig failed', e);
+      throw e;
+    } finally {
+      readerConfigSaving.value = false;
     }
   }
 
@@ -1006,6 +1150,12 @@ export const useTranslatorStore = defineStore('translator', () => {
     apiSettings,
     apiSettingsLoading,
     apiSettingsSaving,
+    operatorSecret,
+    operatorSecretLoading,
+    operatorSecretSaving,
+    readerConfig,
+    readerConfigLoading,
+    readerConfigSaving,
     settings,
     settingsLoading,
     settingsSaving,
@@ -1023,6 +1173,12 @@ export const useTranslatorStore = defineStore('translator', () => {
     // API Settings methods
     loadApiSettings,
     saveApiSettings,
+
+    // WebPubSub methods
+    loadOperatorSecret,
+    saveOperatorSecret,
+    loadReaderConfig,
+    saveReaderConfig,
 
     // Settings methods
     loadSettingVariants,

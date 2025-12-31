@@ -384,4 +384,122 @@ describe('Settings Persistence Integration', () => {
       expect(newStore.selectedVariantId).toBe(variantBId);
     });
   });
+
+  describe('WebPubSub Configuration', () => {
+    it('should save and load operator secret', async () => {
+      await store.saveOperatorSecret({
+        secret: 'operator-secret-12345',
+      });
+
+      // Reload and verify
+      const newStore = useTranslatorStore();
+      await newStore.loadOperatorSecret();
+
+      expect(newStore.operatorSecret.secret).toBe('operator-secret-12345');
+    });
+
+    it('should save and load reader config', async () => {
+      await store.saveReaderConfig({
+        authFunctionUrl: 'https://my-function.azurewebsites.net/api/negotiate',
+        readerSecret: 'reader-secret-67890',
+      });
+
+      // Reload and verify
+      const newStore = useTranslatorStore();
+      await newStore.loadReaderConfig();
+
+      expect(newStore.readerConfig.authFunctionUrl).toBe(
+        'https://my-function.azurewebsites.net/api/negotiate',
+      );
+      expect(newStore.readerConfig.readerSecret).toBe('reader-secret-67890');
+    });
+
+    it('should update existing operator secret', async () => {
+      await store.saveOperatorSecret({ secret: 'old-operator-secret' });
+      await store.saveOperatorSecret({ secret: 'new-operator-secret' });
+
+      const newStore = useTranslatorStore();
+      await newStore.loadOperatorSecret();
+
+      expect(newStore.operatorSecret.secret).toBe('new-operator-secret');
+    });
+
+    it('should update existing reader config', async () => {
+      await store.saveReaderConfig({
+        authFunctionUrl: 'https://old-url.com/api',
+        readerSecret: 'old-reader-secret',
+      });
+
+      await store.saveReaderConfig({
+        authFunctionUrl: 'https://new-url.com/api/negotiate',
+        readerSecret: 'new-reader-secret',
+      });
+
+      const newStore = useTranslatorStore();
+      await newStore.loadReaderConfig();
+
+      expect(newStore.readerConfig.authFunctionUrl).toBe(
+        'https://new-url.com/api/negotiate',
+      );
+      expect(newStore.readerConfig.readerSecret).toBe('new-reader-secret');
+    });
+
+    it('should handle missing operator secret gracefully', async () => {
+      await store.loadOperatorSecret();
+
+      expect(store.operatorSecret.secret).toBe('');
+    });
+
+    it('should handle missing reader config gracefully', async () => {
+      await store.loadReaderConfig();
+
+      expect(store.readerConfig.authFunctionUrl).toBe('');
+      expect(store.readerConfig.readerSecret).toBe('');
+    });
+
+    it('should save operator secret and reader config to separate categories', async () => {
+      // Save both
+      await store.saveOperatorSecret({ secret: 'operator-only-secret' });
+      await store.saveReaderConfig({
+        authFunctionUrl: 'https://function.azure.com/api/negotiate',
+        readerSecret: 'public-reader-secret',
+      });
+
+      // Reload in new store
+      const newStore = useTranslatorStore();
+      await newStore.loadOperatorSecret();
+      await newStore.loadReaderConfig();
+
+      // Verify both are loaded correctly from separate categories
+      expect(newStore.operatorSecret.secret).toBe('operator-only-secret');
+      expect(newStore.readerConfig.readerSecret).toBe('public-reader-secret');
+      expect(newStore.readerConfig.authFunctionUrl).toBe(
+        'https://function.azure.com/api/negotiate',
+      );
+    });
+
+    it('should save both WebPubSub configs simultaneously without interference', async () => {
+      // Simulate simultaneous save (like the unified save button in UI)
+      await Promise.all([
+        store.saveOperatorSecret({ secret: 'parallel-operator-secret' }),
+        store.saveReaderConfig({
+          authFunctionUrl: 'https://parallel-function.com/api',
+          readerSecret: 'parallel-reader-secret',
+        }),
+      ]);
+
+      // Reload
+      const newStore = useTranslatorStore();
+      await Promise.all([
+        newStore.loadOperatorSecret(),
+        newStore.loadReaderConfig(),
+      ]);
+
+      expect(newStore.operatorSecret.secret).toBe('parallel-operator-secret');
+      expect(newStore.readerConfig.authFunctionUrl).toBe(
+        'https://parallel-function.com/api',
+      );
+      expect(newStore.readerConfig.readerSecret).toBe('parallel-reader-secret');
+    });
+  });
 });
