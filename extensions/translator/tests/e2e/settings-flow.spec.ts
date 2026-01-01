@@ -582,6 +582,13 @@ test.describe('WebPubSub Configuration', () => {
     // Navigate to Settings tab
     await navigateToTab(extensionPage, 'settings');
 
+    // Enable WebPubSub feature
+    const enableCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await enableCheckbox.click();
+    await extensionPage.waitForTimeout(300);
+
     // Fill in operator secret
     const operatorSecretInput = extensionPage.getByTestId(
       'input-operator-secret',
@@ -600,8 +607,9 @@ test.describe('WebPubSub Configuration', () => {
       'https://test-function.azurewebsites.net/api/negotiate',
     );
 
-    // Save WebPubSub settings
+    // Save button should be enabled (there are unsaved changes)
     const saveButton = extensionPage.getByTestId('button-save-webpubsub');
+    await expect(saveButton).toBeEnabled();
     await saveButton.click();
 
     // Wait for save to complete
@@ -619,6 +627,12 @@ test.describe('WebPubSub Configuration', () => {
 
     // Navigate back to settings
     await navigateToTab(extensionPage, 'settings', 0);
+
+    // Verify the checkbox is still enabled
+    const savedCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await expect(savedCheckbox).toBeChecked();
 
     // Verify the values are still present (they should be masked in password fields)
     // Note: Password fields won't show the value directly, but we can verify they're filled
@@ -646,6 +660,13 @@ test.describe('WebPubSub Configuration', () => {
     // Navigate to Settings tab
     await navigateToTab(extensionPage, 'settings');
 
+    // Enable WebPubSub feature
+    const enableCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await enableCheckbox.click();
+    await extensionPage.waitForTimeout(300);
+
     // Pre-populate and save
     await extensionPage
       .getByTestId('input-operator-secret')
@@ -657,8 +678,14 @@ test.describe('WebPubSub Configuration', () => {
       .getByTestId('input-auth-function-url')
       .fill('https://initial-url.com/api');
 
-    await extensionPage.getByTestId('button-save-webpubsub').click();
+    // Save button should be visible due to changes
+    const saveButton = extensionPage.getByTestId('button-save-webpubsub');
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
     await extensionPage.waitForTimeout(1000);
+
+    // After save, save button should be disabled (no unsaved changes)
+    await expect(saveButton).toBeDisabled();
 
     // Modify the values locally (without saving)
     await extensionPage
@@ -670,6 +697,9 @@ test.describe('WebPubSub Configuration', () => {
     await extensionPage
       .getByTestId('input-auth-function-url')
       .fill('https://modified-url.com/api');
+
+    // Save button should be enabled again (there are unsaved changes)
+    await expect(saveButton).toBeEnabled();
 
     // Click reload button
     const reloadButton = extensionPage.getByTestId('button-reload-webpubsub');
@@ -686,16 +716,29 @@ test.describe('WebPubSub Configuration', () => {
     expect(
       await extensionPage.getByTestId('input-auth-function-url').inputValue(),
     ).toBe('https://initial-url.com/api');
+
+    // After reload, save button should be disabled again (no unsaved changes)
+    await expect(saveButton).toBeDisabled();
   });
 
-  test('should require all WebPubSub fields to be filled', async ({
+  test('should require all WebPubSub fields to be filled when enabled', async ({
     extensionPage,
   }) => {
     await navigateToTab(extensionPage, 'settings');
 
+    // Save button should be visible but disabled initially (no changes, feature disabled)
     const saveButton = extensionPage.getByTestId('button-save-webpubsub');
+    await expect(saveButton).toBeVisible();
+    await expect(saveButton).toBeDisabled();
 
-    // Initially, button should be disabled (all fields empty)
+    // Enable WebPubSub feature
+    const enableCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await enableCheckbox.click();
+    await extensionPage.waitForTimeout(300);
+
+    // After enabling, save button should still be disabled (all fields empty)
     await expect(saveButton).toBeDisabled();
 
     // Fill only operator secret

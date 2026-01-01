@@ -20,6 +20,7 @@ export interface OperatorSecret {
 }
 
 export interface ReaderConfig {
+  enabled: boolean;
   authFunctionUrl: string;
   readerSecret: string;
 }
@@ -96,6 +97,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   // WebPubSub Reader Config
   const readerConfig = ref<ReaderConfig>({
+    enabled: false,
     authFunctionUrl: '',
     readerSecret: '',
   });
@@ -468,9 +470,17 @@ export const useTranslatorStore = defineStore('translator', () => {
 
       const list = await readerConfigCategory.list<ReaderConfig>();
       if (list.length > 0) {
-        readerConfig.value = { ...list[0].value };
+        readerConfig.value = {
+          enabled: list[0].value.enabled ?? false,
+          authFunctionUrl: list[0].value.authFunctionUrl || '',
+          readerSecret: list[0].value.readerSecret || '',
+        };
       } else {
-        readerConfig.value = { authFunctionUrl: '', readerSecret: '' };
+        readerConfig.value = {
+          enabled: false,
+          authFunctionUrl: '',
+          readerSecret: '',
+        };
       }
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to load reader config';
@@ -505,6 +515,96 @@ export const useTranslatorStore = defineStore('translator', () => {
       throw e;
     } finally {
       readerConfigSaving.value = false;
+    }
+  }
+
+  /**
+   * Validate WebPubSub configuration by testing both secrets with the Azure function
+   * @returns Object with validation result and error message if failed
+   */
+  async function validateWebPubSubConfig(config: {
+    authFunctionUrl: string;
+    operatorSecret: string;
+    readerSecret: string;
+  }): Promise<{ valid: boolean; error?: string }> {
+    const { authFunctionUrl, operatorSecret, readerSecret } = config;
+
+    // Validate URL format
+    try {
+      new URL(authFunctionUrl);
+    } catch {
+      return { valid: false, error: 'Invalid Auth Function URL format' };
+    }
+
+    // Test with a validation room ID
+    const testRoomId = `validation-${Date.now()}`;
+
+    try {
+      // Test operator secret
+      const operatorResponse = await fetch(authFunctionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: operatorSecret,
+          roomId: testRoomId,
+          userId: 'validation-operator',
+        }),
+      });
+
+      if (!operatorResponse.ok) {
+        const errorData = await operatorResponse.json().catch(() => ({}));
+        return {
+          valid: false,
+          error: `Operator secret validation failed: ${
+            errorData.error || operatorResponse.statusText
+          }`,
+        };
+      }
+
+      const operatorData = await operatorResponse.json();
+      if (!operatorData.url || operatorData.role !== 'operator') {
+        return {
+          valid: false,
+          error: 'Invalid operator token response from Azure function',
+        };
+      }
+
+      // Test reader secret
+      const readerResponse = await fetch(authFunctionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: readerSecret,
+          roomId: testRoomId,
+          userId: 'validation-reader',
+        }),
+      });
+
+      if (!readerResponse.ok) {
+        const errorData = await readerResponse.json().catch(() => ({}));
+        return {
+          valid: false,
+          error: `Reader secret validation failed: ${
+            errorData.error || readerResponse.statusText
+          }`,
+        };
+      }
+
+      const readerData = await readerResponse.json();
+      if (!readerData.url || readerData.role !== 'reader') {
+        return {
+          valid: false,
+          error: 'Invalid reader token response from Azure function',
+        };
+      }
+
+      // Both secrets validated successfully
+      return { valid: true };
+    } catch (e: any) {
+      return {
+        valid: false,
+        error: `Network error: ${e.message || 'Failed to connect to Azure function'}`,
+      };
     }
   }
 
@@ -1179,6 +1279,7 @@ export const useTranslatorStore = defineStore('translator', () => {
     saveOperatorSecret,
     loadReaderConfig,
     saveReaderConfig,
+    validateWebPubSubConfig,
 
     // Settings methods
     loadSettingVariants,

@@ -398,8 +398,9 @@ describe('Settings Persistence Integration', () => {
       expect(newStore.operatorSecret.secret).toBe('operator-secret-12345');
     });
 
-    it('should save and load reader config', async () => {
+    it('should save and load reader config with enabled flag', async () => {
       await store.saveReaderConfig({
+        enabled: true,
         authFunctionUrl: 'https://my-function.azurewebsites.net/api/negotiate',
         readerSecret: 'reader-secret-67890',
       });
@@ -408,10 +409,24 @@ describe('Settings Persistence Integration', () => {
       const newStore = useTranslatorStore();
       await newStore.loadReaderConfig();
 
+      expect(newStore.readerConfig.enabled).toBe(true);
       expect(newStore.readerConfig.authFunctionUrl).toBe(
         'https://my-function.azurewebsites.net/api/negotiate',
       );
       expect(newStore.readerConfig.readerSecret).toBe('reader-secret-67890');
+    });
+
+    it('should default enabled to false when loading reader config', async () => {
+      await store.saveReaderConfig({
+        enabled: false,
+        authFunctionUrl: 'https://test.com/api',
+        readerSecret: 'test-secret',
+      });
+
+      const newStore = useTranslatorStore();
+      await newStore.loadReaderConfig();
+
+      expect(newStore.readerConfig.enabled).toBe(false);
     });
 
     it('should update existing operator secret', async () => {
@@ -426,11 +441,13 @@ describe('Settings Persistence Integration', () => {
 
     it('should update existing reader config', async () => {
       await store.saveReaderConfig({
+        enabled: false,
         authFunctionUrl: 'https://old-url.com/api',
         readerSecret: 'old-reader-secret',
       });
 
       await store.saveReaderConfig({
+        enabled: true,
         authFunctionUrl: 'https://new-url.com/api/negotiate',
         readerSecret: 'new-reader-secret',
       });
@@ -438,6 +455,7 @@ describe('Settings Persistence Integration', () => {
       const newStore = useTranslatorStore();
       await newStore.loadReaderConfig();
 
+      expect(newStore.readerConfig.enabled).toBe(true);
       expect(newStore.readerConfig.authFunctionUrl).toBe(
         'https://new-url.com/api/negotiate',
       );
@@ -453,6 +471,7 @@ describe('Settings Persistence Integration', () => {
     it('should handle missing reader config gracefully', async () => {
       await store.loadReaderConfig();
 
+      expect(store.readerConfig.enabled).toBe(false);
       expect(store.readerConfig.authFunctionUrl).toBe('');
       expect(store.readerConfig.readerSecret).toBe('');
     });
@@ -461,6 +480,7 @@ describe('Settings Persistence Integration', () => {
       // Save both
       await store.saveOperatorSecret({ secret: 'operator-only-secret' });
       await store.saveReaderConfig({
+        enabled: true,
         authFunctionUrl: 'https://function.azure.com/api/negotiate',
         readerSecret: 'public-reader-secret',
       });
@@ -472,6 +492,7 @@ describe('Settings Persistence Integration', () => {
 
       // Verify both are loaded correctly from separate categories
       expect(newStore.operatorSecret.secret).toBe('operator-only-secret');
+      expect(newStore.readerConfig.enabled).toBe(true);
       expect(newStore.readerConfig.readerSecret).toBe('public-reader-secret');
       expect(newStore.readerConfig.authFunctionUrl).toBe(
         'https://function.azure.com/api/negotiate',
@@ -483,6 +504,7 @@ describe('Settings Persistence Integration', () => {
       await Promise.all([
         store.saveOperatorSecret({ secret: 'parallel-operator-secret' }),
         store.saveReaderConfig({
+          enabled: false,
           authFunctionUrl: 'https://parallel-function.com/api',
           readerSecret: 'parallel-reader-secret',
         }),
@@ -496,6 +518,7 @@ describe('Settings Persistence Integration', () => {
       ]);
 
       expect(newStore.operatorSecret.secret).toBe('parallel-operator-secret');
+      expect(newStore.readerConfig.enabled).toBe(false);
       expect(newStore.readerConfig.authFunctionUrl).toBe(
         'https://parallel-function.com/api',
       );
