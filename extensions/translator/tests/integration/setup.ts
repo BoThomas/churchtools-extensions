@@ -10,9 +10,8 @@ import {
 // Mock the kv-store module so when actual code imports it, it gets the mock
 // This allows PersistanceCategory to use the in-memory mock instead of real ChurchTools API
 vi.mock('@churchtools-extensions/ct-utils/kv-store', async () => {
-  const mock = await import(
-    '@churchtools-extensions/ct-utils/__mocks__/kv-store'
-  );
+  const mock =
+    await import('@churchtools-extensions/ct-utils/__mocks__/kv-store');
   return mock;
 });
 
