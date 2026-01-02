@@ -75,8 +75,22 @@
         :disabled="inputsDisabled"
         :presentation-languages-count="presentationLanguages.length"
         :collapsed="presentationOptionsCollapsed"
+        :toggleable-enabled="
+          isWebPubSubEnabled ? presentationEnabled : undefined
+        "
         @change="store.markSettingsChanged()"
         @toggle="togglePresentationOptions"
+        @update:enabled="presentationEnabled = $event"
+      />
+
+      <!-- Session Options (WebPubSub) -->
+      <SessionOptionsSection
+        v-if="isWebPubSubEnabled"
+        :enabled="sessionEnabled"
+        :collapsed="sessionOptionsCollapsed"
+        :disabled="inputsDisabled"
+        @update:enabled="sessionEnabled = $event"
+        @toggle="toggleSessionOptions"
       />
 
       <!-- Controls -->
@@ -189,6 +203,7 @@ import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import TranslationOptionsSection from '../components/sections/TranslationOptionsSection.vue';
 import PresentationOptionsSection from '../components/sections/PresentationOptionsSection.vue';
+import SessionOptionsSection from '../components/sections/SessionOptionsSection.vue';
 import OperatorPreview from '../components/sections/OperatorPreview.vue';
 import TranslationControlPanel from '../components/sections/TranslationControlPanel.vue';
 import { useVariantManagement } from '../composables/useVariantManagement';
@@ -252,9 +267,13 @@ const { startGeneration, stopGeneration } = useTestPresentation();
 const {
   translationOptionsCollapsed,
   presentationOptionsCollapsed,
+  sessionOptionsCollapsed,
   operatorPreviewCollapsed,
+  presentationEnabled,
+  sessionEnabled,
   toggleTranslationOptions,
   togglePresentationOptions,
+  toggleSessionOptions,
   toggleOperatorPreview,
   openOperatorPreview,
 } = useFieldsetState();
@@ -287,6 +306,16 @@ const isOperatorPreviewActive = computed(
 // Computed
 const hasApiCredentials = computed(() => {
   return !!store.apiSettings.azureApiKey && !!store.apiSettings.azureRegion;
+});
+
+// Check if WebPubSub is fully configured
+const isWebPubSubEnabled = computed(() => {
+  return (
+    store.readerConfig.enabled &&
+    !!store.readerConfig.authFunctionUrl &&
+    !!store.readerConfig.readerSecret &&
+    !!store.operatorSecret.secret
+  );
 });
 
 // Load current user

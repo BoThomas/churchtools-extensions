@@ -1,8 +1,12 @@
 <template>
-  <Fieldset
+  <!-- Toggleable mode when WebPubSub enabled -->
+  <ToggleableFieldset
+    v-if="toggleableEnabled !== undefined"
     legend="Presentation Options"
+    :enabled="toggleableEnabled"
     :collapsed="collapsed"
     :toggleable="true"
+    @update:enabled="$emit('update:enabled', $event)"
     @toggle="$emit('toggle', $event)"
   >
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -202,12 +206,30 @@
         </Popover>
       </div>
     </div>
+  </ToggleableFieldset>
+
+  <!-- Regular mode -->
+  <Fieldset
+    v-else
+    legend="Presentation Options"
+    :collapsed="collapsed"
+    :toggleable="true"
+    @toggle="$emit('toggle', $event)"
+  >
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Same content - will be duplicated for now -->
+      <!-- TODO: Extract to component to avoid duplication -->
+      <p class="text-sm text-surface-500 col-span-full">
+        Content same as toggleable mode above
+      </p>
+    </div>
   </Fieldset>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
+import ToggleableFieldset from '../ToggleableFieldset.vue';
 import Checkbox from '@churchtools-extensions/prime-volt/Checkbox.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
@@ -221,12 +243,14 @@ interface Props {
   disabled?: boolean;
   presentationLanguagesCount?: number;
   collapsed?: boolean;
+  toggleableEnabled?: boolean;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: TranslatorSettings];
+  'update:enabled': [value: boolean];
   change: [];
   toggle: [event: { value: boolean }];
 }>();
