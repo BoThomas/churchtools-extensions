@@ -13,6 +13,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["./volt/**/*.ts", "./volt/**/*.vue"],
+  "include": ["./src/volt/**/*.ts", "./src/volt/**/*.vue"],
   "exclude": ["dist", "node_modules"]
 }
