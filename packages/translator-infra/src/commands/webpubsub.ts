@@ -2,7 +2,11 @@ import { input, select, confirm } from '@inquirer/prompts';
 import ora from 'ora';
 import crypto from 'node:crypto';
 import type { SetupContext } from './setup.ts';
-import { resourceExists, selectLocation } from '../utils/az.ts';
+import {
+  resourceExists,
+  selectLocation,
+  configureFunctionAppCors,
+} from '../utils/az.ts';
 import { exec, execJson } from '../utils/exec.ts';
 import { logger } from '../utils/logger.ts';
 import { deployFunctionApp } from '../utils/deploy.ts';
@@ -274,6 +278,13 @@ export async function provisionWebPubSub(ctx: SetupContext): Promise<string[]> {
   const defaultHostName = result.stdout.trim();
 
   const functionUrl = `https://${defaultHostName}/api/webpubsub-access`;
+
+  // === 6. Configure CORS ===
+  await configureFunctionAppCors(
+    functionAppName,
+    ctx.resourceGroup,
+    ctx.subscriptionId,
+  );
 
   return [
     `WEBPUBSUB_ACCESS_FUNCTION_URL=${functionUrl}`,

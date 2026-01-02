@@ -7,6 +7,7 @@ This is an internal CLI tool designed to provision and manage the Azure infrastr
 - **Interactive Setup**: Guided process to choose subscriptions, locations, and resources.
 - **Idempotent**: Safe to run multiple times; it detects existing resources rather than duplicating them.
 - **Auto-Deployment**: Automatically builds and deploys the `@churchtools-extensions/translator-webpubsub-access-function` to Azure.
+- **CORS Management**: Configure allowed origins for browser-based requests from ChurchTools and local development environments.
 - **Secret Management**: Prints secrets (keys, connection strings) once during setup and provides a command to re-fetch them later.
 - **Secret Rotation**: Rotate API keys and secrets for existing resources with a single command.
 - **Code Deployment**: Deploy updated Function App code without reprovisioning infrastructure.
@@ -29,7 +30,16 @@ Use this to create your Resource Group, Speech Service, and Web PubSub (includin
 pnpm run --filter @churchtools-extensions/translator-infra setup
 ```
 
-### 2. Re-fetch Secrets
+**CORS Configuration**: When provisioning Web PubSub, you can configure which origins are allowed to make requests to your Function App. This is essential for the ChurchTools extension to work.
+
+You should configure:
+
+- **Local development URLs** (e.g., `http://localhost:5173` for Vite dev server)
+- **ChurchTools instances** (e.g., `https://mytown.church.tools`)
+
+To update CORS settings after deployment, run the setup command again and select "Update existing WebPubSub Auth Function" → "Manage CORS settings".
+
+### 3. Re-fetch Secrets
 
 If you lost your API keys or connection strings, use this to print them to the console again.
 
@@ -37,7 +47,7 @@ If you lost your API keys or connection strings, use this to print them to the c
 pnpm run --filter @churchtools-extensions/translator-infra secrets
 ```
 
-### 3. Rotate Secrets
+### 4. Rotate Secrets
 
 Rotate API keys and secrets for security compliance or after a suspected breach.
 
