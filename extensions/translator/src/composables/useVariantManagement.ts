@@ -196,12 +196,13 @@ export function useVariantManagement(
     { immediate: true },
   );
 
-  // Mark settings as changed when they're modified
+  // Watch settings for changes and intelligently detect if they differ from clean state
   watch(
     () => store.settings,
     () => {
       if (!store.settingsLoading && !store.selectingVariant) {
-        store.markSettingsChanged();
+        // Check if settings actually differ from clean state
+        store.hasUnsavedChanges = store.hasSettingsChanged();
       }
     },
     { deep: true },

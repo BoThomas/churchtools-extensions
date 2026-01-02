@@ -1,7 +1,6 @@
 import { ref, watch } from 'vue';
 
 const STORAGE_KEY = 'translator_fieldset_states';
-const ENABLED_KEY = 'translator_section_enabled';
 
 interface FieldsetStates {
   translationOptions: boolean;
@@ -10,21 +9,11 @@ interface FieldsetStates {
   operatorPreview: boolean;
 }
 
-interface EnabledStates {
-  presentation: boolean;
-  session: boolean;
-}
-
 const defaultStates: FieldsetStates = {
   translationOptions: true, // collapsed by default
   presentationOptions: true, // collapsed by default
   sessionOptions: true, // collapsed by default
   operatorPreview: false, // open by default
-};
-
-const defaultEnabledStates: EnabledStates = {
-  presentation: true, // enabled by default
-  session: false, // disabled by default (opt-in)
 };
 
 function loadStates(): FieldsetStates {
@@ -49,30 +38,8 @@ function saveStates(states: FieldsetStates): void {
   }
 }
 
-function loadEnabledStates(): EnabledStates {
-  try {
-    const stored = localStorage.getItem(ENABLED_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return { ...defaultEnabledStates, ...parsed };
-    }
-  } catch (e) {
-    console.warn('Failed to load enabled states from localStorage', e);
-  }
-  return { ...defaultEnabledStates };
-}
-
-function saveEnabledStates(states: EnabledStates): void {
-  try {
-    localStorage.setItem(ENABLED_KEY, JSON.stringify(states));
-  } catch (e) {
-    console.warn('Failed to save enabled states to localStorage', e);
-  }
-}
-
 export function useFieldsetState() {
   const states = ref<FieldsetStates>(loadStates());
-  const enabledStates = ref<EnabledStates>(loadEnabledStates());
 
   // Watch for changes and persist to localStorage
   watch(
@@ -83,21 +50,10 @@ export function useFieldsetState() {
     { deep: true },
   );
 
-  watch(
-    enabledStates,
-    (newStates) => {
-      saveEnabledStates(newStates);
-    },
-    { deep: true },
-  );
-
   const translationOptionsCollapsed = ref(states.value.translationOptions);
   const presentationOptionsCollapsed = ref(states.value.presentationOptions);
   const sessionOptionsCollapsed = ref(states.value.sessionOptions);
   const operatorPreviewCollapsed = ref(states.value.operatorPreview);
-
-  const presentationEnabled = ref(enabledStates.value.presentation);
-  const sessionEnabled = ref(enabledStates.value.session);
 
   // Sync individual refs with state object and persist
   watch(translationOptionsCollapsed, (collapsed) => {
@@ -114,14 +70,6 @@ export function useFieldsetState() {
 
   watch(operatorPreviewCollapsed, (collapsed) => {
     states.value.operatorPreview = collapsed;
-  });
-
-  watch(presentationEnabled, (enabled) => {
-    enabledStates.value.presentation = enabled;
-  });
-
-  watch(sessionEnabled, (enabled) => {
-    enabledStates.value.session = enabled;
   });
 
   // Toggle functions that also handle the PrimeVue toggle event format
@@ -151,8 +99,6 @@ export function useFieldsetState() {
     presentationOptionsCollapsed,
     sessionOptionsCollapsed,
     operatorPreviewCollapsed,
-    presentationEnabled,
-    sessionEnabled,
     toggleTranslationOptions,
     togglePresentationOptions,
     toggleSessionOptions,

@@ -44,6 +44,17 @@ export interface TranslatorSettings {
     mode: 'split' | 'multi-window'; // Split-screen or multiple windows
     showInputLanguage: boolean; // Show input language transcription in presentation
   };
+
+  // Session Options (WebPubSub)
+  session?: {
+    // Placeholder for future session settings
+  };
+
+  // Output mode enabled states (track which modes are active per variant)
+  outputModes?: {
+    presentationEnabled: boolean;
+    sessionEnabled: boolean;
+  };
 }
 
 export interface SettingVariant {
@@ -78,6 +89,10 @@ const DEFAULT_SETTINGS: TranslatorSettings = {
     background: 'black',
     mode: 'split',
     showInputLanguage: false,
+  },
+  outputModes: {
+    presentationEnabled: true,
+    sessionEnabled: false,
   },
 };
 
@@ -114,6 +129,8 @@ export const useTranslatorStore = defineStore('translator', () => {
   const selectedVariantId = ref<number | null>(null);
   const hasUnsavedChanges = ref(false);
   const selectingVariant = ref(false);
+  // Track the last saved/clean state of settings for change detection
+  let cleanSettingsState = JSON.stringify(settings.value);
 
   // Sessions
   const sessions = ref<CategoryValue<TranslationSession>[]>([]);
@@ -193,6 +210,14 @@ export const useTranslatorStore = defineStore('translator', () => {
       ...DEFAULT_SETTINGS.presentation,
       ...(migrated.presentation || {}),
     };
+
+    // Ensure outputModes exists with defaults
+    if (!migrated.outputModes) {
+      migrated.outputModes = {
+        presentationEnabled: true,
+        sessionEnabled: false,
+      };
+    }
 
     // Fill other defaults if missing
     if (!migrated.inputLanguage) {
@@ -337,6 +362,8 @@ export const useTranslatorStore = defineStore('translator', () => {
         settingVariants.value = [{ id, value: defaultVariant, raw: {} as any }];
         selectedVariantId.value = id;
         settings.value = { ...DEFAULT_SETTINGS };
+        // Update clean state to match default settings
+        cleanSettingsState = JSON.stringify(settings.value);
       } else {
         // Load user preferences (first available when userId not provided)
         const userPrefsList =
@@ -361,9 +388,12 @@ export const useTranslatorStore = defineStore('translator', () => {
 
         selectedVariantId.value = variantToLoad.id;
         // Migrate settings if they're in old format
-        settings.value = migrateSettings(
+        const migratedSettings = migrateSettings(
           structuredClone(variantToLoad.value.settings),
         );
+        settings.value = migratedSettings;
+        // Update clean state to match loaded settings
+        cleanSettingsState = JSON.stringify(migratedSettings);
       }
 
       hasUnsavedChanges.value = false;
@@ -681,7 +711,10 @@ export const useTranslatorStore = defineStore('translator', () => {
 
     // Reload variants from database to ensure fresh data
     await ensureCategories();
-    if (!settingsCategory) return;
+    if (!settingsCategory) {
+      selectingVariant.value = false;
+      return;
+    }
 
     const list = await settingsCategory.list<SettingVariant>();
     settingVariants.value = list;
@@ -694,12 +727,15 @@ export const useTranslatorStore = defineStore('translator', () => {
 
     selectedVariantId.value = variantId;
     // Deep clone to ensure no shared references and migrate if needed
-    settings.value = migrateSettings(
+    const migratedSettings = migrateSettings(
       JSON.parse(JSON.stringify(variant.value.settings)),
     );
+    // Update clean state BEFORE reactive assignment to prevent watcher from firing
+    cleanSettingsState = JSON.stringify(migratedSettings);
+    settings.value = migratedSettings;
     hasUnsavedChanges.value = false;
 
-    // Wait for Vue to process watchers before clearing the flag
+    // Wait for Vue to process before clearing selecting flag
     await nextTick();
     selectingVariant.value = false;
 
@@ -778,9 +814,24 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Mark settings as modified
+   * @internal Used primarily for testing
    */
   function markSettingsChanged() {
     hasUnsavedChanges.value = true;
+  }
+
+  /**
+   * Update the clean state after saving (called after variant save)
+   */
+  function updateCleanSettingsState() {
+    cleanSettingsState = JSON.stringify(settings.value);
+  }
+
+  /**
+   * Check if current settings differ from the clean/saved state
+   */
+  function hasSettingsChanged(): boolean {
+    return JSON.stringify(settings.value) !== cleanSettingsState;
   }
 
   /**
@@ -1287,6 +1338,8 @@ export const useTranslatorStore = defineStore('translator', () => {
     selectVariant,
     deleteVariant,
     markSettingsChanged,
+    updateCleanSettingsState,
+    hasSettingsChanged,
 
     // Session methods
     startSession,

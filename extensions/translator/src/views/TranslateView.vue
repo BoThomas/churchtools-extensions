@@ -65,7 +65,6 @@
         :input-language-valid="inputLanguageValid"
         :output-languages-valid="outputLanguagesValid"
         :collapsed="translationOptionsCollapsed"
-        @change="store.markSettingsChanged()"
         @toggle="toggleTranslationOptions"
       />
 
@@ -76,20 +75,29 @@
         :presentation-languages-count="presentationLanguages.length"
         :collapsed="presentationOptionsCollapsed"
         :toggleable-enabled="
-          isWebPubSubEnabled ? presentationEnabled : undefined
+          isWebPubSubEnabled
+            ? store.settings.outputModes?.presentationEnabled
+            : undefined
         "
-        @change="store.markSettingsChanged()"
         @toggle="togglePresentationOptions"
-        @update:enabled="presentationEnabled = $event"
+        @update:enabled="
+          (value) => {
+            store.settings.outputModes!.presentationEnabled = value;
+          }
+        "
       />
 
       <!-- Session Options (WebPubSub) -->
       <SessionOptionsSection
         v-if="isWebPubSubEnabled"
-        :enabled="sessionEnabled"
+        :enabled="store.settings.outputModes?.sessionEnabled ?? false"
         :collapsed="sessionOptionsCollapsed"
         :disabled="inputsDisabled"
-        @update:enabled="sessionEnabled = $event"
+        @update:enabled="
+          (value) => {
+            store.settings.outputModes!.sessionEnabled = value;
+          }
+        "
         @toggle="toggleSessionOptions"
       />
 
@@ -269,8 +277,6 @@ const {
   presentationOptionsCollapsed,
   sessionOptionsCollapsed,
   operatorPreviewCollapsed,
-  presentationEnabled,
-  sessionEnabled,
   toggleTranslationOptions,
   togglePresentationOptions,
   toggleSessionOptions,
