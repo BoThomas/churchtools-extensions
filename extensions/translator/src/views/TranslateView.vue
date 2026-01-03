@@ -118,6 +118,13 @@
         :presentation-languages-count="presentationLanguages.length"
         :output-languages-count="store.settings.outputLanguages.length"
         :has-too-many-languages-for-split="hasTooManyLanguagesForSplit"
+        :is-web-pub-sub-enabled="isWebPubSubEnabled"
+        :is-presentation-enabled="
+          store.settings.outputModes?.presentationEnabled ?? true
+        "
+        :is-session-enabled="
+          store.settings.outputModes?.sessionEnabled ?? false
+        "
         :selected-variant-id="selectedVariantForDisplay"
         :setting-variants="store.settingVariants"
         :has-unsaved-changes="store.hasUnsavedChanges"
@@ -127,6 +134,7 @@
         :inputs-disabled="inputsDisabled"
         @start-test="startTest"
         @start-test-presentation="startTestPresentation"
+        @start-test-session="startTestSession"
         @start-presentation="startPresentation"
         @start-recording="startRecording"
         @start-test-generation="startTestGeneration"
@@ -221,6 +229,7 @@ import { useOperatorPreview } from '../composables/useOperatorPreview';
 import { usePresentationWindow } from '../composables/usePresentationWindow';
 import { useSessionManagement } from '../composables/useSessionManagement';
 import { useTestPresentation } from '../composables/useTestPresentation';
+import { useTestSession } from '../composables/useTestSession';
 import { useFieldsetState } from '../composables/useFieldsetState';
 
 const store = useTranslatorStore();
@@ -272,6 +281,7 @@ const {
   resumeSession,
 } = useSessionManagement(user);
 const { startGeneration, stopGeneration } = useTestPresentation();
+const { startTestSession } = useTestSession();
 const {
   translationOptionsCollapsed,
   presentationOptionsCollapsed,

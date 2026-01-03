@@ -45,13 +45,16 @@
       </Message>
 
       <!-- Main Flow: Test & Presentation -->
-      <div class="controls-grid grid grid-cols-1 gap-3 items-stretch">
+      <div
+        class="controls-flow flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-start"
+      >
         <!-- Test Modes -->
         <div class="flex flex-col gap-1">
           <span class="text-xs font-medium uppercase text-surface-500">
             Testing
           </span>
-          <div class="test-button-wrapper flex flex-col gap-2">
+          <!-- Individual buttons for smaller screens -->
+          <div class="flex flex-col gap-2 sm:hidden">
             <SecondaryButton
               label="Test Translation"
               icon="pi pi-compass"
@@ -62,7 +65,6 @@
                 isTestPresentationRunning ||
                 hasInvalidLanguages
               "
-              class="test-button w-full"
               data-testid="button-test-translation"
             />
             <SecondaryButton
@@ -75,23 +77,93 @@
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
                 hasTooManyLanguagesForSplit ||
-                hasInvalidLanguages
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled && !isPresentationEnabled)
               "
               severity="secondary"
               data-testid="button-test-presentation"
             />
+            <SecondaryButton
+              v-if="isWebPubSubEnabled"
+              label="Test Session"
+              icon="pi pi-users"
+              @click="$emit('start-test-session')"
+              :disabled="
+                isPresentationRunning ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                hasInvalidLanguages ||
+                !isSessionEnabled
+              "
+              severity="secondary"
+              data-testid="button-test-session"
+            />
           </div>
-        </div>
-
-        <!-- Presentation flow as input group -->
-        <div class="flex flex-col gap-1">
-          <span class="text-xs font-medium uppercase text-surface-500">
-            Live presentation
-          </span>
-          <div class="presentation-buttons-wrapper flex flex-col gap-2">
-            <Button
+          <!-- ButtonGroup for medium and larger screens -->
+          <ButtonGroup class="hidden sm:flex">
+            <SecondaryButton
+              label="Translation"
+              icon="pi pi-compass"
+              @click="$emit('start-test')"
+              :disabled="
+                isPresentationRunning ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                hasInvalidLanguages
+              "
+              data-testid="button-test-translation"
+            />
+            <SecondaryButton
               label="Presentation"
               icon="pi pi-external-link"
+              @click="$emit('start-test-presentation')"
+              :disabled="
+                isPresentationRunning ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                presentationWindowsOpenedButNotStarted ||
+                hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled && !isPresentationEnabled)
+              "
+              severity="secondary"
+              data-testid="button-test-presentation"
+            />
+            <SecondaryButton
+              v-if="isWebPubSubEnabled"
+              label="Session"
+              icon="pi pi-users"
+              @click="$emit('start-test-session')"
+              :disabled="
+                isPresentationRunning ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                hasInvalidLanguages ||
+                !isSessionEnabled
+              "
+              severity="secondary"
+              data-testid="button-test-session"
+            />
+          </ButtonGroup>
+        </div>
+
+        <!-- Live Translation flow as input group -->
+        <div class="flex flex-col gap-1">
+          <span class="text-xs font-medium uppercase text-surface-500">
+            Live Translation
+          </span>
+          <!-- Individual buttons for smaller screens -->
+          <div class="flex flex-col gap-2 sm:hidden">
+            <Button
+              v-if="
+                !(
+                  presentationWindowsOpenedButNotStarted &&
+                  !isRecordingStarted &&
+                  (isPresentationRunning || isTestPresentationRunning)
+                )
+              "
+              label="Prepare Translation"
+              icon="pi pi-language"
               @click="$emit('start-presentation')"
               :disabled="
                 isPresentationRunning ||
@@ -99,9 +171,11 @@
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
                 hasTooManyLanguagesForSplit ||
-                hasInvalidLanguages
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled &&
+                  !isPresentationEnabled &&
+                  !isSessionEnabled)
               "
-              severity="secondary"
               data-testid="button-presentation"
             />
             <DangerButton
@@ -110,7 +184,7 @@
                 isPresentationRunning &&
                 !isRecordingStarted
               "
-              label="Start Recording"
+              label="Start Translation"
               icon="pi pi-microphone"
               @click="$emit('start-recording')"
               data-testid="button-start-recording"
@@ -154,7 +228,6 @@
                     !presentationWindowsOpenedButNotStarted)
                 )
               "
-              severity="warning"
               data-testid="button-pause"
             />
             <Button
@@ -169,16 +242,112 @@
                   presentationWindowsOpenedButNotStarted
                 )
               "
-              severity="danger"
               outlined
               data-testid="button-stop"
             />
           </div>
+          <!-- ButtonGroup for medium and larger screens -->
+          <ButtonGroup class="hidden sm:flex">
+            <Button
+              v-if="
+                !(
+                  presentationWindowsOpenedButNotStarted &&
+                  !isRecordingStarted &&
+                  (isPresentationRunning || isTestPresentationRunning)
+                )
+              "
+              label="Prepare Translation"
+              icon="pi pi-language"
+              @click="$emit('start-presentation')"
+              :disabled="
+                isPresentationRunning ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                presentationWindowsOpenedButNotStarted ||
+                hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled &&
+                  !isPresentationEnabled &&
+                  !isSessionEnabled)
+              "
+              data-testid="button-presentation"
+            />
+            <DangerButton
+              v-if="
+                presentationWindowsOpenedButNotStarted &&
+                isPresentationRunning &&
+                !isRecordingStarted
+              "
+              label="Start Translation"
+              icon="pi pi-microphone"
+              @click="$emit('start-recording')"
+              data-testid="button-start-recording"
+            />
+            <DangerButton
+              v-if="
+                presentationWindowsOpenedButNotStarted &&
+                isTestPresentationRunning &&
+                !isRecordingStarted
+              "
+              label="Start Test"
+              icon="pi pi-compass"
+              @click="$emit('start-test-generation')"
+              data-testid="button-start-test-generation"
+            />
+            <Button
+              v-if="isPaused"
+              label="Resume"
+              icon="pi pi-play"
+              @click="$emit('pause-or-resume')"
+              :disabled="
+                !(
+                  (isPresentationRunning && isRecordingStarted) ||
+                  isTestRunning ||
+                  (isTestPresentationRunning &&
+                    !presentationWindowsOpenedButNotStarted)
+                )
+              "
+              data-testid="button-resume"
+            />
+            <Button
+              v-else
+              label="Pause"
+              icon="pi pi-pause"
+              @click="$emit('pause-or-resume')"
+              :disabled="
+                !(
+                  (isPresentationRunning && isRecordingStarted) ||
+                  isTestRunning ||
+                  (isTestPresentationRunning &&
+                    !presentationWindowsOpenedButNotStarted)
+                )
+              "
+              data-testid="button-pause"
+            />
+            <Button
+              label="Stop"
+              icon="pi pi-stop"
+              @click="$emit('stop')"
+              :disabled="
+                !(
+                  isPresentationRunning ||
+                  isTestRunning ||
+                  isTestPresentationRunning ||
+                  presentationWindowsOpenedButNotStarted
+                )
+              "
+              outlined
+              data-testid="button-stop"
+            />
+          </ButtonGroup>
         </div>
       </div>
-      <div class="text-xs text-surface-500 flex items-center justify-end">
+      <div
+        v-if="isPresentationEnabled"
+        class="text-xs text-surface-500 flex items-center justify-end"
+      >
         <span>
-          Open the presentation first, enter fullscreen/place window(s), then
+          Prepare translation first, enter fullscreen/place window(s), then
           start & control from here.
         </span>
       </div>
@@ -208,7 +377,6 @@
               />
               <Button
                 icon="pi pi-trash"
-                severity="danger"
                 outlined
                 @click="$emit('confirm-delete-variant')"
                 :disabled="
@@ -272,6 +440,7 @@ import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import ButtonGroup from '@churchtools-extensions/prime-volt/ButtonGroup.vue';
 
 interface SettingVariant {
   id: number;
@@ -298,6 +467,11 @@ interface Props {
   outputLanguagesCount: number;
   hasTooManyLanguagesForSplit: boolean;
 
+  // WebPubSub props
+  isWebPubSubEnabled?: boolean;
+  isPresentationEnabled?: boolean;
+  isSessionEnabled?: boolean;
+
   // Variant management props
   selectedVariantId: number | null;
   settingVariants: SettingVariant[];
@@ -313,6 +487,7 @@ defineProps<Props>();
 defineEmits<{
   'start-test': [];
   'start-test-presentation': [];
+  'start-test-session': [];
   'start-presentation': [];
   'start-recording': [];
   'start-test-generation': [];
@@ -324,34 +499,3 @@ defineEmits<{
   'prompt-save-as-new-variant': [];
 }>();
 </script>
-
-<style scoped>
-/* Use explicit media queries to avoid conflicts with host page Tailwind */
-
-/* Medium layout - horizontal buttons within each section */
-@media (min-width: 768px) {
-  .test-button-wrapper {
-    flex-direction: row;
-  }
-
-  .test-button {
-    width: auto;
-  }
-
-  .presentation-buttons-wrapper {
-    flex-direction: row;
-    align-items: stretch;
-  }
-
-  .presentation-buttons-wrapper > button {
-    flex: 1;
-  }
-}
-
-/* Wide layout - two-column grid with sections side-by-side */
-@media (min-width: 1024px) {
-  .controls-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  }
-}
-</style>

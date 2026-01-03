@@ -14,6 +14,7 @@
     "./AutoComplete.vue": "./src/volt/AutoComplete.vue",
     "./Badge.vue": "./src/volt/Badge.vue",
     "./Button.vue": "./src/volt/Button.vue",
+    "./ButtonGroup.vue": "./src/volt/ButtonGroup.vue",
     "./Card.vue": "./src/volt/Card.vue",
     "./Checkbox.vue": "./src/volt/Checkbox.vue",
     "./Chip.vue": "./src/volt/Chip.vue",
