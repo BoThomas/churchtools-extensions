@@ -12,9 +12,9 @@ describe('useTranslationState', () => {
     it('should initialize with all flags false', () => {
       expect(translationState.state.value).toEqual({
         isTestRunning: false,
-        isPresentationRunning: false,
+        isLiveTranslationPrepared: false,
         isPaused: false,
-        isRecordingStarted: false,
+        isLiveTranslating: false,
         presentationSessionId: null,
         isTestPresentationRunning: false,
         presentationWindowsOpenedButNotStarted: false,
@@ -44,26 +44,26 @@ describe('useTranslationState', () => {
     });
 
     it('should show Presentation Ready state when presentation opened but not started', () => {
-      translationState.state.value.isPresentationRunning = true;
-      translationState.state.value.isRecordingStarted = false;
+      translationState.state.value.isLiveTranslationPrepared = true;
+      translationState.state.value.isLiveTranslating = false;
 
-      expect(translationState.stateText.value).toBe('Presentation Ready');
+      expect(translationState.stateText.value).toBe('Live Translation Ready');
       expect(translationState.statusSeverity.value).toBe('secondary');
       expect(translationState.inputsDisabled.value).toBe(true);
     });
 
-    it('should show Presenting state when presentation is recording', () => {
-      translationState.state.value.isPresentationRunning = true;
-      translationState.state.value.isRecordingStarted = true;
+    it('should show Presenting state when presenting and translating', () => {
+      translationState.state.value.isLiveTranslationPrepared = true;
+      translationState.state.value.isLiveTranslating = true;
 
-      expect(translationState.stateText.value).toBe('Presenting');
+      expect(translationState.stateText.value).toBe('Live Translation');
       expect(translationState.statusSeverity.value).toBe('success');
       expect(translationState.inputsDisabled.value).toBe(true);
     });
 
     it('should show Paused state when paused', () => {
-      translationState.state.value.isPresentationRunning = true;
-      translationState.state.value.isRecordingStarted = true;
+      translationState.state.value.isLiveTranslationPrepared = true;
+      translationState.state.value.isLiveTranslating = true;
       translationState.state.value.isPaused = true;
 
       expect(translationState.stateText.value).toBe('Paused');
@@ -92,8 +92,8 @@ describe('useTranslationState', () => {
 
   describe('priority of states', () => {
     it('should prioritize paused state over presenting', () => {
-      translationState.state.value.isPresentationRunning = true;
-      translationState.state.value.isRecordingStarted = true;
+      translationState.state.value.isLiveTranslationPrepared = true;
+      translationState.state.value.isLiveTranslating = true;
       translationState.state.value.isPaused = true;
 
       expect(translationState.stateText.value).toBe('Paused');
@@ -110,7 +110,7 @@ describe('useTranslationState', () => {
 
     it('should prioritize testing over presentation', () => {
       translationState.state.value.isTestRunning = true;
-      translationState.state.value.isPresentationRunning = true;
+      translationState.state.value.isLiveTranslationPrepared = true;
 
       expect(translationState.stateText.value).toBe('Testing');
       expect(translationState.statusSeverity.value).toBe('success');
@@ -125,7 +125,7 @@ describe('useTranslationState', () => {
     });
 
     it('should disable inputs when presentation is running', () => {
-      translationState.state.value.isPresentationRunning = true;
+      translationState.state.value.isLiveTranslationPrepared = true;
 
       expect(translationState.inputsDisabled.value).toBe(true);
     });
@@ -138,7 +138,7 @@ describe('useTranslationState', () => {
 
     it('should enable inputs when nothing is running', () => {
       translationState.state.value.isTestRunning = false;
-      translationState.state.value.isPresentationRunning = false;
+      translationState.state.value.isLiveTranslationPrepared = false;
       translationState.state.value.isTestPresentationRunning = false;
 
       expect(translationState.inputsDisabled.value).toBe(false);
@@ -149,9 +149,9 @@ describe('useTranslationState', () => {
     it('should reset all state to initial values', () => {
       // Set various states
       translationState.state.value.isTestRunning = true;
-      translationState.state.value.isPresentationRunning = true;
+      translationState.state.value.isLiveTranslationPrepared = true;
       translationState.state.value.isPaused = true;
-      translationState.state.value.isRecordingStarted = true;
+      translationState.state.value.isLiveTranslating = true;
       translationState.state.value.presentationSessionId = 'session_123';
       translationState.state.value.isTestPresentationRunning = true;
       translationState.state.value.presentationWindowsOpenedButNotStarted = true;
@@ -162,9 +162,9 @@ describe('useTranslationState', () => {
       // Verify all back to defaults
       expect(translationState.state.value).toEqual({
         isTestRunning: false,
-        isPresentationRunning: false,
+        isLiveTranslationPrepared: false,
         isPaused: false,
-        isRecordingStarted: false,
+        isLiveTranslating: false,
         presentationSessionId: null,
         isTestPresentationRunning: false,
         presentationWindowsOpenedButNotStarted: false,
@@ -208,14 +208,14 @@ describe('useTranslationState', () => {
 
     it('should handle full presentation lifecycle', () => {
       // Open presentation windows
-      translationState.state.value.isPresentationRunning = true;
-      translationState.state.value.isRecordingStarted = false;
-      expect(translationState.stateText.value).toBe('Presentation Ready');
+      translationState.state.value.isLiveTranslationPrepared = true;
+      translationState.state.value.isLiveTranslating = false;
+      expect(translationState.stateText.value).toBe('Live Translation Ready');
       expect(translationState.statusSeverity.value).toBe('secondary');
 
-      // Start recording
-      translationState.state.value.isRecordingStarted = true;
-      expect(translationState.stateText.value).toBe('Presenting');
+      // Start translation
+      translationState.state.value.isLiveTranslating = true;
+      expect(translationState.stateText.value).toBe('Live Translation');
       expect(translationState.statusSeverity.value).toBe('success');
 
       // Pause
@@ -225,7 +225,7 @@ describe('useTranslationState', () => {
 
       // Resume
       translationState.state.value.isPaused = false;
-      expect(translationState.stateText.value).toBe('Presenting');
+      expect(translationState.stateText.value).toBe('Live Translation');
       expect(translationState.statusSeverity.value).toBe('success');
 
       // Stop

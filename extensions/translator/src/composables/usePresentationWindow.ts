@@ -148,7 +148,7 @@ export function usePresentationWindow() {
   }
 
   /**
-   * Signal that presentation has started (recording/test generation began)
+   * Signal that presentation has started (translation/test generation began)
    * This dismisses the waiting overlay immediately without waiting for first data
    */
   function setPresentationStartedFlag(sessionId: string) {

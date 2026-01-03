@@ -102,7 +102,7 @@ test.describe('Operator Preview', () => {
     await expect(spanishOutput).toBeVisible();
 
     // 3. Wait for mocked Azure SDK to produce translations
-    // Test mode auto-starts recognition, no need to click start recording
+    // Test mode auto-starts recognition, no need to click start translation
     // Mock 'basic' scenario: recognizing at 500ms, recognized at 1000ms
     await extensionPage.waitForTimeout(1500);
 

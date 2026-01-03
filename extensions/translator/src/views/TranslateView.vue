@@ -104,10 +104,10 @@
       <!-- Controls -->
       <TranslationControlPanel
         :is-test-running="state.isTestRunning"
-        :is-presentation-running="state.isPresentationRunning"
+        :is-live-translation-prepared="state.isLiveTranslationPrepared"
         :is-test-presentation-running="state.isTestPresentationRunning"
         :is-paused="state.isPaused"
-        :is-recording-started="state.isRecordingStarted"
+        :is-live-translating="state.isLiveTranslating"
         :presentation-windows-opened-but-not-started="
           state.presentationWindowsOpenedButNotStarted
         "
@@ -135,8 +135,8 @@
         @start-test="startTest"
         @start-test-presentation="startTestPresentation"
         @start-test-session="startTestSession"
+        @start-live-translation="startLiveTranslation"
         @start-presentation="startPresentation"
-        @start-recording="startRecording"
         @start-test-generation="startTestGeneration"
         @pause-or-resume="pauseOrResume"
         @stop="stop"
@@ -315,7 +315,7 @@ const operatorPreview = ref<InstanceType<typeof OperatorPreview> | null>(null);
 const isOperatorPreviewActive = computed(
   () =>
     state.value.isTestRunning ||
-    state.value.isPresentationRunning ||
+    state.value.isLiveTranslationPrepared ||
     state.value.isTestPresentationRunning,
 );
 
@@ -356,7 +356,7 @@ function onTranslating(translations: Record<string, string>, original: string) {
   scrollOperatorPreviewToBottom();
 
   // Update presentation window if running (filter for audience)
-  if (state.value.isPresentationRunning) {
+  if (state.value.isLiveTranslationPrepared) {
     // Build translations for presentation (respects checkbox)
     const presentationTranslations = { ...translations };
     if (store.settings.presentation.showInputLanguage) {
@@ -385,7 +385,7 @@ function onTranslated(translations: Record<string, string>, original: string) {
   scrollOperatorPreviewToBottom();
 
   // Update presentation window if running
-  if (state.value.isPresentationRunning) {
+  if (state.value.isLiveTranslationPrepared) {
     // Build translations for presentation (respects checkbox)
     const presentationTranslations = { ...translations };
     if (store.settings.presentation.showInputLanguage) {
@@ -481,7 +481,7 @@ async function startTest() {
 }
 
 // Start presentation mode
-async function startPresentation() {
+async function startLiveTranslation() {
   if (!hasApiCredentials.value) {
     error.value = 'Please configure Azure API credentials first';
     return;
@@ -497,7 +497,7 @@ async function startPresentation() {
   clearPresentationWindowStorage();
 
   try {
-    state.value.isPresentationRunning = true;
+    state.value.isLiveTranslationPrepared = true;
     state.value.presentationWindowsOpenedButNotStarted = true;
 
     openPresentationWindows(
@@ -507,15 +507,15 @@ async function startPresentation() {
       {
         isTest: false,
         multiWindowSummary: 'Presentation Windows Opened',
-        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Recording" to begin.`,
+        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Translation" to begin.`,
         singleWindowSummary: 'Presentation Window Opened',
-        singleWindowDetail: 'Click "Start Recording" to begin.',
+        singleWindowDetail: 'Click "Start Translation" to begin.',
       },
     );
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start presentation';
     console.error('startPresentation failed', e);
-    state.value.isPresentationRunning = false;
+    state.value.isLiveTranslationPrepared = false;
     presentationSessionId.value = null;
     toast.add({
       severity: 'error',
@@ -572,18 +572,18 @@ async function startTestPresentation() {
   }
 }
 
-// Start recording for live presentation
-async function startRecording() {
+// Start translation for live presentation
+async function startPresentation() {
   if (!hasApiCredentials.value) {
     error.value = 'Please configure Azure API credentials first';
     return;
   }
 
   try {
-    state.value.isRecordingStarted = true;
+    state.value.isLiveTranslating = true;
     state.value.presentationWindowsOpenedButNotStarted = false;
 
-    // Signal to presentation windows that recording has started
+    // Signal to presentation windows that translation has started
     if (presentationSessionId.value) {
       setPresentationStartedFlag(presentationSessionId.value);
     }
@@ -618,14 +618,14 @@ async function startRecording() {
 
     toast.add({
       severity: 'success',
-      summary: 'Recording Started',
-      detail: 'Speak into your microphone',
+      summary: 'Translation Started',
+      detail: 'Audio input is being translated live',
       life: 3000,
     });
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to start recording';
-    console.error('startRecording failed', e);
-    state.value.isRecordingStarted = false;
+    error.value = e?.message ?? 'Failed to start translation';
+    console.error('startTranslation failed', e);
+    state.value.isLiveTranslating = false;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -638,7 +638,7 @@ async function startRecording() {
 // Start lorem ipsum generation for test presentation
 function startTestGeneration() {
   try {
-    state.value.isRecordingStarted = true;
+    state.value.isLiveTranslating = true;
     state.value.presentationWindowsOpenedButNotStarted = false;
 
     // Signal to presentation windows that test generation has started
@@ -673,7 +673,7 @@ function startTestGeneration() {
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start test generation';
     console.error('startTestGeneration failed', e);
-    state.value.isRecordingStarted = false;
+    state.value.isLiveTranslating = false;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -690,7 +690,7 @@ function pauseOrResume() {
     if (state.value.isTestRunning) {
       captioningService?.start();
     }
-    if (state.value.isPresentationRunning) {
+    if (state.value.isLiveTranslationPrepared) {
       // Clear presenter's state to avoid showing stale content when resuming
       finalizedParagraphsByLang.value = {};
       currentLiveTranslationByLang.value = {};
@@ -714,7 +714,7 @@ function pauseOrResume() {
     if (captioningService) {
       captioningService.stop();
     }
-    if (state.value.isPresentationRunning) {
+    if (state.value.isLiveTranslationPrepared) {
       // Clear presentation window and presenter's state to avoid showing stale content when paused
       finalizedParagraphsByLang.value = {};
       currentLiveTranslationByLang.value = {};
@@ -745,7 +745,7 @@ async function stop() {
       cleanupPresentationStorage(presentationSessionId.value);
     }
 
-    state.value.isPresentationRunning = false;
+    state.value.isLiveTranslationPrepared = false;
     state.value.isTestPresentationRunning = false;
     state.value.presentationWindowsOpenedButNotStarted = false;
     presentationSessionId.value = null;
@@ -779,7 +779,7 @@ async function stop() {
 
     state.value.isTestPresentationRunning = false;
     state.value.isPaused = false;
-    state.value.isRecordingStarted = false;
+    state.value.isLiveTranslating = false;
     state.value.presentationWindowsOpenedButNotStarted = false;
     presentationSessionId.value = null;
 
@@ -790,7 +790,7 @@ async function stop() {
     });
   }
 
-  if (state.value.isPresentationRunning) {
+  if (state.value.isLiveTranslationPrepared) {
     confirm.require({
       message: 'Are you sure you want to stop the presentation?',
       header: 'Confirm Stop',
@@ -810,9 +810,9 @@ async function stop() {
           cleanupPresentationStorage(presentationSessionId.value);
         }
 
-        state.value.isPresentationRunning = false;
+        state.value.isLiveTranslationPrepared = false;
         state.value.isPaused = false;
-        state.value.isRecordingStarted = false;
+        state.value.isLiveTranslating = false;
         state.value.presentationWindowsOpenedButNotStarted = false;
         presentationSessionId.value = null;
 
@@ -839,11 +839,11 @@ async function handleStorageEvent(e: StorageEvent) {
 
   if (e.key === `translator_settings_${sessionId}` && e.newValue === null) {
     // Presentation window was closed, stop everything
-    if (state.value.isPresentationRunning) {
+    if (state.value.isLiveTranslationPrepared) {
       captioningService?.stop();
-      state.value.isPresentationRunning = false;
+      state.value.isLiveTranslationPrepared = false;
       state.value.isPaused = false;
-      state.value.isRecordingStarted = false;
+      state.value.isLiveTranslating = false;
       state.value.presentationWindowsOpenedButNotStarted = false;
       presentationSessionId.value = null;
 
@@ -862,7 +862,7 @@ async function handleStorageEvent(e: StorageEvent) {
 
       state.value.isTestPresentationRunning = false;
       state.value.isPaused = false;
-      state.value.isRecordingStarted = false;
+      state.value.isLiveTranslating = false;
       state.value.presentationWindowsOpenedButNotStarted = false;
       presentationSessionId.value = null;
 

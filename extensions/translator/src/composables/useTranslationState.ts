@@ -2,9 +2,9 @@ import { ref, computed } from 'vue';
 
 export interface TranslationState {
   isTestRunning: boolean;
-  isPresentationRunning: boolean;
+  isLiveTranslationPrepared: boolean;
   isPaused: boolean;
-  isRecordingStarted: boolean;
+  isLiveTranslating: boolean;
   presentationSessionId: string | null;
   isTestPresentationRunning: boolean;
   presentationWindowsOpenedButNotStarted: boolean;
@@ -13,9 +13,9 @@ export interface TranslationState {
 export function useTranslationState() {
   const state = ref<TranslationState>({
     isTestRunning: false,
-    isPresentationRunning: false,
+    isLiveTranslationPrepared: false,
     isPaused: false,
-    isRecordingStarted: false,
+    isLiveTranslating: false,
     presentationSessionId: null,
     isTestPresentationRunning: false,
     presentationWindowsOpenedButNotStarted: false,
@@ -24,9 +24,9 @@ export function useTranslationState() {
   const stateText = computed(() => {
     if (state.value.isPaused) return 'Paused';
     if (state.value.isTestRunning) return 'Testing';
-    if (state.value.isPresentationRunning) {
-      if (state.value.isRecordingStarted) return 'Presenting';
-      return 'Presentation Ready';
+    if (state.value.isLiveTranslationPrepared) {
+      if (state.value.isLiveTranslating) return 'Live Translation';
+      return 'Live Translation Ready';
     }
     if (state.value.isTestPresentationRunning) {
       if (state.value.presentationWindowsOpenedButNotStarted) {
@@ -41,7 +41,8 @@ export function useTranslationState() {
     if (state.value.isPaused) return 'warn';
     if (
       state.value.isTestRunning ||
-      (state.value.isPresentationRunning && state.value.isRecordingStarted) ||
+      (state.value.isLiveTranslationPrepared &&
+        state.value.isLiveTranslating) ||
       (state.value.isTestPresentationRunning &&
         !state.value.presentationWindowsOpenedButNotStarted)
     ) {
@@ -49,7 +50,7 @@ export function useTranslationState() {
     }
     if (
       state.value.presentationWindowsOpenedButNotStarted ||
-      (state.value.isPresentationRunning && !state.value.isRecordingStarted)
+      (state.value.isLiveTranslationPrepared && !state.value.isLiveTranslating)
     ) {
       return 'secondary';
     }
@@ -59,7 +60,7 @@ export function useTranslationState() {
   const inputsDisabled = computed(() => {
     return (
       state.value.isTestRunning ||
-      state.value.isPresentationRunning ||
+      state.value.isLiveTranslationPrepared ||
       state.value.isTestPresentationRunning
     );
   });
@@ -67,9 +68,9 @@ export function useTranslationState() {
   const reset = () => {
     state.value = {
       isTestRunning: false,
-      isPresentationRunning: false,
+      isLiveTranslationPrepared: false,
       isPaused: false,
-      isRecordingStarted: false,
+      isLiveTranslating: false,
       presentationSessionId: null,
       isTestPresentationRunning: false,
       presentationWindowsOpenedButNotStarted: false,

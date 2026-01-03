@@ -125,9 +125,9 @@ export async function openTestPresentationWindows(
 }
 
 /**
- * Start recording in the test presentation
+ * Start translation in the test presentation
  */
-export async function startTestRecording(page: Page) {
+export async function startTestTranslation(page: Page) {
   const startButton = page.getByTestId('button-start-test-generation');
   await startButton.click();
   await page.waitForTimeout(500);

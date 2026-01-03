@@ -8,7 +8,7 @@ import {
   configureTranslationSettings,
   configurePresentationStyling,
   openTestPresentationWindows,
-  startTestRecording,
+  startTestTranslation,
 } from './utils/testHelpers';
 
 /**
@@ -471,7 +471,7 @@ test.describe('Settings Flow - Configuration Management', () => {
     expect(rootStyles.background).toMatch(/rgb\(0,\s*0,\s*0\)|000000/i); // Black
 
     // Step 6: Start test generation to verify live text color
-    await startTestRecording(extensionPage);
+    await startTestTranslation(extensionPage);
     await testWindow.waitForTimeout(2000); // Wait for lorem ipsum generation
 
     // Check if live translation element exists and has correct color

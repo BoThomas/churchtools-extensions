@@ -60,7 +60,7 @@
               icon="pi pi-compass"
               @click="$emit('start-test')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 hasInvalidLanguages
@@ -72,7 +72,7 @@
               icon="pi pi-external-link"
               @click="$emit('start-test-presentation')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
@@ -89,7 +89,7 @@
               icon="pi pi-users"
               @click="$emit('start-test-session')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 hasInvalidLanguages ||
@@ -106,7 +106,7 @@
               icon="pi pi-compass"
               @click="$emit('start-test')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 hasInvalidLanguages
@@ -118,7 +118,7 @@
               icon="pi pi-external-link"
               @click="$emit('start-test-presentation')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
@@ -135,7 +135,7 @@
               icon="pi pi-users"
               @click="$emit('start-test-session')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 hasInvalidLanguages ||
@@ -158,15 +158,15 @@
               v-if="
                 !(
                   presentationWindowsOpenedButNotStarted &&
-                  !isRecordingStarted &&
-                  (isPresentationRunning || isTestPresentationRunning)
+                  !isLiveTranslating &&
+                  (isLiveTranslationPrepared || isTestPresentationRunning)
                 )
               "
               label="Prepare Translation"
               icon="pi pi-language"
-              @click="$emit('start-presentation')"
+              @click="$emit('start-live-translation')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
@@ -181,19 +181,19 @@
             <DangerButton
               v-if="
                 presentationWindowsOpenedButNotStarted &&
-                isPresentationRunning &&
-                !isRecordingStarted
+                isLiveTranslationPrepared &&
+                !isLiveTranslating
               "
               label="Start Translation"
               icon="pi pi-microphone"
-              @click="$emit('start-recording')"
-              data-testid="button-start-recording"
+              @click="$emit('start-translation')"
+              data-testid="button-start-translation"
             />
             <DangerButton
               v-if="
                 presentationWindowsOpenedButNotStarted &&
                 isTestPresentationRunning &&
-                !isRecordingStarted
+                !isLiveTranslating
               "
               label="Start Test"
               icon="pi pi-compass"
@@ -207,7 +207,7 @@
               @click="$emit('pause-or-resume')"
               :disabled="
                 !(
-                  (isPresentationRunning && isRecordingStarted) ||
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
                     !presentationWindowsOpenedButNotStarted)
@@ -222,7 +222,7 @@
               @click="$emit('pause-or-resume')"
               :disabled="
                 !(
-                  (isPresentationRunning && isRecordingStarted) ||
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
                     !presentationWindowsOpenedButNotStarted)
@@ -236,7 +236,7 @@
               @click="$emit('stop')"
               :disabled="
                 !(
-                  isPresentationRunning ||
+                  isLiveTranslationPrepared ||
                   isTestRunning ||
                   isTestPresentationRunning ||
                   presentationWindowsOpenedButNotStarted
@@ -252,15 +252,15 @@
               v-if="
                 !(
                   presentationWindowsOpenedButNotStarted &&
-                  !isRecordingStarted &&
-                  (isPresentationRunning || isTestPresentationRunning)
+                  !isLiveTranslating &&
+                  (isLiveTranslationPrepared || isTestPresentationRunning)
                 )
               "
               label="Prepare Translation"
               icon="pi pi-language"
-              @click="$emit('start-presentation')"
+              @click="$emit('start-live-translation')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
@@ -275,19 +275,19 @@
             <DangerButton
               v-if="
                 presentationWindowsOpenedButNotStarted &&
-                isPresentationRunning &&
-                !isRecordingStarted
+                isLiveTranslationPrepared &&
+                !isLiveTranslating
               "
               label="Start Translation"
               icon="pi pi-microphone"
-              @click="$emit('start-recording')"
-              data-testid="button-start-recording"
+              @click="$emit('start-translation')"
+              data-testid="button-start-translation"
             />
             <DangerButton
               v-if="
                 presentationWindowsOpenedButNotStarted &&
                 isTestPresentationRunning &&
-                !isRecordingStarted
+                !isLiveTranslating
               "
               label="Start Test"
               icon="pi pi-compass"
@@ -301,7 +301,7 @@
               @click="$emit('pause-or-resume')"
               :disabled="
                 !(
-                  (isPresentationRunning && isRecordingStarted) ||
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
                     !presentationWindowsOpenedButNotStarted)
@@ -316,7 +316,7 @@
               @click="$emit('pause-or-resume')"
               :disabled="
                 !(
-                  (isPresentationRunning && isRecordingStarted) ||
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
                     !presentationWindowsOpenedButNotStarted)
@@ -330,7 +330,7 @@
               @click="$emit('stop')"
               :disabled="
                 !(
-                  isPresentationRunning ||
+                  isLiveTranslationPrepared ||
                   isTestRunning ||
                   isTestPresentationRunning ||
                   presentationWindowsOpenedButNotStarted
@@ -452,10 +452,10 @@ interface SettingVariant {
 interface Props {
   // State props
   isTestRunning: boolean;
-  isPresentationRunning: boolean;
+  isLiveTranslationPrepared: boolean;
   isTestPresentationRunning: boolean;
   isPaused: boolean;
-  isRecordingStarted: boolean;
+  isLiveTranslating: boolean;
   presentationWindowsOpenedButNotStarted: boolean;
   stateText: string;
   statusSeverity: string;
@@ -488,8 +488,8 @@ defineEmits<{
   'start-test': [];
   'start-test-presentation': [];
   'start-test-session': [];
-  'start-presentation': [];
-  'start-recording': [];
+  'start-live-translation': [];
+  'start-translation': [];
   'start-test-generation': [];
   'pause-or-resume': [];
   stop: [];
