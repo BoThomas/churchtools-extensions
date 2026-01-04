@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 max-w-7xl">
     <div class="flex gap-2">
       <Button
         icon="pi pi-refresh"
