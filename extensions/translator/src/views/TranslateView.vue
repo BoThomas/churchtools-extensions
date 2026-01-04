@@ -135,8 +135,8 @@
         @start-test="startTest"
         @start-test-presentation="startTestPresentation"
         @start-test-session="startTestSession"
-        @start-live-translation="startLiveTranslation"
-        @start-presentation="startPresentation"
+        @prepare-live-translation="prepareLiveTranslation"
+        @start-translation="startTranslation"
         @start-test-generation="startTestGeneration"
         @pause-or-resume="pauseOrResume"
         @stop="stop"
@@ -480,8 +480,8 @@ async function startTest() {
   }
 }
 
-// Start presentation mode
-async function startLiveTranslation() {
+// Prepare live translation
+async function prepareLiveTranslation() {
   if (!hasApiCredentials.value) {
     error.value = 'Please configure Azure API credentials first';
     return;
@@ -573,7 +573,7 @@ async function startTestPresentation() {
 }
 
 // Start translation for live presentation
-async function startPresentation() {
+async function startTranslation() {
   if (!hasApiCredentials.value) {
     error.value = 'Please configure Azure API credentials first';
     return;

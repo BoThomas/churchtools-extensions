@@ -11,6 +11,8 @@ import {
   startTestTranslation,
 } from './utils/testHelpers';
 
+const MOCK_WEBPUBSUB_URL = 'https://mock-webpubsub.local/api/negotiate';
+
 /**
  * E2E Tests for Settings Flow with REAL ChurchTools Integration
  *
@@ -54,7 +56,7 @@ test.describe('Settings Flow - First Time User', () => {
     // Step 2: Navigate to Settings tab and enter credentials
     await navigateToTab(extensionPage, 'settings');
 
-    const apiKeyInput = extensionPage.getByTestId('input-api-key');
+    const apiKeyInput = extensionPage.locator('#api-key input');
     await apiKeyInput.fill('test-api-key-12345');
 
     const regionInput = extensionPage.getByTestId('input-api-region');
@@ -91,7 +93,7 @@ test.describe('Settings Flow - First Time User', () => {
     await navigateToTab(extensionPage, 'settings', 0);
 
     const savedApiKey = await extensionPage
-      .getByTestId('input-api-key')
+      .locator('#api-key input')
       .inputValue();
     const savedRegion = await extensionPage
       .getByTestId('input-api-region')
@@ -570,6 +572,30 @@ test.describe('WebPubSub Configuration', () => {
 
     await extensionPage.goto('/');
     await extensionPage.waitForLoadState('networkidle');
+
+    // Mock Azure Function validation endpoint used by WebPubSub settings
+    await extensionPage.route('**/api/negotiate', async (route) => {
+      const postData = route.request().postData();
+      let parsed: any = {};
+      if (postData) {
+        try {
+          parsed = JSON.parse(postData);
+        } catch {
+          parsed = {};
+        }
+      }
+
+      const secret: string = parsed?.secret ?? '';
+      const role = secret.includes('operator') ? 'operator' : 'reader';
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'wss://mock-webpubsub.local/client',
+          role,
+        }),
+      });
+    });
   });
 
   test.afterEach(async ({ extensionPage }) => {
@@ -590,22 +616,22 @@ test.describe('WebPubSub Configuration', () => {
     await extensionPage.waitForTimeout(300);
 
     // Fill in operator secret
-    const operatorSecretInput = extensionPage.getByTestId(
-      'input-operator-secret',
-    );
+    const operatorSecretInput = extensionPage
+      .getByTestId('input-operator-secret')
+      .locator('input');
     await operatorSecretInput.fill('test-operator-secret-123');
 
     // Fill in reader secret
-    const readerSecretInput = extensionPage.getByTestId('input-reader-secret');
+    const readerSecretInput = extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input');
     await readerSecretInput.fill('test-reader-secret-456');
 
     // Fill in auth function URL
     const authFunctionUrlInput = extensionPage.getByTestId(
       'input-auth-function-url',
     );
-    await authFunctionUrlInput.fill(
-      'https://test-function.azurewebsites.net/api/negotiate',
-    );
+    await authFunctionUrlInput.fill(MOCK_WEBPUBSUB_URL);
 
     // Save button should be enabled (there are unsaved changes)
     const saveButton = extensionPage.getByTestId('button-save-webpubsub');
@@ -632,16 +658,16 @@ test.describe('WebPubSub Configuration', () => {
     const savedCheckbox = extensionPage.getByTestId(
       'checkbox-webpubsub-enabled',
     );
-    await expect(savedCheckbox).toBeChecked();
+    await expect(savedCheckbox).toHaveAttribute('data-p-checked', 'true');
 
     // Verify the values are still present (they should be masked in password fields)
     // Note: Password fields won't show the value directly, but we can verify they're filled
-    const savedOperatorSecret = await extensionPage.getByTestId(
-      'input-operator-secret',
-    );
-    const savedReaderSecret = await extensionPage.getByTestId(
-      'input-reader-secret',
-    );
+    const savedOperatorSecret = await extensionPage
+      .getByTestId('input-operator-secret')
+      .locator('input');
+    const savedReaderSecret = await extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input');
     const savedAuthUrl = await extensionPage
       .getByTestId('input-auth-function-url')
       .inputValue();
@@ -651,9 +677,7 @@ test.describe('WebPubSub Configuration', () => {
       'test-operator-secret-123',
     );
     expect(await savedReaderSecret.inputValue()).toBe('test-reader-secret-456');
-    expect(savedAuthUrl).toBe(
-      'https://test-function.azurewebsites.net/api/negotiate',
-    );
+    expect(savedAuthUrl).toBe(MOCK_WEBPUBSUB_URL);
   });
 
   test('should reload WebPubSub configuration', async ({ extensionPage }) => {
@@ -670,13 +694,15 @@ test.describe('WebPubSub Configuration', () => {
     // Pre-populate and save
     await extensionPage
       .getByTestId('input-operator-secret')
+      .locator('input')
       .fill('initial-operator-secret');
     await extensionPage
       .getByTestId('input-reader-secret')
+      .locator('input')
       .fill('initial-reader-secret');
     await extensionPage
       .getByTestId('input-auth-function-url')
-      .fill('https://initial-url.com/api');
+      .fill(MOCK_WEBPUBSUB_URL);
 
     // Save button should be visible due to changes
     const saveButton = extensionPage.getByTestId('button-save-webpubsub');
@@ -690,13 +716,15 @@ test.describe('WebPubSub Configuration', () => {
     // Modify the values locally (without saving)
     await extensionPage
       .getByTestId('input-operator-secret')
+      .locator('input')
       .fill('modified-operator-secret');
     await extensionPage
       .getByTestId('input-reader-secret')
+      .locator('input')
       .fill('modified-reader-secret');
     await extensionPage
       .getByTestId('input-auth-function-url')
-      .fill('https://modified-url.com/api');
+      .fill(`${MOCK_WEBPUBSUB_URL}?modified=1`);
 
     // Save button should be enabled again (there are unsaved changes)
     await expect(saveButton).toBeEnabled();
@@ -708,14 +736,20 @@ test.describe('WebPubSub Configuration', () => {
 
     // Verify values are restored to saved state
     expect(
-      await extensionPage.getByTestId('input-operator-secret').inputValue(),
+      await extensionPage
+        .getByTestId('input-operator-secret')
+        .locator('input')
+        .inputValue(),
     ).toBe('initial-operator-secret');
     expect(
-      await extensionPage.getByTestId('input-reader-secret').inputValue(),
+      await extensionPage
+        .getByTestId('input-reader-secret')
+        .locator('input')
+        .inputValue(),
     ).toBe('initial-reader-secret');
     expect(
       await extensionPage.getByTestId('input-auth-function-url').inputValue(),
-    ).toBe('https://initial-url.com/api');
+    ).toBe(MOCK_WEBPUBSUB_URL);
 
     // After reload, save button should be disabled again (no unsaved changes)
     await expect(saveButton).toBeDisabled();
@@ -744,17 +778,21 @@ test.describe('WebPubSub Configuration', () => {
     // Fill only operator secret
     await extensionPage
       .getByTestId('input-operator-secret')
+      .locator('input')
       .fill('test-secret');
     await expect(saveButton).toBeDisabled();
 
     // Fill reader secret too
-    await extensionPage.getByTestId('input-reader-secret').fill('test-reader');
+    await extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input')
+      .fill('test-reader');
     await expect(saveButton).toBeDisabled();
 
     // Fill auth function URL - now button should be enabled
     await extensionPage
       .getByTestId('input-auth-function-url')
-      .fill('https://test.com/api');
+      .fill(MOCK_WEBPUBSUB_URL);
     await expect(saveButton).toBeEnabled();
   });
 });

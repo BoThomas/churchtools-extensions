@@ -65,7 +65,7 @@
                 isTestPresentationRunning ||
                 hasInvalidLanguages
               "
-              data-testid="button-test-translation"
+              data-testid="button-test-translation-mobile"
             />
             <SecondaryButton
               label="Test Presentation"
@@ -81,7 +81,7 @@
                 (isWebPubSubEnabled && !isPresentationEnabled)
               "
               severity="secondary"
-              data-testid="button-test-presentation"
+              data-testid="button-test-presentation-mobile"
             />
             <SecondaryButton
               v-if="isWebPubSubEnabled"
@@ -96,7 +96,7 @@
                 !isSessionEnabled
               "
               severity="secondary"
-              data-testid="button-test-session"
+              data-testid="button-test-session-mobile"
             />
           </div>
           <!-- ButtonGroup for medium and larger screens -->
@@ -164,7 +164,7 @@
               "
               label="Prepare Translation"
               icon="pi pi-language"
-              @click="$emit('start-live-translation')"
+              @click="$emit('prepare-live-translation')"
               :disabled="
                 isLiveTranslationPrepared ||
                 isTestRunning ||
@@ -176,7 +176,7 @@
                   !isPresentationEnabled &&
                   !isSessionEnabled)
               "
-              data-testid="button-presentation"
+              data-testid="button-presentation-mobile"
             />
             <DangerButton
               v-if="
@@ -187,7 +187,7 @@
               label="Start Translation"
               icon="pi pi-microphone"
               @click="$emit('start-translation')"
-              data-testid="button-start-translation"
+              data-testid="button-start-translation-mobile"
             />
             <DangerButton
               v-if="
@@ -198,7 +198,7 @@
               label="Start Test"
               icon="pi pi-compass"
               @click="$emit('start-test-generation')"
-              data-testid="button-start-test-generation"
+              data-testid="button-start-test-generation-mobile"
             />
             <Button
               v-if="isPaused"
@@ -213,7 +213,7 @@
                     !presentationWindowsOpenedButNotStarted)
                 )
               "
-              data-testid="button-resume"
+              data-testid="button-resume-mobile"
             />
             <Button
               v-else
@@ -228,7 +228,7 @@
                     !presentationWindowsOpenedButNotStarted)
                 )
               "
-              data-testid="button-pause"
+              data-testid="button-pause-mobile"
             />
             <Button
               label="Stop"
@@ -243,7 +243,7 @@
                 )
               "
               outlined
-              data-testid="button-stop"
+              data-testid="button-stop-mobile"
             />
           </div>
           <!-- ButtonGroup for medium and larger screens -->
@@ -258,7 +258,7 @@
               "
               label="Prepare Translation"
               icon="pi pi-language"
-              @click="$emit('start-live-translation')"
+              @click="$emit('prepare-live-translation')"
               :disabled="
                 isLiveTranslationPrepared ||
                 isTestRunning ||
@@ -488,7 +488,7 @@ defineEmits<{
   'start-test': [];
   'start-test-presentation': [];
   'start-test-session': [];
-  'start-live-translation': [];
+  'prepare-live-translation': [];
   'start-translation': [];
   'start-test-generation': [];
   'pause-or-resume': [];

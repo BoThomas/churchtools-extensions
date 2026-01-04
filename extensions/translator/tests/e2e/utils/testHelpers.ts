@@ -170,7 +170,8 @@ export async function configureApiCredentials(
 ) {
   await navigateToTab(page, 'settings');
 
-  const apiKeyInput = page.getByTestId('input-api-key');
+  // The Password component is a wrapper div with id "api-key", find the input inside
+  const apiKeyInput = page.locator('#api-key input');
   await apiKeyInput.fill(apiKey);
 
   const regionInput = page.getByTestId('input-api-region');
