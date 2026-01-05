@@ -53,7 +53,7 @@ export interface TranslatorSettings {
   // Output mode enabled states (track which modes are active per variant)
   outputModes?: {
     presentationEnabled: boolean;
-    sessionEnabled: boolean;
+    streamedSessionEnabled: boolean;
   };
 }
 
@@ -92,7 +92,7 @@ const DEFAULT_SETTINGS: TranslatorSettings = {
   },
   outputModes: {
     presentationEnabled: true,
-    sessionEnabled: false,
+    streamedSessionEnabled: false,
   },
 };
 

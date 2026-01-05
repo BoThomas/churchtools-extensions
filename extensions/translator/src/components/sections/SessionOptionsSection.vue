@@ -1,10 +1,11 @@
 <template>
   <ToggleableFieldset
-    legend="Session Options"
+    legend="Streamed Session"
     :enabled="enabled"
     :collapsed="collapsed"
     :toggleable="true"
     :disabled="disabled"
+    data-testid="fieldset-session-options"
     @update:enabled="$emit('update:enabled', $event)"
     @toggle="$emit('toggle', $event)"
   >

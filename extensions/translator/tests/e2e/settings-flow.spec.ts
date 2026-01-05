@@ -126,9 +126,9 @@ test.describe('Settings Flow - Configuration Management', () => {
     await extensionPage.waitForLoadState('networkidle');
 
     // Expand Presentation Options
-    const presentationOptionsButton = extensionPage.getByRole('button', {
-      name: /Presentation Options/i,
-    });
+    const presentationOptionsButton = extensionPage
+      .getByTestId('fieldset-presentation-options')
+      .locator('[data-pc-section="togglebutton"]');
     const presentationOptionsExpanded =
       (await presentationOptionsButton.getAttribute('aria-expanded')) ===
       'true';

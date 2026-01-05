@@ -90,12 +90,12 @@
       <!-- Session Options (WebPubSub) -->
       <SessionOptionsSection
         v-if="isWebPubSubEnabled"
-        :enabled="store.settings.outputModes?.sessionEnabled ?? false"
+        :enabled="store.settings.outputModes?.streamedSessionEnabled ?? false"
         :collapsed="sessionOptionsCollapsed"
         :disabled="inputsDisabled"
         @update:enabled="
           (value) => {
-            store.settings.outputModes!.sessionEnabled = value;
+            store.settings.outputModes!.streamedSessionEnabled = value;
           }
         "
         @toggle="toggleSessionOptions"
@@ -123,7 +123,7 @@
           store.settings.outputModes?.presentationEnabled ?? true
         "
         :is-session-enabled="
-          store.settings.outputModes?.sessionEnabled ?? false
+          store.settings.outputModes?.streamedSessionEnabled ?? false
         "
         :selected-variant-id="selectedVariantForDisplay"
         :setting-variants="store.settingVariants"

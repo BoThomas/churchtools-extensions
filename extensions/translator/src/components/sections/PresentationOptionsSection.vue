@@ -2,10 +2,11 @@
   <!-- Toggleable mode when WebPubSub enabled -->
   <ToggleableFieldset
     v-if="toggleableEnabled !== undefined"
-    legend="Presentation Options"
+    legend="Presentation"
     :enabled="toggleableEnabled"
     :collapsed="collapsed"
     :toggleable="true"
+    data-testid="fieldset-presentation-options"
     @update:enabled="$emit('update:enabled', $event)"
     @toggle="$emit('toggle', $event)"
   >
@@ -21,9 +22,10 @@
   <!-- Regular mode -->
   <Fieldset
     v-else
-    legend="Presentation Options"
+    legend="Presentation"
     :collapsed="collapsed"
     :toggleable="true"
+    data-testid="fieldset-presentation-options"
     @toggle="$emit('toggle', $event)"
   >
     <PresentationOptionsGrid

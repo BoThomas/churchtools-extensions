@@ -23,9 +23,9 @@ export async function configureTranslationSettings(
   await page.waitForTimeout(500);
 
   // Expand Translation Options if not already expanded
-  const translationOptionsButton = page.getByRole('button', {
-    name: /Translation Options/i,
-  });
+  const translationOptionsButton = page
+    .getByTestId('fieldset-translation-options')
+    .locator('[data-pc-section="togglebutton"]');
   const translationOptionsExpanded =
     (await translationOptionsButton.getAttribute('aria-expanded')) === 'true';
   if (!translationOptionsExpanded) {
@@ -71,9 +71,9 @@ export async function configureTranslationSettings(
   // Set presentation mode if specified and there are 2+ output languages
   // (presentation mode is disabled for single language)
   if (config.presentationMode && config.outputLangs.length >= 2) {
-    const presentationOptionsButton = page.getByRole('button', {
-      name: /Presentation Options/i,
-    });
+    const presentationOptionsButton = page
+      .getByTestId('fieldset-presentation-options')
+      .locator('[data-pc-section="togglebutton"]');
     const presentationOptionsExpanded =
       (await presentationOptionsButton.getAttribute('aria-expanded')) ===
       'true';
@@ -240,9 +240,9 @@ export async function configurePresentationStyling(
   config: PresentationStylingConfig,
 ) {
   // Expand Presentation Options if not already expanded
-  const presentationOptionsButton = page.getByRole('button', {
-    name: /Presentation Options/i,
-  });
+  const presentationOptionsButton = page
+    .getByTestId('fieldset-presentation-options')
+    .locator('[data-pc-section="togglebutton"]');
   const presentationOptionsExpanded =
     (await presentationOptionsButton.getAttribute('aria-expanded')) === 'true';
   if (!presentationOptionsExpanded) {
