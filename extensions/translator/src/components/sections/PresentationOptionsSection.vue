@@ -6,17 +6,20 @@
     :enabled="toggleableEnabled"
     :collapsed="collapsed"
     :toggleable="true"
+    info="Displays real-time translations in presentation windows. Supports split-screen or multi-window modes."
     data-testid="fieldset-presentation-options"
     @update:enabled="$emit('update:enabled', $event)"
     @toggle="$emit('toggle', $event)"
   >
-    <PresentationOptionsGrid
-      :model-value="modelValue"
-      :disabled="disabled"
-      :presentation-languages-count="presentationLanguagesCount"
-      @update:model-value="$emit('update:modelValue', $event)"
-      @change="$emit('change')"
-    />
+    <div class="pt-4">
+      <PresentationOptionsGrid
+        :model-value="modelValue"
+        :disabled="disabled"
+        :presentation-languages-count="presentationLanguagesCount"
+        @update:model-value="$emit('update:modelValue', $event)"
+        @change="$emit('change')"
+      />
+    </div>
   </ToggleableFieldset>
 
   <!-- Regular mode -->
@@ -28,13 +31,15 @@
     data-testid="fieldset-presentation-options"
     @toggle="$emit('toggle', $event)"
   >
-    <PresentationOptionsGrid
-      :model-value="modelValue"
-      :disabled="disabled"
-      :presentation-languages-count="presentationLanguagesCount"
-      @update:model-value="$emit('update:modelValue', $event)"
-      @change="$emit('change')"
-    />
+    <div class="pt-4">
+      <PresentationOptionsGrid
+        :model-value="modelValue"
+        :disabled="disabled"
+        :presentation-languages-count="presentationLanguagesCount"
+        @update:model-value="$emit('update:modelValue', $event)"
+        @change="$emit('change')"
+      />
+    </div>
   </Fieldset>
 </template>
 

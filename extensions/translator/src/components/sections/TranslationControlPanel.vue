@@ -44,6 +44,19 @@
         </div>
       </Message>
 
+      <!-- Warning when no output mode is selected (invalid configuration) -->
+      <Message
+        v-if="isWebPubSubEnabled && !hasValidOutputMode"
+        severity="warn"
+        :closable="false"
+        icon="pi pi-exclamation-triangle"
+      >
+        <div>
+          <strong>Invalid Output Mode:</strong> Both Presentation and Streamed
+          Session are disabled. Please enable at least one output mode.
+        </div>
+      </Message>
+
       <!-- Main Flow: Test & Presentation -->
       <div
         class="controls-flow flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-start"
@@ -172,9 +185,7 @@
                 presentationWindowsOpenedButNotStarted ||
                 hasTooManyLanguagesForSplit ||
                 hasInvalidLanguages ||
-                (isWebPubSubEnabled &&
-                  !isPresentationEnabled &&
-                  !isSessionEnabled)
+                (isWebPubSubEnabled && !hasValidOutputMode)
               "
               data-testid="button-presentation-mobile"
             />
@@ -266,9 +277,7 @@
                 presentationWindowsOpenedButNotStarted ||
                 hasTooManyLanguagesForSplit ||
                 hasInvalidLanguages ||
-                (isWebPubSubEnabled &&
-                  !isPresentationEnabled &&
-                  !isSessionEnabled)
+                (isWebPubSubEnabled && !hasValidOutputMode)
               "
               data-testid="button-presentation"
             />
@@ -471,6 +480,7 @@ interface Props {
   isWebPubSubEnabled?: boolean;
   isPresentationEnabled?: boolean;
   isSessionEnabled?: boolean;
+  hasValidOutputMode?: boolean;
 
   // Variant management props
   selectedVariantId: number | null;

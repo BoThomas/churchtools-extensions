@@ -2,23 +2,37 @@
   <div class="relative">
     <!-- SelectButton positioned next to the legend text, overlaying the top border -->
     <div
-      class="absolute left-60 top-5 z-20 bg-surface-0 dark:bg-surface-900 px-3"
+      class="absolute left-60 top-5 z-20 flex items-center gap-4"
       style="transform: translateY(-50%)"
     >
-      <SelectButton
-        v-model="internalEnabled"
-        :options="toggleOptions"
-        option-label="label"
-        option-value="value"
-        :disabled="disabled"
-        :pt:pcToggleButton:content:class="
-          internalEnabled
-            ? 'relative flex-auto inline-flex items-center justify-center gap-2 py-1 px-3 rounded-md transition-colors duration-200 p-checked:bg-surface-0 dark:p-checked:bg-surface-800 p-checked:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.02),0px_1px_2px_0px_rgba(0,0,0,0.04)] p-checked:text-green-600 dark:p-checked:text-green-500'
-            : 'relative flex-auto inline-flex items-center justify-center gap-2 py-1 px-3 rounded-md transition-colors duration-200 p-checked:bg-surface-0 dark:p-checked:bg-surface-800 p-checked:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.02),0px_1px_2px_0px_rgba(0,0,0,0.04)] p-checked:text-red-600 dark:p-checked:text-red-500'
-        "
-        @update:model-value="handleToggle"
-      />
+      <div class="bg-surface-0 dark:bg-surface-900 px-3">
+        <SelectButton
+          v-model="internalEnabled"
+          :options="toggleOptions"
+          option-label="label"
+          option-value="value"
+          :disabled="disabled"
+          :pt:pcToggleButton:content:class="
+            internalEnabled
+              ? 'relative flex-auto inline-flex items-center justify-center gap-2 py-1 px-3 rounded-md transition-colors duration-200 p-checked:bg-surface-0 dark:p-checked:bg-surface-800 p-checked:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.02),0px_1px_2px_0px_rgba(0,0,0,0.04)] p-checked:text-green-600 dark:p-checked:text-green-500'
+              : 'relative flex-auto inline-flex items-center justify-center gap-2 py-1 px-3 rounded-md transition-colors duration-200 p-checked:bg-surface-0 dark:p-checked:bg-surface-800 p-checked:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.02),0px_1px_2px_0px_rgba(0,0,0,0.04)] p-checked:text-red-600 dark:p-checked:text-red-500'
+          "
+          @update:model-value="handleToggle"
+        />
+      </div>
+      <div v-if="info" class="bg-surface-0 dark:bg-surface-900 px-1">
+        <Button
+          icon="pi pi-question-circle"
+          text
+          @click="(e) => popover?.toggle(e)"
+          :disabled="disabled"
+          class="h-8 w-8"
+        />
+      </div>
     </div>
+    <Popover v-if="info" ref="popover">
+      <div class="max-w-sm text-sm" v-html="info"></div>
+    </Popover>
 
     <!-- Standard Fieldset with its native collapse/expand -->
     <Fieldset
@@ -100,6 +114,8 @@
 import { ref, watch } from 'vue';
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import SelectButton from '@churchtools-extensions/prime-volt/SelectButton.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import Popover from '@churchtools-extensions/prime-volt/Popover.vue';
 
 interface Props {
   legend: string;
@@ -109,6 +125,7 @@ interface Props {
   disabled?: boolean;
   enabledLabel?: string;
   disabledLabel?: string;
+  info?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -127,6 +144,7 @@ const emit = defineEmits<{
 
 const internalEnabled = ref(props.enabled);
 const previousValue = ref(props.enabled);
+const popover = ref();
 
 const toggleOptions = [
   { label: props.enabledLabel, value: true },

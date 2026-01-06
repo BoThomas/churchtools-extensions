@@ -6,7 +6,7 @@
     data-testid="fieldset-translation-options"
     @toggle="$emit('toggle', $event)"
   >
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
       <!-- Input Language -->
       <LanguageSelectField
         label="Spoken Input Language"

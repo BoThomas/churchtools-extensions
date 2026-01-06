@@ -215,8 +215,14 @@ export const useTranslatorStore = defineStore('translator', () => {
     if (!migrated.outputModes) {
       migrated.outputModes = {
         presentationEnabled: true,
-        sessionEnabled: false,
+        streamedSessionEnabled: false,
       };
+    } else {
+      // Ensure both keys are booleans
+      migrated.outputModes.presentationEnabled =
+        !!migrated.outputModes.presentationEnabled;
+      migrated.outputModes.streamedSessionEnabled =
+        !!migrated.outputModes.streamedSessionEnabled;
     }
 
     // Fill other defaults if missing

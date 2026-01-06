@@ -255,6 +255,91 @@ describe('Settings Persistence Integration', () => {
 
       expect(newStore.settings.presentation.showInputLanguage).toBe(false);
     });
+
+    it('should add missing outputModes with defaults', async () => {
+      const partialSettings = {
+        inputLanguage: 'en-US',
+        outputLanguages: ['de'],
+        profanityOption: 'raw' as const,
+        stablePartialResultThreshold: '5',
+        phraseList: '',
+        presentation: {
+          font: 'Arial',
+          fontSize: '2em',
+          margin: '1em 2em',
+          color: 'white',
+          liveColor: '#999',
+          background: 'black',
+          mode: 'split' as const,
+          showInputLanguage: false,
+        },
+        // Missing outputModes
+      } as any;
+
+      store.settings = partialSettings;
+      await store.saveCurrentVariant('No Output Modes', 1);
+
+      const newStore = useTranslatorStore();
+      await newStore.loadSettingVariants();
+
+      expect(newStore.settings.outputModes).toBeDefined();
+      expect(newStore.settings.outputModes?.presentationEnabled).toBe(true);
+      expect(newStore.settings.outputModes?.streamedSessionEnabled).toBe(false);
+    });
+
+    it('should ensure outputModes values are booleans', async () => {
+      const partialSettings = {
+        inputLanguage: 'en-US',
+        outputLanguages: ['de'],
+        profanityOption: 'raw' as const,
+        stablePartialResultThreshold: '5',
+        phraseList: '',
+        presentation: {
+          font: 'Arial',
+          fontSize: '2em',
+          margin: '1em 2em',
+          color: 'white',
+          liveColor: '#999',
+          background: 'black',
+          mode: 'split' as const,
+          showInputLanguage: false,
+        },
+        outputModes: {
+          presentationEnabled: 1 as any, // Non-boolean value
+          streamedSessionEnabled: 0 as any, // Non-boolean value
+        },
+      } as any;
+
+      store.settings = partialSettings;
+      await store.saveCurrentVariant('Non-Boolean Modes', 1);
+
+      const newStore = useTranslatorStore();
+      await newStore.loadSettingVariants();
+
+      expect(newStore.settings.outputModes?.presentationEnabled).toBe(true);
+      expect(newStore.settings.outputModes?.streamedSessionEnabled).toBe(false);
+      expect(typeof newStore.settings.outputModes?.presentationEnabled).toBe(
+        'boolean',
+      );
+      expect(typeof newStore.settings.outputModes?.streamedSessionEnabled).toBe(
+        'boolean',
+      );
+    });
+
+    it('should preserve valid outputModes when present', async () => {
+      store.settings.outputModes = {
+        presentationEnabled: false,
+        streamedSessionEnabled: true,
+      };
+
+      await store.saveCurrentVariant('Custom Output Modes', 1);
+
+      const newStore = useTranslatorStore();
+      await newStore.loadSettingVariants();
+
+      expect(newStore.settings.outputModes?.presentationEnabled).toBe(false);
+      expect(newStore.settings.outputModes?.streamedSessionEnabled).toBe(true);
+    });
   });
 
   describe('Data Validation', () => {

@@ -125,6 +125,7 @@
         :is-session-enabled="
           store.settings.outputModes?.streamedSessionEnabled ?? false
         "
+        :has-valid-output-mode="hasValidOutputMode"
         :selected-variant-id="selectedVariantForDisplay"
         :setting-variants="store.settingVariants"
         :has-unsaved-changes="store.hasUnsavedChanges"
@@ -332,6 +333,15 @@ const isWebPubSubEnabled = computed(() => {
     !!store.readerConfig.readerSecret &&
     !!store.operatorSecret.secret
   );
+});
+
+// Valid output mode: at least one of presentation or streamed session enabled
+const hasValidOutputMode = computed(() => {
+  const presentationEnabled =
+    store.settings.outputModes?.presentationEnabled ?? true;
+  const sessionEnabled =
+    store.settings.outputModes?.streamedSessionEnabled ?? false;
+  return !!(presentationEnabled || sessionEnabled);
 });
 
 // Load current user
