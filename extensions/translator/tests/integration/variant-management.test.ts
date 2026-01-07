@@ -366,5 +366,113 @@ describe('Variant Management Integration', () => {
       expect(store.settings.presentation).toBeDefined();
       expect(store.settings.presentation.mode).toBe('split');
     });
+
+    it('should include session settings in DEFAULT_SETTINGS', async () => {
+      // Load fresh store to get default variant
+      const newStore = useTranslatorStore();
+      await newStore.loadApiSettings();
+      await newStore.loadSettingVariants();
+
+      // Find Default variant
+      const defaultVariant = newStore.settingVariants.find(
+        (v) => v.value.name === 'Default',
+      );
+
+      expect(defaultVariant?.value.settings.session).toBeDefined();
+      expect(defaultVariant?.value.settings.session?.hidden).toBe(false);
+      expect(
+        defaultVariant?.value.settings.session?.displayName,
+      ).toBeUndefined();
+      expect(
+        defaultVariant?.value.settings.session?.maxClients,
+      ).toBeUndefined();
+    });
+
+    it('should preserve session settings when switching variants', async () => {
+      // Create variant A with session config
+      store.settings.session = {
+        displayName: 'Variant A Session',
+        maxClients: 10,
+        hidden: true,
+      };
+      await store.saveCurrentVariant('Variant A', 1);
+
+      // Create variant B with different session config
+      store.settings.session = {
+        displayName: 'Variant B Session',
+        maxClients: 20,
+        hidden: false,
+      };
+      await store.saveCurrentVariant('Variant B', 1);
+      const variantBId = store.selectedVariantId;
+
+      // Switch back to Variant A
+      const variantA = store.settingVariants.find(
+        (v) => v.value.name === 'Variant A',
+      );
+      await store.selectVariant(variantA!.id, 1);
+
+      // Session settings should be from Variant A
+      expect(store.settings.session?.displayName).toBe('Variant A Session');
+      expect(store.settings.session?.maxClients).toBe(10);
+      expect(store.settings.session?.hidden).toBe(true);
+
+      // Switch to Variant B
+      await store.selectVariant(variantBId!, 1);
+
+      // Session settings should be from Variant B
+      expect(store.settings.session?.displayName).toBe('Variant B Session');
+      expect(store.settings.session?.maxClients).toBe(20);
+      expect(store.settings.session?.hidden).toBe(false);
+    });
+
+    it('should update session settings when saving variant', async () => {
+      await store.saveCurrentVariant('Test Variant', 1);
+      const variantId = store.selectedVariantId;
+
+      // Modify session settings
+      store.settings.session = {
+        displayName: 'Updated Session Name',
+        maxClients: 100,
+        hidden: true,
+      };
+      await store.saveCurrentVariant(undefined, 1);
+
+      // Verify update persisted
+      const variant = store.settingVariants.find((v) => v.id === variantId);
+      expect(variant?.value.settings.session?.displayName).toBe(
+        'Updated Session Name',
+      );
+      expect(variant?.value.settings.session?.maxClients).toBe(100);
+      expect(variant?.value.settings.session?.hidden).toBe(true);
+    });
+
+    it('should restore session settings when loading variant', async () => {
+      // Create variant with specific session settings
+      store.settings.session = {
+        displayName: 'Restore Test',
+        maxClients: 75,
+        hidden: false,
+      };
+      await store.saveCurrentVariant('Session Restore', 1);
+      const variantId = store.selectedVariantId;
+
+      // Switch to default
+      const defaultVariant = store.settingVariants.find(
+        (v) => v.value.name === 'Default',
+      );
+      await store.selectVariant(defaultVariant!.id, 1);
+
+      // Verify different settings
+      expect(store.settings.session?.displayName).not.toBe('Restore Test');
+
+      // Switch back
+      await store.selectVariant(variantId!, 1);
+
+      // Session settings should be restored
+      expect(store.settings.session?.displayName).toBe('Restore Test');
+      expect(store.settings.session?.maxClients).toBe(75);
+      expect(store.settings.session?.hidden).toBe(false);
+    });
   });
 });

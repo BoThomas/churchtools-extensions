@@ -47,7 +47,9 @@ export interface TranslatorSettings {
 
   // Session Options (WebPubSub)
   session?: {
-    // Placeholder for future session settings
+    displayName?: string; // Optional user-provided session name (auto-generated if empty)
+    maxClients?: number; // Optional max client count (undefined = unlimited)
+    hidden: boolean; // Whether to hide this session from the session overview
   };
 
   // Output mode enabled states (track which modes are active per variant)
@@ -89,6 +91,9 @@ const DEFAULT_SETTINGS: TranslatorSettings = {
     background: 'black',
     mode: 'split',
     showInputLanguage: false,
+  },
+  session: {
+    hidden: false,
   },
   outputModes: {
     presentationEnabled: true,
@@ -223,6 +228,25 @@ export const useTranslatorStore = defineStore('translator', () => {
         !!migrated.outputModes.presentationEnabled;
       migrated.outputModes.streamedSessionEnabled =
         !!migrated.outputModes.streamedSessionEnabled;
+    }
+
+    // Ensure session exists with defaults
+    if (!migrated.session) {
+      migrated.session = {
+        hidden: false,
+      };
+    } else {
+      // Ensure hidden is a boolean
+      if (typeof migrated.session.hidden !== 'boolean') {
+        migrated.session.hidden = false;
+      }
+      // Ensure maxClients is a number or undefined
+      if (
+        migrated.session.maxClients !== undefined &&
+        typeof migrated.session.maxClients !== 'number'
+      ) {
+        migrated.session.maxClients = undefined;
+      }
     }
 
     // Fill other defaults if missing

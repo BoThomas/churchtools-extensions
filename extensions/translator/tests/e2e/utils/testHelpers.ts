@@ -299,3 +299,103 @@ export async function configurePresentationStyling(
     await page.waitForTimeout(200);
   }
 }
+
+/**
+ * Configure WebPubSub settings via Settings tab
+ * Enables streamed sessions by configuring operator and reader secrets
+ */
+export async function configureWebPubSub(
+  page: Page,
+  operatorSecret: string = 'mock-operator-secret',
+  readerSecret: string = 'mock-reader-secret',
+  authFunctionUrl: string = 'https://mock-webpubsub.local/api/negotiate',
+) {
+  await navigateToTab(page, 'settings');
+
+  // Enable WebPubSub streaming
+  const enableCheckbox = page.getByTestId('checkbox-webpubsub-enabled');
+  await enableCheckbox.click();
+  await page.waitForTimeout(300);
+
+  // Configure operator secret
+  const operatorSecretInput = page
+    .getByTestId('input-operator-secret')
+    .locator('input');
+  await operatorSecretInput.fill(operatorSecret);
+
+  // Configure reader secret
+  const readerSecretInput = page
+    .getByTestId('input-reader-secret')
+    .locator('input');
+  await readerSecretInput.fill(readerSecret);
+
+  // Configure auth function URL
+  const authFunctionUrlInput = page.getByTestId('input-auth-function-url');
+  await authFunctionUrlInput.fill(authFunctionUrl);
+
+  // Save WebPubSub settings
+  const saveButton = page.getByTestId('button-save-webpubsub');
+  await saveButton.click();
+
+  // Wait for save to complete
+  await page.waitForTimeout(1000);
+}
+
+/**
+ * Configuration for session options
+ */
+export interface SessionOptionsConfig {
+  displayName?: string;
+  maxClients?: number;
+  hidden?: boolean;
+}
+
+/**
+ * Configure session options via UI
+ * Assumes user is already on the Translate tab with WebPubSub enabled
+ */
+export async function configureSessionOptions(
+  page: Page,
+  config: SessionOptionsConfig,
+) {
+  // Expand Session Options if not already expanded
+  const sessionOptionsButton = page
+    .getByTestId('fieldset-session-options')
+    .locator('[data-pc-section="togglebutton"]');
+  const sessionOptionsExpanded =
+    (await sessionOptionsButton.getAttribute('aria-expanded')) === 'true';
+  if (!sessionOptionsExpanded) {
+    await sessionOptionsButton.click();
+    await page.waitForTimeout(300);
+  }
+
+  // Configure display name if specified
+  if (config.displayName !== undefined) {
+    const displayNameInput = page.locator('#session-display-name');
+    await displayNameInput.clear();
+    if (config.displayName) {
+      await displayNameInput.fill(config.displayName);
+    }
+    await page.waitForTimeout(200);
+  }
+
+  // Configure max clients if specified
+  if (config.maxClients !== undefined) {
+    const maxClientsInput = page.locator('#session-max-clients input');
+    await maxClientsInput.clear();
+    if (config.maxClients) {
+      await maxClientsInput.fill(config.maxClients.toString());
+    }
+    await page.waitForTimeout(200);
+  }
+
+  // Configure hidden if specified
+  if (config.hidden !== undefined) {
+    const hiddenCheckbox = page.locator('#session-hidden').locator('input');
+    const isChecked = await hiddenCheckbox.isChecked();
+    if (isChecked !== config.hidden) {
+      await hiddenCheckbox.click();
+      await page.waitForTimeout(200);
+    }
+  }
+}

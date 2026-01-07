@@ -90,6 +90,7 @@
       <!-- Session Options (WebPubSub) -->
       <SessionOptionsSection
         v-if="isWebPubSubEnabled"
+        v-model="store.settings"
         :enabled="store.settings.outputModes?.streamedSessionEnabled ?? false"
         :collapsed="sessionOptionsCollapsed"
         :disabled="inputsDisabled"

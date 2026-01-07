@@ -9,6 +9,8 @@ import {
   configurePresentationStyling,
   openTestPresentationWindows,
   startTestTranslation,
+  configureWebPubSub,
+  configureSessionOptions,
 } from './utils/testHelpers';
 
 const MOCK_WEBPUBSUB_URL = 'https://mock-webpubsub.local/api/negotiate';
@@ -794,5 +796,128 @@ test.describe('WebPubSub Configuration', () => {
       .getByTestId('input-auth-function-url')
       .fill(MOCK_WEBPUBSUB_URL);
     await expect(saveButton).toBeEnabled();
+  });
+});
+
+test.describe('Session Options Configuration', () => {
+  test.beforeEach(async ({ extensionPage }) => {
+    await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
+
+    await extensionPage.goto('/');
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Mock Azure Function validation endpoint for WebPubSub
+    await extensionPage.route('**/api/negotiate', async (route) => {
+      const postData = route.request().postData();
+      let parsed: any = {};
+      if (postData) {
+        try {
+          parsed = JSON.parse(postData);
+        } catch {
+          parsed = {};
+        }
+      }
+
+      const secret: string = parsed?.secret ?? '';
+      const role = secret.includes('operator') ? 'operator' : 'reader';
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'wss://mock-webpubsub.local/client',
+          role,
+        }),
+      });
+    });
+
+    await configureApiCredentials(extensionPage);
+    await configureWebPubSub(extensionPage);
+    await navigateToTab(extensionPage, 'translate');
+  });
+
+  test.afterEach(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage, false);
+  });
+
+  test('should preserve session settings when switching between variants', async ({
+    extensionPage,
+  }) => {
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Enable the session options by clicking the "On" button in the SelectButton
+    const sessionFieldset = extensionPage.getByTestId(
+      'fieldset-session-options',
+    );
+    const enableButton = sessionFieldset
+      .locator('[data-pc-name="pctogglebutton"]')
+      .filter({ hasText: 'On' });
+    await enableButton.click();
+    await extensionPage.waitForTimeout(300);
+
+    // Create two variants with different session settings
+    await configureSessionOptions(extensionPage, {
+      displayName: 'Variant A',
+      maxClients: 10,
+      hidden: false,
+    });
+    await createVariant(extensionPage, 'Variant A');
+    await extensionPage.waitForTimeout(500);
+
+    await configureSessionOptions(extensionPage, {
+      displayName: 'Variant B',
+      maxClients: 20,
+      hidden: true,
+    });
+    await createVariant(extensionPage, 'Variant B');
+    await extensionPage.waitForTimeout(500);
+
+    // Switch to Variant A and verify
+    const variantSelect = extensionPage.getByTestId('select-variant');
+    await variantSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage
+      .locator('[role="listbox"]')
+      .getByText('Variant A')
+      .click();
+    await extensionPage.waitForTimeout(500);
+
+    // Expand Session Options fieldset if collapsed
+    const sessionOptionsToggle = extensionPage
+      .getByTestId('fieldset-session-options')
+      .locator('[data-pc-section="togglebutton"]');
+    if ((await sessionOptionsToggle.getAttribute('aria-expanded')) !== 'true') {
+      await sessionOptionsToggle.click();
+      await extensionPage.waitForTimeout(300);
+    }
+
+    expect(
+      await extensionPage.locator('#session-display-name').inputValue(),
+    ).toBe('Variant A');
+    expect(
+      await extensionPage.locator('#session-max-clients input').inputValue(),
+    ).toBe('10');
+    expect(
+      await extensionPage.locator('#session-hidden input').isChecked(),
+    ).toBe(false);
+
+    // Switch to Variant B and verify
+    await variantSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage
+      .locator('[role="listbox"]')
+      .getByText('Variant B')
+      .click();
+    await extensionPage.waitForTimeout(500);
+
+    expect(
+      await extensionPage.locator('#session-display-name').inputValue(),
+    ).toBe('Variant B');
+    expect(
+      await extensionPage.locator('#session-max-clients input').inputValue(),
+    ).toBe('20');
+    expect(
+      await extensionPage.locator('#session-hidden input').isChecked(),
+    ).toBe(true);
   });
 });
