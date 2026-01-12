@@ -16,16 +16,24 @@ import type {
  *  CUSTOM MODULE itself
  * ────────────────────────────────────────────────
  */
+
+const moduleCache = new Map<string, CustomModule>();
+const categoryCache = new Map<number, CustomModuleDataCategory[]>();
+
 /**
  * retrieves the module configuration
  * @param extensionkey the extension key (shorty) to identify the module
  * @returns  the custom module
  */
 export async function getModule(extensionkey: string): Promise<CustomModule> {
-  //console.log("Extension Key:", extensionkey);
+  const cached = moduleCache.get(extensionkey);
+  if (cached) {
+    return cached;
+  }
+
+  console.log('[Cache] Module cache miss for:', extensionkey);
   const allModules: Array<CustomModule> =
     await churchtoolsClient.get(`/custommodules`);
-  //console.log("Retrieving Modules", allModules);
 
   const module = allModules.find(
     (item: CustomModule) => item.shorty === extensionkey,
@@ -35,6 +43,7 @@ export async function getModule(extensionkey: string): Promise<CustomModule> {
     throw new Error(`Module for extension key "${extensionkey}" not found.`);
   }
 
+  moduleCache.set(extensionkey, module);
   return module;
 }
 
@@ -68,6 +77,7 @@ async function createModule(
   );
 
   console.log(`Created new module for ${extensionkey}:`, newModule);
+  moduleCache.set(extensionkey, newModule);
   return newModule;
 }
 
@@ -111,9 +121,17 @@ export async function getCustomDataCategories<T extends object>(
 ): Promise<(T & Omit<CustomModuleDataCategory, 'data'>)[]> {
   moduleId = await resolveModuleId(moduleId, extensionkey);
 
+  const cached = categoryCache.get(moduleId);
+  if (cached) {
+    return cached as (T & Omit<CustomModuleDataCategory, 'data'>)[];
+  }
+
+  console.log('[Cache] Category cache miss for module:', moduleId);
   const categories: CustomModuleDataCategory[] = await churchtoolsClient.get(
     `/custommodules/${moduleId}/customdatacategories`,
   );
+
+  categoryCache.set(moduleId, categories);
 
   return categories.map((category) => {
     const { data, ...rest } = category;
@@ -164,6 +182,8 @@ export async function createCustomDataCategory(
     payload,
   );
   console.log(`Created category in module ${moduleId}:`, newCategory);
+  console.log('[Cache] Invalidated category cache for module:', moduleId);
+  categoryCache.delete(moduleId);
   return newCategory;
 }
 
@@ -190,6 +210,8 @@ export async function updateCustomDataCategory(
     `Updated category ${dataCategoryId} in module ${moduleId}:`,
     updatedCategory,
   );
+  console.log('[Cache] Invalidated category cache for module:', moduleId);
+  categoryCache.delete(moduleId);
 }
 
 /**
@@ -209,6 +231,8 @@ export async function deleteCustomDataCategory(
     `/custommodules/${moduleId}/customdatacategories/${dataCategoryId}`,
   );
   console.log(`Deleted category ${dataCategoryId} from module ${moduleId}`);
+  console.log('[Cache] Invalidated category cache for module:', moduleId);
+  categoryCache.delete(moduleId);
 }
 
 /**
