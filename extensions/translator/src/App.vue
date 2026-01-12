@@ -32,7 +32,7 @@
             <TranslateView />
           </TabPanel>
           <TabPanel value="reports">
-            <ReportsView />
+            <ReportsView :active-tab="activeTab" />
           </TabPanel>
         </TabPanels>
       </Tabs>

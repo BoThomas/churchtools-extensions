@@ -423,7 +423,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useTranslatorStore } from '../stores/translator';
 import type { UsageStats } from '../stores/translator';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
@@ -447,6 +447,10 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
+
+const props = defineProps<{
+  activeTab: string;
+}>();
 
 const store = useTranslatorStore();
 const confirm = useConfirm();
@@ -994,8 +998,13 @@ async function addDummySessions() {
   }
 }
 
-// Initialize
-onMounted(() => {
-  loadData();
-});
+// Load data only when Reports tab is visited (not on initial page load)
+watch(
+  () => props.activeTab,
+  (newTab) => {
+    if (newTab === 'reports') {
+      loadData();
+    }
+  },
+);
 </script>
