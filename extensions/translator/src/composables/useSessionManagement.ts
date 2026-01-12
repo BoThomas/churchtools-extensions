@@ -63,7 +63,18 @@ export function useSessionManagement(user: { value: Person | null }) {
       mode,
     });
 
-    const sessionId = await store.startSession(session);
+    // Check if streaming is enabled
+    const streamingEnabled = store.settings.outputModes?.streamedSessionEnabled;
+    const streamingConfig = streamingEnabled
+      ? {
+          displayName: store.settings.session?.displayName,
+          maxClients: store.settings.session?.maxClients,
+          hidden: store.settings.session?.hidden ?? false,
+        }
+      : undefined;
+
+    const sessionId = await store.startSession(session, streamingConfig);
+
     if (sessionId) {
       sessionLogger.setCurrentSessionId(sessionId);
       currentSession.value = session;

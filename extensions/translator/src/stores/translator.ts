@@ -9,6 +9,11 @@ import {
   SessionLogger,
   type TranslationSession,
 } from '../services/sessionLogger';
+import type {
+  StreamedSessionMetadata,
+  ActiveSessionReference,
+} from '../types/streamedSession';
+import { generateSessionDisplayName } from '../types/streamedSession';
 
 export interface ApiSettings {
   azureApiKey: string;
@@ -153,6 +158,8 @@ export const useTranslatorStore = defineStore('translator', () => {
   let apiSettingsCategory: PersistanceCategory<ApiSettings> | null = null;
   let settingsCategory: PersistanceCategory<SettingVariant> | null = null;
   let sessionsCategory: PersistanceCategory<TranslationSession> | null = null;
+  let streamedSessionsCategory: PersistanceCategory<StreamedSessionMetadata> | null =
+    null;
   let userPreferencesCategory: PersistanceCategory<{
     lastVariantId: number;
   }> | null = null;
@@ -285,6 +292,7 @@ export const useTranslatorStore = defineStore('translator', () => {
       apiSettingsCategory &&
       settingsCategory &&
       sessionsCategory &&
+      streamedSessionsCategory &&
       userPreferencesCategory &&
       operatorSecretCategory &&
       readerConfigCategory
@@ -313,6 +321,13 @@ export const useTranslatorStore = defineStore('translator', () => {
           extensionkey: KEY,
           categoryShorty: 'sessions',
           categoryName: 'Translation Sessions',
+        });
+      }
+      if (!streamedSessionsCategory) {
+        streamedSessionsCategory = await PersistanceCategory.init({
+          extensionkey: KEY,
+          categoryShorty: 'streamed-sessions',
+          categoryName: 'Active Streamed Sessions',
         });
       }
       if (!userPreferencesCategory) {
@@ -866,19 +881,87 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Start a new translation session
-   * Stores session in memory for optimistic updates
+   * If streaming is enabled, also creates streamed session metadata for reader discovery
+   * @param sessionData - Full session data for 'sessions' category
+   * @param streamingConfig - Optional streaming configuration (creates entry in 'streamed-sessions')
    */
-  async function startSession(sessionData: TranslationSession) {
+  async function startSession(
+    sessionData: TranslationSession,
+    streamingConfig?: {
+      displayName?: string;
+      maxClients?: number;
+      hidden?: boolean;
+    },
+  ) {
     sessionsSaving.value = true;
     error.value = null;
+
     try {
       await ensureCategories();
-      if (!sessionsCategory) return;
+      if (!sessionsCategory)
+        throw new Error('Sessions category not initialized');
 
+      // 1. Create full session in 'sessions' category
       const { id } = await sessionsCategory.create(sessionData);
       currentSessionId.value = id;
-      // Store complete session for optimistic updates
       currentSession.value = { ...sessionData, id };
+
+      // 2. If streaming enabled and not hidden, create streamed session metadata
+      if (
+        streamingConfig &&
+        !streamingConfig.hidden &&
+        streamedSessionsCategory
+      ) {
+        const roomId = crypto.randomUUID();
+
+        // Auto-generate display name if not provided
+        const displayName = streamingConfig.displayName?.trim()
+          ? streamingConfig.displayName.trim()
+          : generateSessionDisplayName(id);
+
+        // TODO: Test WebPubSub connection before creating streamed session
+        // const connection = await connectToWebPubSub(roomId);
+        // if (!connection) {
+        //   await sessionsCategory.delete(id);
+        //   throw new Error('Failed to connect to WebPubSub');
+        // }
+
+        const streamedMetadata: StreamedSessionMetadata = {
+          sessionId: id,
+          webPubSubRoomId: roomId,
+          displayName: displayName,
+          inputLanguage: sessionData.inputLanguage,
+          outputLanguages: sessionData.outputLanguages || [],
+          operatorName: sessionData.userName,
+          startTime: sessionData.startTime,
+          lastHeartbeat: sessionData.startTime, // Initialize with startTime
+          maxClients: streamingConfig.maxClients,
+          currentClients: 0,
+          status: 'running',
+        };
+
+        try {
+          await streamedSessionsCategory.create(streamedMetadata);
+
+          // Store reference in localStorage for crash recovery
+          const sessionRef: ActiveSessionReference = {
+            sessionId: id,
+            webPubSubRoomId: roomId,
+            startTime: sessionData.startTime,
+          };
+          localStorage.setItem(
+            'translator_active_session',
+            JSON.stringify(sessionRef),
+          );
+        } catch (streamError: any) {
+          // Rollback: delete the main session we just created
+          await sessionsCategory.delete(id);
+          throw new Error(
+            `Failed to create streaming session: ${streamError.message}`,
+          );
+        }
+      }
+
       return id;
     } catch (e: any) {
       error.value = e?.message ?? 'Failed to start session';
@@ -891,6 +974,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * End the current session
+   * Also removes from streamed-sessions if it was streaming
    */
   async function endSession(
     sessionId: number,
@@ -902,6 +986,7 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (!sessionsCategory) await ensureCategories();
       if (!sessionsCategory) return;
 
+      // 1. Update full session in 'sessions' category
       // Optimistic update: use cached session if available
       const existing = sessions.value.find(
         (s: CategoryValue<TranslationSession>) => s.id === sessionId,
@@ -967,6 +1052,34 @@ export const useTranslatorStore = defineStore('translator', () => {
         }
       }
 
+      // 2. Remove from streamed-sessions category if it exists
+      if (streamedSessionsCategory) {
+        try {
+          const streamedSessions =
+            await streamedSessionsCategory.list<StreamedSessionMetadata>();
+          const streamedSession = streamedSessions.find(
+            (s) => s.value.sessionId === sessionId,
+          );
+
+          if (streamedSession) {
+            // TODO: Send "session ended" message to WebPubSub room before deleting
+            // await webPubSubClient.sendToRoom(streamedSession.value.webPubSubRoomId, {
+            //   type: 'session-ended',
+            //   message: 'The operator has ended this session'
+            // });
+            // TODO: Close WebPubSub room
+            // await webPubSubClient.closeRoom(streamedSession.value.webPubSubRoomId);
+
+            await streamedSessionsCategory.delete(streamedSession.id);
+          }
+        } catch (e) {
+          console.warn('Failed to cleanup streamed session (non-critical):', e);
+        }
+      }
+
+      // 3. Clear localStorage reference
+      localStorage.removeItem('translator_active_session');
+
       currentSessionId.value = null;
       currentSession.value = null;
     } catch (e: any) {
@@ -982,6 +1095,7 @@ export const useTranslatorStore = defineStore('translator', () => {
    * Update session heartbeat (non-blocking, silent errors)
    * Uses optimistic update to avoid fetching all sessions
    * Auto-recovers from abandoned state when heartbeat resumes
+   * Also updates heartbeat in streamed session if exists
    */
   async function updateHeartbeat(sessionId: number) {
     // Non-blocking update - don't throw errors to avoid disrupting translation
@@ -1032,6 +1146,29 @@ export const useTranslatorStore = defineStore('translator', () => {
         const updated = sessionLogger.updateHeartbeat(found.value);
         await sessionsCategory.update(sessionId, updated);
       }
+
+      // Update heartbeat in streamed session (if exists)
+      if (streamedSessionsCategory) {
+        try {
+          const streamedSessions =
+            await streamedSessionsCategory.list<StreamedSessionMetadata>();
+          const streamedSession = streamedSessions.find(
+            (s) => s.value.sessionId === sessionId,
+          );
+
+          if (streamedSession) {
+            await streamedSessionsCategory.update(streamedSession.id, {
+              ...streamedSession.value,
+              lastHeartbeat: new Date().toISOString(),
+            });
+          }
+        } catch (e) {
+          console.warn(
+            'Failed to update streamed session heartbeat (non-critical):',
+            e,
+          );
+        }
+      }
     } catch (e) {
       // Silent fail - log but don't disrupt translation
       console.warn('Failed to update heartbeat (non-critical):', e);
@@ -1040,6 +1177,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Pause the current session (stops accumulating active time)
+   * Also updates status in streamed session if exists
    */
   async function pauseSession(sessionId: number) {
     try {
@@ -1052,6 +1190,22 @@ export const useTranslatorStore = defineStore('translator', () => {
         await sessionsCategory.update(sessionId, updated);
         currentSession.value = updated;
       }
+
+      // Update streamed session status
+      if (streamedSessionsCategory) {
+        const streamedSessions =
+          await streamedSessionsCategory.list<StreamedSessionMetadata>();
+        const streamedSession = streamedSessions.find(
+          (s) => s.value.sessionId === sessionId,
+        );
+
+        if (streamedSession) {
+          await streamedSessionsCategory.update(streamedSession.id, {
+            ...streamedSession.value,
+            status: 'paused',
+          });
+        }
+      }
     } catch (e) {
       console.warn('Failed to pause session (non-critical):', e);
     }
@@ -1059,6 +1213,7 @@ export const useTranslatorStore = defineStore('translator', () => {
 
   /**
    * Resume the current session (starts accumulating active time again)
+   * Also updates status and heartbeat in streamed session if exists
    */
   async function resumeSession(sessionId: number) {
     try {
@@ -1070,6 +1225,23 @@ export const useTranslatorStore = defineStore('translator', () => {
         const updated = sessionLogger.resumeSession(currentSession.value);
         await sessionsCategory.update(sessionId, updated);
         currentSession.value = updated;
+      }
+
+      // Update streamed session status and heartbeat
+      if (streamedSessionsCategory) {
+        const streamedSessions =
+          await streamedSessionsCategory.list<StreamedSessionMetadata>();
+        const streamedSession = streamedSessions.find(
+          (s) => s.value.sessionId === sessionId,
+        );
+
+        if (streamedSession) {
+          await streamedSessionsCategory.update(streamedSession.id, {
+            ...streamedSession.value,
+            status: 'running',
+            lastHeartbeat: new Date().toISOString(),
+          });
+        }
       }
     } catch (e) {
       console.warn('Failed to resume session (non-critical):', e);
@@ -1325,6 +1497,97 @@ export const useTranslatorStore = defineStore('translator', () => {
     }
   }
 
+  /**
+   * Check localStorage for active session reference
+   * Returns session data if found and still active, null otherwise
+   */
+  async function checkForActiveSession(): Promise<{
+    session: TranslationSession;
+    reference: ActiveSessionReference;
+  } | null> {
+    try {
+      const refString = localStorage.getItem('translator_active_session');
+      if (!refString) return null;
+
+      const ref = JSON.parse(refString) as ActiveSessionReference;
+
+      // Check if session still exists and is running
+      await ensureCategories();
+      if (!sessionsCategory) return null;
+
+      const sessionWrapper = await sessionsCategory.getById(ref.sessionId);
+      if (!sessionWrapper) {
+        // Session doesn't exist, cleanup localStorage
+        localStorage.removeItem('translator_active_session');
+        return null;
+      }
+
+      const session = sessionWrapper.value;
+
+      if (session.status !== 'running' && session.status !== 'paused') {
+        // Session already ended, cleanup localStorage
+        localStorage.removeItem('translator_active_session');
+        return null;
+      }
+
+      return { session, reference: ref };
+    } catch (e) {
+      console.error('Failed to check for active session:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Resume a session after browser refresh/crash
+   * Updates heartbeat immediately and restarts heartbeat interval
+   */
+  async function resumeSessionFromCrash(
+    sessionId: number,
+    status: 'running' | 'paused' | 'completed' | 'error' | 'abandoned',
+  ): Promise<void> {
+    try {
+      // Immediately update heartbeat
+      await updateHeartbeat(sessionId);
+
+      // update session to paused if its not already
+      if (status !== 'paused') await pauseSession(sessionId);
+
+      // TODO: Reconnect to WebPubSub
+      // const ref = JSON.parse(localStorage.getItem('translator_active_session')!);
+      // await webPubSubClient.reconnect(ref.webPubSubRoomId);
+
+      // TODO: Restart Presentation mode if enabled
+
+      // TODO: Set UI to paused, so operator can start translation again
+
+      console.log(`Resumed session ${sessionId} after crash recovery`);
+    } catch (e) {
+      console.error('Failed to resume session from crash:', e);
+      throw e;
+    }
+  }
+
+  /**
+   * Get active sessions available for reader discovery
+   * Reads from streamed-sessions category (reader-accessible)
+   */
+  async function getDiscoverableSessions(): Promise<StreamedSessionMetadata[]> {
+    try {
+      await ensureCategories();
+      if (!streamedSessionsCategory) return [];
+
+      const sessions =
+        await streamedSessionsCategory.list<StreamedSessionMetadata>();
+
+      // Return all sessions in this category
+      // They're already filtered (only active, non-hidden sessions are added)
+      return sessions.map((s) => s.value);
+    } catch (e: any) {
+      console.error('Failed to fetch discoverable sessions:', e);
+      return [];
+    }
+  }
+
   return {
     // State
     initializing,
@@ -1381,5 +1644,12 @@ export const useTranslatorStore = defineStore('translator', () => {
     getUsageStats,
     clearAllSessions,
     generateDummySessions,
+
+    // Session recovery
+    checkForActiveSession,
+    resumeSessionFromCrash,
+
+    // Reader discovery
+    getDiscoverableSessions,
   };
 });

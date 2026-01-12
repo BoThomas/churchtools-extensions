@@ -40,7 +40,7 @@
   </div>
 
   <!-- Global Confirm Dialog -->
-  <ConfirmDialog />
+  <ConfirmDialog :style="{ maxWidth: '90vw' }" />
   <!-- Global Toast -->
   <Toast />
 </template>
@@ -60,6 +60,8 @@ import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
 import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 import { useTranslatorStore } from './stores/translator';
 
 // Check if we're in presentation mode
@@ -73,6 +75,8 @@ const activeTab = ref('translate');
 
 const user = ref<Person | null>(null);
 const store = useTranslatorStore();
+const confirm = useConfirm();
+const toast = useToast();
 
 declare const window: Window &
   typeof globalThis & {
@@ -109,10 +113,88 @@ async function init() {
     await Promise.all([
       store.loadApiSettings(),
       store.loadSettingVariants(user.value.id),
+      store.loadOperatorSecret(),
+      store.loadReaderConfig(),
     ]);
+
+    // Check for active session after app loads (non-blocking)
+    checkForActiveSessionRecovery();
   } catch (e) {
     console.error('Failed to init', e);
   }
+}
+
+async function checkForActiveSessionRecovery() {
+  const activeSessionData = await store.checkForActiveSession();
+
+  if (!activeSessionData) return;
+
+  const { session, reference } = activeSessionData;
+  const sessionAge = Date.now() - new Date(reference.startTime).getTime();
+  const ageMinutes = Math.floor(sessionAge / 1000 / 60);
+
+  const outputLangs = session.outputLanguages || [session.outputLanguage];
+  const sessionDetails = `${session.mode} mode • ${session.status} • ${session.inputLanguage} → ${outputLangs?.join(', ') || 'N/A'}`;
+
+  confirm.require({
+    header: 'Active Session Found',
+    message: `Session started ${ageMinutes} minute(s) ago (${sessionDetails}). What would you like to do?`,
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: 'End Session',
+      severity: 'danger',
+      outlined: true,
+    },
+    acceptProps: {
+      label: 'Resume',
+      severity: 'success',
+    },
+    accept: async () => {
+      try {
+        await store.resumeSessionFromCrash(reference.sessionId, session.status);
+
+        // TODO: Navigate to TranslateView and reconnect UI
+        // activeTab.value = 'translate';
+        // await reconnectSessionUI(reference.sessionId);
+
+        toast.add({
+          severity: 'success',
+          summary: 'Session Resumed',
+          detail: 'Your translation session has been resumed',
+          life: 3000,
+        });
+      } catch (e: any) {
+        toast.add({
+          severity: 'error',
+          summary: 'Resume Failed',
+          detail: e.message || 'Failed to resume session',
+          life: 5000,
+        });
+      }
+    },
+    reject: async () => {
+      try {
+        await store.endSession(reference.sessionId, {
+          status: 'completed',
+          endTime: new Date().toISOString(),
+        });
+
+        toast.add({
+          severity: 'info',
+          summary: 'Session Ended',
+          detail: 'Your previous session has been ended',
+          life: 3000,
+        });
+      } catch (e: any) {
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to end session',
+          life: 5000,
+        });
+      }
+    },
+  });
 }
 
 onMounted(() => {
