@@ -1056,7 +1056,9 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (streamedSessionsCategory) {
         try {
           const streamedSessions =
-            await streamedSessionsCategory.list<StreamedSessionMetadata>();
+            await streamedSessionsCategory.list<StreamedSessionMetadata>({
+              useCache: { maxAgeMs: 10000 },
+            });
           const streamedSession = streamedSessions.find(
             (s) => s.value.sessionId === sessionId,
           );
@@ -1151,7 +1153,9 @@ export const useTranslatorStore = defineStore('translator', () => {
       if (streamedSessionsCategory) {
         try {
           const streamedSessions =
-            await streamedSessionsCategory.list<StreamedSessionMetadata>();
+            await streamedSessionsCategory.list<StreamedSessionMetadata>({
+              useCache: { maxAgeMs: 10000 },
+            });
           const streamedSession = streamedSessions.find(
             (s) => s.value.sessionId === sessionId,
           );
@@ -1194,7 +1198,9 @@ export const useTranslatorStore = defineStore('translator', () => {
       // Update streamed session status
       if (streamedSessionsCategory) {
         const streamedSessions =
-          await streamedSessionsCategory.list<StreamedSessionMetadata>();
+          await streamedSessionsCategory.list<StreamedSessionMetadata>({
+            useCache: { maxAgeMs: 10000 },
+          });
         const streamedSession = streamedSessions.find(
           (s) => s.value.sessionId === sessionId,
         );
@@ -1230,7 +1236,9 @@ export const useTranslatorStore = defineStore('translator', () => {
       // Update streamed session status and heartbeat
       if (streamedSessionsCategory) {
         const streamedSessions =
-          await streamedSessionsCategory.list<StreamedSessionMetadata>();
+          await streamedSessionsCategory.list<StreamedSessionMetadata>({
+            useCache: { maxAgeMs: 10000 },
+          });
         const streamedSession = streamedSessions.find(
           (s) => s.value.sessionId === sessionId,
         );
@@ -1556,7 +1564,7 @@ export const useTranslatorStore = defineStore('translator', () => {
       // const ref = JSON.parse(localStorage.getItem('translator_active_session')!);
       // await webPubSubClient.reconnect(ref.webPubSubRoomId);
 
-      // TODO: Restart Presentation mode if enabled
+      // TODO: Restart Presentation mode if enabled. Would be fire if we could reuse existing presentation windows if they are still open.
 
       // TODO: Set UI to paused, so operator can start translation again
 
