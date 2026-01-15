@@ -22,6 +22,9 @@
         <TabList>
           <Tab value="settings" data-testid="tab-settings">Settings</Tab>
           <Tab value="translate" data-testid="tab-translate">Translate</Tab>
+          <Tab value="active-sessions" data-testid="tab-active-sessions">
+            Active Sessions
+          </Tab>
           <Tab value="reports" data-testid="tab-reports">Reports</Tab>
         </TabList>
         <TabPanels>
@@ -30,6 +33,9 @@
           </TabPanel>
           <TabPanel value="translate">
             <TranslateView />
+          </TabPanel>
+          <TabPanel value="active-sessions">
+            <ActiveSessionsView :active-tab="activeTab" />
           </TabPanel>
           <TabPanel value="reports">
             <ReportsView :active-tab="activeTab" />
@@ -51,6 +57,7 @@ import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import SettingsView from './views/SettingsView.vue';
 import TranslateView from './views/TranslateView.vue';
+import ActiveSessionsView from './views/ActiveSessionsView.vue';
 import ReportsView from './views/ReportsView.vue';
 import PresentationView from './views/PresentationView.vue';
 import Tabs from '@churchtools-extensions/prime-volt/Tabs.vue';
