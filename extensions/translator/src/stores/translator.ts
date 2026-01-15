@@ -9,6 +9,7 @@ import {
   SessionLogger,
   type TranslationSession,
 } from '../services/sessionLogger';
+import { WebPubSubClient } from '@azure/web-pubsub-client';
 import type {
   StreamedSessionMetadata,
   ActiveSessionReference,
@@ -146,6 +147,9 @@ export const useTranslatorStore = defineStore('translator', () => {
   const sessions = ref<CategoryValue<TranslationSession>[]>([]);
   const sessionsLoading = ref(false);
   const sessionsSaving = ref(false);
+
+  // WebPubSub connections (roomId -> client)
+  const webPubSubClients = new Map<string, WebPubSubClient>();
 
   // Current session (tracked for optimistic updates)
   const currentSessionId = ref<number | null>(null);
@@ -684,6 +688,93 @@ export const useTranslatorStore = defineStore('translator', () => {
   }
 
   /**
+   * Request an operator access URL for a specific room
+   */
+  async function getWebPubSubOperatorUrl(roomId: string, userId: string) {
+    if (!readerConfig.value.authFunctionUrl) {
+      throw new Error('WebPubSub auth function URL is missing');
+    }
+    if (!operatorSecret.value.secret) {
+      throw new Error('WebPubSub operator secret is missing');
+    }
+
+    const response = await fetch(readerConfig.value.authFunctionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: operatorSecret.value.secret,
+        roomId,
+        userId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error ||
+          response.statusText ||
+          'Failed to get operator token',
+      );
+    }
+
+    const data = await response.json();
+    if (!data?.url || data?.role !== 'operator') {
+      throw new Error('Invalid operator token response from Azure function');
+    }
+
+    return data.url as string;
+  }
+
+  /**
+   * Open a WebPubSub room as operator (creates room on demand)
+   */
+  async function openWebPubSubRoom(roomId: string, userId: number) {
+    if (webPubSubClients.has(roomId)) return;
+
+    const accessUrl = await getWebPubSubOperatorUrl(
+      roomId,
+      `operator-${userId}`,
+    );
+
+    const client = new WebPubSubClient({
+      getClientAccessUrl: async () => accessUrl,
+    });
+
+    await client.start();
+    webPubSubClients.set(roomId, client);
+  }
+
+  /**
+   * Close a WebPubSub room connection (disconnect operator)
+   */
+  async function closeWebPubSubRoom(roomId: string) {
+    const client = webPubSubClients.get(roomId);
+    if (!client) return;
+
+    try {
+      // Send session-ended notification to all readers in the group
+      await client.sendToGroup(
+        roomId,
+        {
+          type: 'session-ended',
+          message: 'The operator has ended this session',
+        },
+        'json',
+      );
+    } catch (e) {
+      console.warn('Failed to send session-ended message (non-critical):', e);
+    }
+
+    try {
+      client.stop();
+    } catch (e) {
+      console.warn('Failed to stop WebPubSub client (non-critical):', e);
+    }
+
+    webPubSubClients.delete(roomId);
+  }
+
+  /**
    * Save current settings to the selected variant (or create new)
    */
   async function saveCurrentVariant(variantName?: string, userId?: number) {
@@ -919,12 +1010,15 @@ export const useTranslatorStore = defineStore('translator', () => {
           ? streamingConfig.displayName.trim()
           : generateSessionDisplayName(id);
 
-        // TODO: Test WebPubSub connection before creating streamed session
-        // const connection = await connectToWebPubSub(roomId);
-        // if (!connection) {
-        //   await sessionsCategory.delete(id);
-        //   throw new Error('Failed to connect to WebPubSub');
-        // }
+        // Ensure WebPubSub room is available before exposing the session
+        try {
+          await openWebPubSubRoom(roomId, sessionData.userId);
+        } catch (roomError: any) {
+          await sessionsCategory.delete(id);
+          throw new Error(
+            `Failed to connect to WebPubSub: ${roomError?.message ?? roomError}`,
+          );
+        }
 
         const streamedMetadata: StreamedSessionMetadata = {
           sessionId: id,
@@ -954,6 +1048,8 @@ export const useTranslatorStore = defineStore('translator', () => {
             JSON.stringify(sessionRef),
           );
         } catch (streamError: any) {
+          // Cleanup: close the room we opened
+          await closeWebPubSubRoom(roomId);
           // Rollback: delete the main session we just created
           await sessionsCategory.delete(id);
           throw new Error(
@@ -1064,13 +1160,8 @@ export const useTranslatorStore = defineStore('translator', () => {
           );
 
           if (streamedSession) {
-            // TODO: Send "session ended" message to WebPubSub room before deleting
-            // await webPubSubClient.sendToRoom(streamedSession.value.webPubSubRoomId, {
-            //   type: 'session-ended',
-            //   message: 'The operator has ended this session'
-            // });
-            // TODO: Close WebPubSub room
-            // await webPubSubClient.closeRoom(streamedSession.value.webPubSubRoomId);
+            // Notify and close WebPubSub room
+            await closeWebPubSubRoom(streamedSession.value.webPubSubRoomId);
 
             await streamedSessionsCategory.delete(streamedSession.id);
           }
