@@ -2,7 +2,7 @@ import { ref, watch, computed } from 'vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
-import { useTranslatorStore } from '../stores/translator';
+import { useSettingsStore } from '../stores/settings';
 
 /**
  * Composable for managing translator setting variants
@@ -12,7 +12,7 @@ export function useVariantManagement(
   user: { value: Person | null },
   hasInvalidLanguages: { value: boolean },
 ) {
-  const store = useTranslatorStore();
+  const store = useSettingsStore();
   const confirm = useConfirm();
   const toast = useToast();
 

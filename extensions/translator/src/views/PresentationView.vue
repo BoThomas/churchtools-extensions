@@ -179,7 +179,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
-import type { TranslatorSettings } from '../stores/translator';
+import type { TranslatorSettings } from '../types/translator';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
 

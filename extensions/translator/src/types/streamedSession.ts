@@ -2,7 +2,9 @@
  * Streamed session metadata for reader discovery
  * Stored in 'streamed-sessions' KV category with reader read permissions
  */
-export interface StreamedSessionMetadata {
+export type SessionStatus = 'running' | 'paused';
+
+export type StreamedSessionMetadata = {
   sessionId: number; // Reference to full session in 'sessions' category
   webPubSubRoomId: string; // UUID v4 - join code for WebPubSub room
   displayName: string; // Custom name from settings or auto-generated
@@ -13,18 +15,18 @@ export interface StreamedSessionMetadata {
   lastHeartbeat: string; // ISO timestamp - for stale detection
   maxClients?: number; // undefined = unlimited
   currentClients: number; // Connected reader count (updated via WebPubSub events later)
-  status: 'running' | 'paused'; // Active session states only
-}
+  status: SessionStatus; // Active session states only
+};
 
 /**
  * Reference to active session stored in localStorage for crash recovery
  * Key: 'translator_active_session'
  */
-export interface ActiveSessionReference {
+export type ActiveSessionReference = {
   sessionId: number;
   webPubSubRoomId: string;
   startTime: string;
-}
+};
 
 /**
  * Format date for session display name: DD.MM.YYYY

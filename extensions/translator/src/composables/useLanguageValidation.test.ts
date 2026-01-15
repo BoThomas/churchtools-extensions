@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useLanguageValidation } from './useLanguageValidation';
-import { useTranslatorStore } from '../stores/translator';
+import { useSettingsStore } from '../stores/settings';
 import '../__mocks__/persistance';
 
 describe('useLanguageValidation', () => {
@@ -11,7 +11,7 @@ describe('useLanguageValidation', () => {
 
   describe('inputLanguageValid', () => {
     it('should return true for valid input language', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
 
       const validation = useLanguageValidation();
@@ -20,7 +20,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return false for invalid input language', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'invalid-XX';
 
       const validation = useLanguageValidation();
@@ -29,7 +29,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should validate multiple input language codes', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       const validation = useLanguageValidation();
 
       const validCodes = ['de-DE', 'en-GB', 'en-US', 'es-ES', 'fr-FR'];
@@ -42,7 +42,7 @@ describe('useLanguageValidation', () => {
 
   describe('outputLanguagesValid', () => {
     it('should return true for valid single output language', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.outputLanguages = ['en'];
 
       const validation = useLanguageValidation();
@@ -51,7 +51,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return true for valid multiple output languages', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.outputLanguages = ['en', 'de', 'es', 'fr'];
 
       const validation = useLanguageValidation();
@@ -60,7 +60,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return false for empty output languages array', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.outputLanguages = [];
 
       const validation = useLanguageValidation();
@@ -69,7 +69,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return false when outputLanguages is undefined', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.outputLanguages = undefined as any;
 
       const validation = useLanguageValidation();
@@ -78,7 +78,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return false if any output language is invalid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.outputLanguages = ['en', 'invalid-XX', 'de'];
 
       const validation = useLanguageValidation();
@@ -89,7 +89,7 @@ describe('useLanguageValidation', () => {
 
   describe('hasInvalidLanguages', () => {
     it('should return false when all languages are valid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es'];
 
@@ -99,7 +99,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return true when input language is invalid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'invalid-XX';
       store.settings.outputLanguages = ['en'];
 
@@ -109,7 +109,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return true when output languages are invalid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = [];
 
@@ -119,7 +119,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return true when both input and output are invalid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'invalid-XX';
       store.settings.outputLanguages = ['invalid-YY'];
 
@@ -131,7 +131,7 @@ describe('useLanguageValidation', () => {
 
   describe('shouldShowInvalidLanguageWarning', () => {
     it('should show warning when languages are invalid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'invalid-XX';
       store.settings.outputLanguages = ['en'];
 
@@ -141,7 +141,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should not show warning when languages are valid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en'];
 
@@ -153,7 +153,7 @@ describe('useLanguageValidation', () => {
 
   describe('allLanguages', () => {
     it('should include input and output languages when all valid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es'];
 
@@ -167,7 +167,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should exclude invalid input language', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'invalid-XX';
       store.settings.outputLanguages = ['en', 'es'];
 
@@ -180,7 +180,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should exclude invalid output languages', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = [];
 
@@ -192,7 +192,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return empty array when all languages invalid', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'invalid-XX';
       store.settings.outputLanguages = [];
 
@@ -204,7 +204,7 @@ describe('useLanguageValidation', () => {
 
   describe('operatorLanguages', () => {
     it('should return all valid languages for operator', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es'];
 
@@ -218,7 +218,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should always include input language for operator (test mode)', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en'];
       store.settings.presentation.showInputLanguage = false;
@@ -235,7 +235,7 @@ describe('useLanguageValidation', () => {
 
   describe('presentationLanguages', () => {
     it('should include input language when showInputLanguage is true', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es'];
       store.settings.presentation.showInputLanguage = true;
@@ -250,7 +250,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should exclude input language when showInputLanguage is false', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es'];
       store.settings.presentation.showInputLanguage = false;
@@ -264,7 +264,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return only output languages by default', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en'];
       // Default showInputLanguage is false
@@ -279,7 +279,7 @@ describe('useLanguageValidation', () => {
 
   describe('hasTooManyLanguagesForSplit', () => {
     it('should return false for 6 or fewer languages in split mode', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es', 'fr', 'it', 'pt']; // 6 total with input
       store.settings.presentation.mode = 'split';
@@ -291,7 +291,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return true for more than 6 languages in split mode', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es', 'fr', 'it', 'pt', 'nl']; // 7 total with input
       store.settings.presentation.mode = 'split';
@@ -303,7 +303,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should return false for any number of languages in multi-window mode', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = [
         'en',
@@ -323,7 +323,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should count only presentation languages, not all languages', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es', 'fr', 'it', 'pt', 'nl']; // 6 output languages
       store.settings.presentation.mode = 'split';
@@ -336,7 +336,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should handle exactly 7 languages as too many', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en', 'es', 'fr', 'it', 'pt', 'nl']; // 6 output
       store.settings.presentation.mode = 'split';
@@ -350,7 +350,7 @@ describe('useLanguageValidation', () => {
 
   describe('reactive updates', () => {
     it('should react to settings changes', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en'];
 
@@ -365,7 +365,7 @@ describe('useLanguageValidation', () => {
     });
 
     it('should react to showInputLanguage toggle', () => {
-      const store = useTranslatorStore();
+      const store = useSettingsStore();
       store.settings.inputLanguage = 'de-DE';
       store.settings.outputLanguages = ['en'];
       store.settings.presentation.showInputLanguage = false;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useTranslatorStore } from '../../src/stores/translator';
+import { useSettingsStore } from '../../src/stores/settings';
 
 /**
  * Integration Tests: Variant Management
@@ -8,10 +8,10 @@ import { useTranslatorStore } from '../../src/stores/translator';
  * setting variants, including persistence and user preferences.
  */
 describe('Variant Management Integration', () => {
-  let store: ReturnType<typeof useTranslatorStore>;
+  let store: ReturnType<typeof useSettingsStore>;
 
   beforeEach(async () => {
-    store = useTranslatorStore();
+    store = useSettingsStore();
     await store.loadApiSettings();
     await store.loadSettingVariants();
   });
@@ -83,7 +83,7 @@ describe('Variant Management Integration', () => {
       await store.saveCurrentVariant('Spanish', 1);
 
       // Reload store
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -103,7 +103,7 @@ describe('Variant Management Integration', () => {
       const variantId = store.selectedVariantId;
 
       // Reload store
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -121,7 +121,7 @@ describe('Variant Management Integration', () => {
       await store.deleteVariant(variantId!);
 
       // Reload store
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -169,7 +169,7 @@ describe('Variant Management Integration', () => {
       const variantId = store.selectedVariantId;
 
       // Reload store
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -269,7 +269,7 @@ describe('Variant Management Integration', () => {
       await store.deleteVariant(variantId!);
 
       // Reload store
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -305,7 +305,7 @@ describe('Variant Management Integration', () => {
       await store.saveCurrentVariant('Old Format', 1);
 
       // Reload
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -326,7 +326,7 @@ describe('Variant Management Integration', () => {
       await store.saveCurrentVariant('Old Single Lang', 1);
 
       // Reload
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -340,7 +340,7 @@ describe('Variant Management Integration', () => {
     it('should handle corrupt variant data', async () => {
       // This would be tested by manually corrupting data in persistence
       // For now, ensure store handles missing fields gracefully
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 
@@ -369,7 +369,7 @@ describe('Variant Management Integration', () => {
 
     it('should include session settings in DEFAULT_SETTINGS', async () => {
       // Load fresh store to get default variant
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
       await newStore.loadSettingVariants();
 

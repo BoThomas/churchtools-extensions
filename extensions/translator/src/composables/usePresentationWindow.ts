@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import type { TranslatorSettings } from '../stores/translator';
+import type { TranslatorSettings } from '../types/translator';
 import type { LanguageConfig } from '../types/language';
 import { SESSION_MAX_AGE_MS } from '../config';
 

@@ -1,11 +1,11 @@
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useTranslatorStore } from '../stores/translator';
+import { useSettingsStore } from '../stores/settings';
 import translationOptions from '../translation-options.json';
 import type { LanguageConfig } from '../types/language';
 
 export function useLanguageValidation() {
-  const store = useTranslatorStore();
+  const store = useSettingsStore();
   const { settings } = storeToRefs(store);
 
   const inputLanguageValid = computed(() => {

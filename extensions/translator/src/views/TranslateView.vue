@@ -207,7 +207,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { useTranslatorStore } from '../stores/translator';
+import { useSettingsStore } from '../stores/settings';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { CaptioningService } from '../services/captioning';
@@ -234,7 +234,7 @@ import { useTestPresentation } from '../composables/useTestPresentation';
 import { useTestSession } from '../composables/useTestSession';
 import { useFieldsetState } from '../composables/useFieldsetState';
 
-const store = useTranslatorStore();
+const store = useSettingsStore();
 const confirm = useConfirm();
 const toast = useToast();
 

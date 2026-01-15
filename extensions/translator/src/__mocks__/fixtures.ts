@@ -2,7 +2,8 @@ import type {
   TranslatorSettings,
   ApiSettings,
   SettingVariant,
-} from '../stores/translator';
+} from '../types/translator';
+import { DEFAULT_TRANSLATOR_SETTINGS } from '../services/translatorVariantService';
 import type { TranslationSession } from '../services/sessionLogger';
 
 /**
@@ -34,21 +35,7 @@ export const mockInvalidApiSettings: ApiSettings = {
 // ============================================================================
 
 export const mockDefaultSettings: TranslatorSettings = {
-  inputLanguage: 'de-DE',
-  outputLanguages: ['en'],
-  profanityOption: 'raw',
-  stablePartialResultThreshold: '5',
-  phraseList: '',
-  presentation: {
-    font: 'Arial',
-    fontSize: '2em',
-    margin: '1em 2em',
-    color: 'white',
-    liveColor: '#999',
-    background: 'black',
-    mode: 'split',
-    showInputLanguage: false,
-  },
+  ...DEFAULT_TRANSLATOR_SETTINGS,
 };
 
 export const mockMultiLanguageSettings: TranslatorSettings = {

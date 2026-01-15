@@ -2,6 +2,7 @@ import { beforeEach, afterEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { clearAllStorage } from '../../src/__mocks__/setup';
 import { mockAzureSpeech } from '../../src/__mocks__/azureSpeechSdk';
+import { resetTranslatorPersistance } from '../../src/services/translatorPersistance';
 import {
   _resetKVStore,
   _seedModules,
@@ -34,6 +35,9 @@ if (typeof process !== 'undefined') {
 beforeEach(() => {
   // Fresh Pinia instance for each test
   setActivePinia(createPinia());
+
+  // Reset shared session categories
+  resetTranslatorPersistance();
 
   // Clear localStorage/sessionStorage
   clearAllStorage();

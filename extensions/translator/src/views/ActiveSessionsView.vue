@@ -45,7 +45,7 @@
 import { ref, computed, watch } from 'vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
-import { useTranslatorStore } from '../stores/translator';
+import { useWebPubSubStore } from '../stores/webpubsub';
 import type { StreamedSessionMetadata } from '../types/streamedSession';
 import ActiveSessionCard from '../components/active-sessions/ActiveSessionCard.vue';
 
@@ -53,7 +53,7 @@ const props = defineProps<{
   activeTab: string;
 }>();
 
-const store = useTranslatorStore();
+const store = useWebPubSubStore();
 
 const sessions = ref<StreamedSessionMetadata[]>([]);
 const loading = ref(false);

@@ -424,8 +424,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useTranslatorStore } from '../stores/translator';
-import type { UsageStats } from '../stores/translator';
+import { useSessionHistoryStore } from '../stores/sessionHistory';
+import type { UsageStats } from '../types/translator';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import {
   SessionLogger,
@@ -452,7 +452,7 @@ const props = defineProps<{
   activeTab: string;
 }>();
 
-const store = useTranslatorStore();
+const store = useSessionHistoryStore();
 const confirm = useConfirm();
 const toast = useToast();
 

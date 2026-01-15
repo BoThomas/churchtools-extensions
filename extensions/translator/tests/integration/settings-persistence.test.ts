@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useTranslatorStore } from '../../src/stores/translator';
+import { useSettingsStore } from '../../src/stores/settings';
 
 /**
  * Integration Tests: Settings Persistence
@@ -8,10 +8,10 @@ import { useTranslatorStore } from '../../src/stores/translator';
  * and handling data migration and corruption scenarios.
  */
 describe('Settings Persistence Integration', () => {
-  let store: ReturnType<typeof useTranslatorStore>;
+  let store: ReturnType<typeof useSettingsStore>;
 
   beforeEach(async () => {
-    store = useTranslatorStore();
+    store = useSettingsStore();
   });
 
   describe('API Settings', () => {
@@ -22,7 +22,7 @@ describe('Settings Persistence Integration', () => {
       });
 
       // Reload and verify
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
 
       expect(newStore.apiSettings.azureApiKey).toBe('test-key-12345');
@@ -37,7 +37,7 @@ describe('Settings Persistence Integration', () => {
       });
 
       // Create new store instance
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
 
       expect(newStore.apiSettings.azureApiKey).toBe('my-api-key');
@@ -55,7 +55,7 @@ describe('Settings Persistence Integration', () => {
         azureRegion: 'northeurope',
       });
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadApiSettings();
 
       expect(newStore.apiSettings.azureApiKey).toBe('new-key');
@@ -83,7 +83,7 @@ describe('Settings Persistence Integration', () => {
       await store.saveCurrentVariant('Full Config', 1);
 
       // Reload
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const variant = newStore.settingVariants.find(
@@ -108,7 +108,7 @@ describe('Settings Persistence Integration', () => {
       const frenchId = store.selectedVariantId;
 
       // Reload
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants(1);
 
       // Should load French (last selected)
@@ -127,12 +127,12 @@ describe('Settings Persistence Integration', () => {
       await store.saveCurrentVariant('Variant B', 2);
 
       // Reload for User 1
-      const store1 = useTranslatorStore();
+      const store1 = useSettingsStore();
       await store1.loadSettingVariants(1);
       expect(store1.selectedVariantId).toBe(variantAId);
 
       // Reload for User 2
-      const store2 = useTranslatorStore();
+      const store2 = useSettingsStore();
       await store2.loadSettingVariants(2);
       expect(store2.settings.outputLanguages).toEqual(['es']);
     });
@@ -163,7 +163,7 @@ describe('Settings Persistence Integration', () => {
       await store.saveCurrentVariant('Old Format', 1);
 
       // Reload - migration should happen
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(typeof newStore.settings.inputLanguage).toBe('string');
@@ -194,7 +194,7 @@ describe('Settings Persistence Integration', () => {
       await store.saveCurrentVariant('Single Lang', 1);
 
       // Reload
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(Array.isArray(newStore.settings.outputLanguages)).toBe(true);
@@ -222,7 +222,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = partialSettings as any;
       await store.saveCurrentVariant('No Mode', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.presentation.mode).toBe('split');
@@ -250,7 +250,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = partialSettings as any;
       await store.saveCurrentVariant('No Show Input', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.presentation.showInputLanguage).toBe(false);
@@ -279,7 +279,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = partialSettings;
       await store.saveCurrentVariant('No Output Modes', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.outputModes).toBeDefined();
@@ -313,7 +313,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = partialSettings;
       await store.saveCurrentVariant('Non-Boolean Modes', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.outputModes?.presentationEnabled).toBe(true);
@@ -334,7 +334,7 @@ describe('Settings Persistence Integration', () => {
 
       await store.saveCurrentVariant('Custom Output Modes', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.outputModes?.presentationEnabled).toBe(false);
@@ -351,7 +351,7 @@ describe('Settings Persistence Integration', () => {
       // For now, just verify we can save
       await store.saveCurrentVariant('Empty Langs', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(
@@ -368,7 +368,7 @@ describe('Settings Persistence Integration', () => {
       store.settings.phraseList = longPhraseList;
       await store.saveCurrentVariant('Long Phrases', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const variant = newStore.settingVariants.find(
@@ -442,14 +442,14 @@ describe('Settings Persistence Integration', () => {
       const variantId = store.selectedVariantId!;
 
       // Switch to different user
-      const store2 = useTranslatorStore();
+      const store2 = useSettingsStore();
       await store2.loadSettingVariants(10);
 
       // User 10 should not have User 5's preference
       // (unless they explicitly selected it)
 
       // Switch back to User 5
-      const store3 = useTranslatorStore();
+      const store3 = useSettingsStore();
       await store3.loadSettingVariants(5);
 
       // Should restore User 5's preference
@@ -462,7 +462,7 @@ describe('Settings Persistence Integration', () => {
       const variantBId = store.selectedVariantId;
 
       // Reload
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants(1);
 
       // Should remember Variant B
@@ -477,7 +477,7 @@ describe('Settings Persistence Integration', () => {
       });
 
       // Reload and verify
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadOperatorSecret();
 
       expect(newStore.operatorSecret.secret).toBe('operator-secret-12345');
@@ -491,7 +491,7 @@ describe('Settings Persistence Integration', () => {
       });
 
       // Reload and verify
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadReaderConfig();
 
       expect(newStore.readerConfig.enabled).toBe(true);
@@ -508,7 +508,7 @@ describe('Settings Persistence Integration', () => {
         readerSecret: 'test-secret',
       });
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadReaderConfig();
 
       expect(newStore.readerConfig.enabled).toBe(false);
@@ -518,7 +518,7 @@ describe('Settings Persistence Integration', () => {
       await store.saveOperatorSecret({ secret: 'old-operator-secret' });
       await store.saveOperatorSecret({ secret: 'new-operator-secret' });
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadOperatorSecret();
 
       expect(newStore.operatorSecret.secret).toBe('new-operator-secret');
@@ -537,7 +537,7 @@ describe('Settings Persistence Integration', () => {
         readerSecret: 'new-reader-secret',
       });
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadReaderConfig();
 
       expect(newStore.readerConfig.enabled).toBe(true);
@@ -571,7 +571,7 @@ describe('Settings Persistence Integration', () => {
       });
 
       // Reload in new store
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadOperatorSecret();
       await newStore.loadReaderConfig();
 
@@ -596,7 +596,7 @@ describe('Settings Persistence Integration', () => {
       ]);
 
       // Reload
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await Promise.all([
         newStore.loadOperatorSecret(),
         newStore.loadReaderConfig(),
@@ -639,7 +639,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = partialSettings;
       await store.saveCurrentVariant('No Session', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.session).toBeDefined();
@@ -679,7 +679,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = settingsWithSession as any;
       await store.saveCurrentVariant('With Session', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.session?.displayName).toBe('Sunday Service');
@@ -716,7 +716,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = invalidSettings as any;
       await store.saveCurrentVariant('Invalid Hidden', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(typeof newStore.settings.session?.hidden).toBe('boolean');
@@ -753,7 +753,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = invalidSettings as any;
       await store.saveCurrentVariant('String MaxClients', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       // Should be converted to undefined (invalid type)
@@ -768,7 +768,7 @@ describe('Settings Persistence Integration', () => {
 
       await store.saveCurrentVariant('With Display Name', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.session?.displayName).toBe(
@@ -806,7 +806,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = partialSession as any;
       await store.saveCurrentVariant('Partial Session', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       expect(newStore.settings.session?.displayName).toBe('Partial Session');
@@ -841,7 +841,7 @@ describe('Settings Persistence Integration', () => {
       store.settings = corruptSettings as any;
       await store.saveCurrentVariant('Corrupt Session', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       // Should create valid session object with defaults
@@ -861,7 +861,7 @@ describe('Settings Persistence Integration', () => {
 
       await store.saveCurrentVariant('Full Session Config', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const variant = newStore.settingVariants.find(
@@ -888,7 +888,7 @@ describe('Settings Persistence Integration', () => {
       };
       await store.saveCurrentVariant('Without Name', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const withName = newStore.settingVariants.find(
@@ -918,7 +918,7 @@ describe('Settings Persistence Integration', () => {
       };
       await store.saveCurrentVariant('Unlimited', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const withMax = newStore.settingVariants.find(
@@ -945,7 +945,7 @@ describe('Settings Persistence Integration', () => {
       };
       await store.saveCurrentVariant('Hidden False', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const hiddenTrue = newStore.settingVariants.find(
@@ -967,7 +967,7 @@ describe('Settings Persistence Integration', () => {
       };
       await store.saveCurrentVariant('Empty Display Name', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const variant = newStore.settingVariants.find(
@@ -987,7 +987,7 @@ describe('Settings Persistence Integration', () => {
 
       await store.saveCurrentVariant('Complex Config', 1);
 
-      const newStore = useTranslatorStore();
+      const newStore = useSettingsStore();
       await newStore.loadSettingVariants();
 
       const variant = newStore.settingVariants.find(

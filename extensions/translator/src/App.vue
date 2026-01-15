@@ -4,7 +4,7 @@
 
   <!-- Loading State -->
   <div
-    v-else-if="store.initializing"
+    v-else-if="settingsStore.initializing"
     class="min-h-screen flex items-center justify-center"
   >
     <div class="text-center space-y-4">
@@ -69,7 +69,8 @@ import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue'
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { useTranslatorStore } from './stores/translator';
+import { useSettingsStore } from './stores/settings';
+import { useSessionStore } from './stores/session';
 
 // Check if we're in presentation mode
 const isPresentationMode = computed(() => {
@@ -81,7 +82,8 @@ const isPresentationMode = computed(() => {
 const activeTab = ref('translate');
 
 const user = ref<Person | null>(null);
-const store = useTranslatorStore();
+const settingsStore = useSettingsStore();
+const sessionStore = useSessionStore();
 const confirm = useConfirm();
 const toast = useToast();
 
@@ -118,10 +120,10 @@ async function init() {
 
     // Load API settings and translation setting variants
     await Promise.all([
-      store.loadApiSettings(),
-      store.loadSettingVariants(user.value.id),
-      store.loadOperatorSecret(),
-      store.loadReaderConfig(),
+      settingsStore.loadApiSettings(),
+      settingsStore.loadSettingVariants(user.value.id),
+      settingsStore.loadOperatorSecret(),
+      settingsStore.loadReaderConfig(),
     ]);
 
     // Check for active session after app loads (non-blocking)
@@ -132,7 +134,7 @@ async function init() {
 }
 
 async function checkForActiveSessionRecovery() {
-  const activeSessionData = await store.checkForActiveSession();
+  const activeSessionData = await sessionStore.checkForActiveSession();
 
   if (!activeSessionData) return;
 
@@ -158,7 +160,10 @@ async function checkForActiveSessionRecovery() {
     },
     accept: async () => {
       try {
-        await store.resumeSessionFromCrash(reference.sessionId, session.status);
+        await sessionStore.resumeSessionFromCrash(
+          reference.sessionId,
+          session.status,
+        );
 
         // TODO: Navigate to TranslateView and reconnect UI
         // activeTab.value = 'translate';
@@ -181,7 +186,7 @@ async function checkForActiveSessionRecovery() {
     },
     reject: async () => {
       try {
-        await store.endSession(reference.sessionId, {
+        await sessionStore.endSession(reference.sessionId, {
           status: 'completed',
           endTime: new Date().toISOString(),
         });

@@ -356,7 +356,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { useTranslatorStore } from '../stores/translator';
+import { useSettingsStore } from '../stores/settings';
 import InputText from '@churchtools-extensions/prime-volt/InputText.vue';
 import Password from '@churchtools-extensions/prime-volt/Password.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
@@ -368,7 +368,7 @@ import Checkbox from '@churchtools-extensions/prime-volt/Checkbox.vue';
 import { useConfirm } from 'primevue/useconfirm';
 import extensionInfo from 'virtual:extension-info';
 
-const store = useTranslatorStore();
+const store = useSettingsStore();
 const confirm = useConfirm();
 
 const localApiSettings = ref({ ...store.apiSettings });
