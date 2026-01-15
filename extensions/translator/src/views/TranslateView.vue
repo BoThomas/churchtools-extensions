@@ -336,13 +336,15 @@ const isWebPubSubEnabled = computed(() => {
   );
 });
 
+const isPresentationEnabled = computed(() => {
+  return store.settings.outputModes?.presentationEnabled ?? true;
+});
+
 // Valid output mode: at least one of presentation or streamed session enabled
 const hasValidOutputMode = computed(() => {
-  const presentationEnabled =
-    store.settings.outputModes?.presentationEnabled ?? true;
   const sessionEnabled =
     store.settings.outputModes?.streamedSessionEnabled ?? false;
-  return !!(presentationEnabled || sessionEnabled);
+  return !!(isPresentationEnabled.value || sessionEnabled);
 });
 
 // Load current user
@@ -367,7 +369,7 @@ function onTranslating(translations: Record<string, string>, original: string) {
   scrollOperatorPreviewToBottom();
 
   // Update presentation window if running (filter for audience)
-  if (state.value.isLiveTranslationPrepared) {
+  if (state.value.isLiveTranslationPrepared && isPresentationEnabled.value) {
     // Build translations for presentation (respects checkbox)
     const presentationTranslations = { ...translations };
     if (store.settings.presentation.showInputLanguage) {
@@ -396,7 +398,7 @@ function onTranslated(translations: Record<string, string>, original: string) {
   scrollOperatorPreviewToBottom();
 
   // Update presentation window if running
-  if (state.value.isLiveTranslationPrepared) {
+  if (state.value.isLiveTranslationPrepared && isPresentationEnabled.value) {
     // Build translations for presentation (respects checkbox)
     const presentationTranslations = { ...translations };
     if (store.settings.presentation.showInputLanguage) {
@@ -505,28 +507,34 @@ async function prepareLiveTranslation() {
   // Generate unique session ID and clear storage
   const sessionId = generateSessionId();
   presentationSessionId.value = sessionId;
-  clearPresentationWindowStorage();
 
   try {
     state.value.isLiveTranslationPrepared = true;
-    state.value.presentationWindowsOpenedButNotStarted = true;
 
-    openPresentationWindows(
-      sessionId,
-      store.settings,
-      presentationLanguages.value,
-      {
-        isTest: false,
-        multiWindowSummary: 'Presentation Windows Opened',
-        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Translation" to begin.`,
-        singleWindowSummary: 'Presentation Window Opened',
-        singleWindowDetail: 'Click "Start Translation" to begin.',
-      },
-    );
+    if (isPresentationEnabled.value) {
+      clearPresentationWindowStorage();
+      state.value.presentationWindowsOpenedButNotStarted = true;
+
+      openPresentationWindows(
+        sessionId,
+        store.settings,
+        presentationLanguages.value,
+        {
+          isTest: false,
+          multiWindowSummary: 'Presentation Windows Opened',
+          multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Translation" to begin.`,
+          singleWindowSummary: 'Presentation Window Opened',
+          singleWindowDetail: 'Click "Start Translation" to begin.',
+        },
+      );
+    } else {
+      state.value.presentationWindowsOpenedButNotStarted = false;
+    }
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start presentation';
     console.error('startPresentation failed', e);
     state.value.isLiveTranslationPrepared = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
     presentationSessionId.value = null;
     toast.add({
       severity: 'error',
@@ -546,11 +554,11 @@ async function startTestPresentation() {
   // Generate unique session ID and clear storage
   const sessionId = generateSessionId();
   presentationSessionId.value = sessionId;
-  clearPresentationWindowStorage();
 
   try {
     state.value.isTestPresentationRunning = true;
     state.value.presentationWindowsOpenedButNotStarted = true;
+    clearPresentationWindowStorage();
 
     openPresentationWindows(
       sessionId,
@@ -573,6 +581,7 @@ async function startTestPresentation() {
     error.value = e?.message ?? 'Failed to start test presentation';
     console.error('startTestPresentation failed', e);
     state.value.isTestPresentationRunning = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
     presentationSessionId.value = null;
     toast.add({
       severity: 'error',
@@ -595,7 +604,7 @@ async function startTranslation() {
     state.value.presentationWindowsOpenedButNotStarted = false;
 
     // Signal to presentation windows that translation has started
-    if (presentationSessionId.value) {
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       setPresentationStartedFlag(presentationSessionId.value);
     }
 
@@ -653,7 +662,7 @@ function startTestGeneration() {
     state.value.presentationWindowsOpenedButNotStarted = false;
 
     // Signal to presentation windows that test generation has started
-    if (presentationSessionId.value) {
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       setPresentationStartedFlag(presentationSessionId.value);
     }
 
@@ -666,12 +675,16 @@ function startTestGeneration() {
       presentationLanguages.value,
       addFinalizedParagraph,
       currentLiveTranslationByLang,
-      (translations, isLive) =>
+      (translations, isLive) => {
+        if (!isPresentationEnabled.value) {
+          return;
+        }
         updatePresentationWindow(
           translations,
           isLive,
           isLive ? {} : finalizedParagraphsByLang.value,
-        ),
+        );
+      },
       scrollOperatorPreviewToBottom,
     );
 
@@ -705,9 +718,11 @@ function pauseOrResume() {
       // Clear presenter's state to avoid showing stale content when resuming
       finalizedParagraphsByLang.value = {};
       currentLiveTranslationByLang.value = {};
-      clearPresentationWindowStorage();
-      if (presentationSessionId.value) {
-        setPausedFlag(presentationSessionId.value, false);
+      if (isPresentationEnabled.value) {
+        clearPresentationWindowStorage();
+        if (presentationSessionId.value) {
+          setPausedFlag(presentationSessionId.value, false);
+        }
       }
       captioningService?.start();
     }
@@ -729,9 +744,11 @@ function pauseOrResume() {
       // Clear presentation window and presenter's state to avoid showing stale content when paused
       finalizedParagraphsByLang.value = {};
       currentLiveTranslationByLang.value = {};
-      clearPresentationWindowStorage();
-      if (presentationSessionId.value) {
-        setPausedFlag(presentationSessionId.value, true);
+      if (isPresentationEnabled.value) {
+        clearPresentationWindowStorage();
+        if (presentationSessionId.value) {
+          setPausedFlag(presentationSessionId.value, true);
+        }
       }
     }
     if (state.value.isTestPresentationRunning) {
@@ -752,7 +769,7 @@ async function stop() {
   // Handle pre-start state (windows opened but not started)
   if (state.value.presentationWindowsOpenedButNotStarted) {
     // Clean up session-based localStorage
-    if (presentationSessionId.value) {
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       cleanupPresentationStorage(presentationSessionId.value);
     }
 
@@ -784,7 +801,7 @@ async function stop() {
     stopGeneration();
 
     // Clean up session-based localStorage
-    if (presentationSessionId.value) {
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       cleanupPresentationStorage(presentationSessionId.value);
     }
 
@@ -817,7 +834,7 @@ async function stop() {
         captioningService?.stop();
 
         // Clean up session-based localStorage
-        if (presentationSessionId.value) {
+        if (presentationSessionId.value && isPresentationEnabled.value) {
           cleanupPresentationStorage(presentationSessionId.value);
         }
 
@@ -849,6 +866,9 @@ async function handleStorageEvent(e: StorageEvent) {
   if (!sessionId) return;
 
   if (e.key === `translator_settings_${sessionId}` && e.newValue === null) {
+    if (!isPresentationEnabled.value) {
+      return;
+    }
     // Presentation window was closed, stop everything
     if (state.value.isLiveTranslationPrepared) {
       captioningService?.stop();

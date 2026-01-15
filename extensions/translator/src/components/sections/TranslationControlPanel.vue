@@ -170,9 +170,10 @@
             <Button
               v-if="
                 !(
-                  presentationWindowsOpenedButNotStarted &&
+                  isLiveTranslationPrepared &&
                   !isLiveTranslating &&
-                  (isLiveTranslationPrepared || isTestPresentationRunning)
+                  (presentationWindowsOpenedButNotStarted ||
+                    (isWebPubSubEnabled && !isPresentationEnabled))
                 )
               "
               label="Prepare Translation"
@@ -191,9 +192,10 @@
             />
             <DangerButton
               v-if="
-                presentationWindowsOpenedButNotStarted &&
                 isLiveTranslationPrepared &&
-                !isLiveTranslating
+                !isLiveTranslating &&
+                (presentationWindowsOpenedButNotStarted ||
+                  (isWebPubSubEnabled && !isPresentationEnabled))
               "
               label="Start Translation"
               icon="pi pi-microphone"
@@ -262,9 +264,10 @@
             <Button
               v-if="
                 !(
-                  presentationWindowsOpenedButNotStarted &&
+                  isLiveTranslationPrepared &&
                   !isLiveTranslating &&
-                  (isLiveTranslationPrepared || isTestPresentationRunning)
+                  (presentationWindowsOpenedButNotStarted ||
+                    (isWebPubSubEnabled && !isPresentationEnabled))
                 )
               "
               label="Prepare Translation"
@@ -283,9 +286,10 @@
             />
             <DangerButton
               v-if="
-                presentationWindowsOpenedButNotStarted &&
                 isLiveTranslationPrepared &&
-                !isLiveTranslating
+                !isLiveTranslating &&
+                (presentationWindowsOpenedButNotStarted ||
+                  (isWebPubSubEnabled && !isPresentationEnabled))
               "
               label="Start Translation"
               icon="pi pi-microphone"
