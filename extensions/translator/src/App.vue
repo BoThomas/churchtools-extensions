@@ -54,6 +54,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
+import type { StreamedSessionMetadata } from './types/streamedSession';
+import type { TranslationSession } from './services/sessionLogger';
+import type { ActiveSessionReference } from './types/streamedSession';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import SettingsView from './views/SettingsView.vue';
 import TranslateView from './views/TranslateView.vue';
@@ -132,31 +135,58 @@ async function init() {
       settingsStore.loadReaderConfig(),
     ]);
 
-    // Check for active session after app loads (non-blocking)
-    checkForActiveSessionRecovery();
-
-    // Check for orphaned test sessions (non-blocking)
-    cleanupOrphanedTestSessions();
+    // Handle session recovery with proper priority
+    await handleSessionRecovery();
   } catch (e) {
     console.error('Failed to init', e);
   }
 }
 
-async function checkForActiveSessionRecovery() {
-  const activeSessionData = await sessionStore.checkForActiveSession();
+async function handleSessionRecovery() {
+  const localSessionData = await sessionStore.checkForActiveSession();
 
-  if (!activeSessionData) return;
+  if (localSessionData) {
+    const { session, reference } = localSessionData;
+    await promptLocalSessionRecovery(session, reference);
+    return;
+  }
 
-  const { session, reference } = activeSessionData;
-  const sessionAge = Date.now() - new Date(reference.startTime).getTime();
+  const realSessionResumed = await cleanupOrphanedRealSessions();
+  if (!realSessionResumed) {
+    await cleanupOrphanedTestSessions();
+  }
+}
+
+interface ResumeSessionParams {
+  header: string;
+  session: {
+    sessionId: number;
+    displayName?: string;
+    mode?: string;
+    inputLanguage: string;
+    outputLanguages?: string[] | string;
+    status: string;
+    startTime: string;
+  };
+  onResume: () => Promise<void>;
+  onEnd: () => Promise<void>;
+}
+
+async function promptSessionResume(params: ResumeSessionParams): Promise<void> {
+  const sessionAge = Date.now() - new Date(params.session.startTime).getTime();
   const ageMinutes = Math.floor(sessionAge / 1000 / 60);
 
-  const outputLangs = session.outputLanguages || [session.outputLanguage];
-  const sessionDetails = `${session.mode} mode • ${session.status} • ${session.inputLanguage} → ${outputLangs?.join(', ') || 'N/A'}`;
+  const outputLangs = params.session.outputLanguages || 'N/A';
+  const outputStr = Array.isArray(outputLangs)
+    ? outputLangs.join(', ')
+    : outputLangs;
+  const details = params.session.displayName
+    ? `${params.session.displayName} • ${params.session.status} • ${params.session.inputLanguage} → ${outputStr}`
+    : `${params.session.mode || 'Session'} • ${params.session.status} • ${params.session.inputLanguage} → ${outputStr}`;
 
   confirm.require({
-    header: 'Active Session Found',
-    message: `Session started ${ageMinutes} minute(s) ago (${sessionDetails}). What would you like to do?`,
+    header: params.header,
+    message: `Session started ${ageMinutes} minute(s) ago (${details}). What would you like to do?`,
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
       label: 'End Session',
@@ -169,15 +199,7 @@ async function checkForActiveSessionRecovery() {
     },
     accept: async () => {
       try {
-        await sessionStore.resumeSessionFromCrash(
-          reference.sessionId,
-          session.status,
-        );
-
-        // TODO: Navigate to TranslateView and reconnect UI
-        // activeTab.value = 'translate';
-        // await reconnectSessionUI(reference.sessionId);
-
+        await params.onResume();
         toast.add({
           severity: 'success',
           summary: 'Session Resumed',
@@ -195,11 +217,7 @@ async function checkForActiveSessionRecovery() {
     },
     reject: async () => {
       try {
-        await sessionStore.endSession(reference.sessionId, {
-          status: 'completed',
-          endTime: new Date().toISOString(),
-        });
-
+        await params.onEnd();
         toast.add({
           severity: 'info',
           summary: 'Session Ended',
@@ -218,7 +236,107 @@ async function checkForActiveSessionRecovery() {
   });
 }
 
-async function cleanupOrphanedTestSessions() {
+async function promptLocalSessionRecovery(
+  session: TranslationSession,
+  reference: ActiveSessionReference,
+) {
+  await promptSessionResume({
+    header: 'Active Session Found',
+    session: {
+      sessionId: reference.sessionId,
+      mode: session.mode,
+      inputLanguage: session.inputLanguage,
+      outputLanguages: session.outputLanguages || session.outputLanguage,
+      status: session.status,
+      startTime: reference.startTime,
+    },
+    onResume: async () => {
+      await sessionStore.resumeSessionFromCrash(
+        reference.sessionId,
+        session.status,
+      );
+    },
+    onEnd: async () => {
+      await sessionStore.endSession(reference.sessionId, {
+        status: 'completed',
+        endTime: new Date().toISOString(),
+      });
+      const realSessionResumed = await cleanupOrphanedRealSessions();
+      if (!realSessionResumed) {
+        await cleanupOrphanedTestSessions();
+      }
+    },
+  });
+}
+
+async function cleanupStreamedSession(
+  session: StreamedSessionMetadata,
+): Promise<void> {
+  await ensureTranslatorPersistance();
+  const streamedSessionsCategory = await getStreamedSessionsCategory();
+  if (!streamedSessionsCategory) return;
+
+  const allCategoryItems = await streamedSessionsCategory.list();
+  const categoryItem = allCategoryItems.find(
+    (item) => item.value.sessionId === session.sessionId,
+  );
+  if (categoryItem) {
+    await streamedSessionsCategory.delete(categoryItem.id);
+  }
+}
+
+async function cleanupOrphanedRealSessions(): Promise<boolean> {
+  if (!user.value) return false;
+
+  const currentUserName = `${user.value.firstName} ${user.value.lastName}`;
+
+  try {
+    const sessions = await webPubSubStore.getDiscoverableSessions();
+    const orphanedRealSessions = sessions.filter((s) => {
+      if (s.isTestSession === true) return false;
+      if (s.operatorName !== currentUserName) return false;
+      return true;
+    });
+
+    if (orphanedRealSessions.length === 0) return false;
+
+    const mostRecentSession = orphanedRealSessions.reduce((prev, current) => {
+      return new Date(current.startTime) > new Date(prev.startTime)
+        ? current
+        : prev;
+    });
+
+    let userResumed = false;
+    await promptSessionResume({
+      header: 'Active Streamed Session Found',
+      session: {
+        sessionId: mostRecentSession.sessionId,
+        displayName: mostRecentSession.displayName,
+        inputLanguage: mostRecentSession.inputLanguage,
+        outputLanguages: mostRecentSession.outputLanguages,
+        status: mostRecentSession.status,
+        startTime: mostRecentSession.startTime,
+      },
+      onResume: async () => {
+        await sessionStore.resumeSessionFromCrash(
+          mostRecentSession.sessionId,
+          mostRecentSession.status,
+        );
+        userResumed = true;
+      },
+      onEnd: async () => {
+        await cleanupStreamedSession(mostRecentSession);
+      },
+    });
+
+    return userResumed;
+  } catch (e) {
+    console.warn('Failed to check for orphaned real sessions:', e);
+    return false;
+  }
+}
+
+async function cleanupOrphanedTestSessions(): Promise<void> {
   if (!user.value) return;
 
   const currentUserName = `${user.value.firstName} ${user.value.lastName}`;
