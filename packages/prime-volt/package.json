@@ -51,6 +51,7 @@
     "./TabPanel.vue": "./src/volt/TabPanel.vue",
     "./TabPanels.vue": "./src/volt/TabPanels.vue",
     "./Tabs.vue": "./src/volt/Tabs.vue",
+    "./Tag.vue": "./src/volt/Tag.vue",
     "./Toast.vue": "./src/volt/Toast.vue",
     "./ToggleButton.vue": "./src/volt/ToggleButton.vue",
     "./utils": "./src/volt/utils.ts"
