@@ -6,9 +6,14 @@ type WebPubSubValidationConfig = {
   readerSecret: string;
 };
 
-type WebPubSubAccessConfig = {
+export type WebPubSubAccessConfig = {
   authFunctionUrl: string;
   operatorSecret: string;
+};
+
+export type WebPubSubReaderAccessConfig = {
+  authFunctionUrl: string;
+  readerSecret: string;
 };
 
 export class WebPubSubService {
@@ -138,6 +143,45 @@ export class WebPubSubService {
     return data.url as string;
   }
 
+  async getReaderUrl(
+    config: WebPubSubReaderAccessConfig,
+    roomId: string,
+    userId: string,
+  ): Promise<string> {
+    const { authFunctionUrl, readerSecret } = config;
+
+    if (!authFunctionUrl) {
+      throw new Error('WebPubSub auth function URL is missing');
+    }
+    if (!readerSecret) {
+      throw new Error('WebPubSub reader secret is missing');
+    }
+
+    const response = await fetch(authFunctionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: readerSecret,
+        roomId,
+        userId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error || response.statusText || 'Failed to get reader token',
+      );
+    }
+
+    const data = await response.json();
+    if (!data?.url || data?.role !== 'reader') {
+      throw new Error('Invalid reader token response from Azure function');
+    }
+
+    return data.url as string;
+  }
+
   async openRoom(
     roomId: string,
     userId: number,
@@ -156,7 +200,25 @@ export class WebPubSubService {
     });
 
     await client.start();
+    await client.joinGroup(roomId);
     this.clients.set(roomId, client);
+  }
+
+  async openReaderRoom(
+    roomId: string,
+    userId: string,
+    config: WebPubSubReaderAccessConfig,
+  ): Promise<WebPubSubClient> {
+    const accessUrl = await this.getReaderUrl(config, roomId, userId);
+
+    const client = new WebPubSubClient({
+      getClientAccessUrl: async () => accessUrl,
+    });
+
+    await client.start();
+    await client.joinGroup(roomId);
+
+    return client;
   }
 
   async closeRoom(
@@ -172,7 +234,10 @@ export class WebPubSubService {
           roomId,
           {
             type: 'session-ended',
-            message: 'The operator has ended this session',
+            payload: {
+              message: 'The operator has ended this session',
+              timestamp: new Date().toISOString(),
+            },
           },
           'json',
         );
@@ -188,5 +253,19 @@ export class WebPubSubService {
     }
 
     this.clients.delete(roomId);
+  }
+
+  async sendToRoom(
+    roomId: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const client = this.clients.get(roomId);
+    if (!client) return;
+
+    try {
+      await client.sendToGroup(roomId, payload, 'json');
+    } catch (e) {
+      console.warn('Failed to send WebPubSub message (non-critical):', e);
+    }
   }
 }

@@ -1,5 +1,12 @@
 <template>
-  <div class="space-y-6 max-w-6xl">
+  <ReaderSessionView
+    v-if="activeSession"
+    :session="activeSession"
+    :messages="messages"
+    :error="readerError"
+    @leave="leaveSession"
+  />
+  <div v-else class="space-y-6 max-w-6xl">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <Button
@@ -42,22 +49,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import { useToast } from 'primevue/usetoast';
 import { useWebPubSubStore } from '../stores/webpubsub';
-import type { StreamedSessionMetadata } from '../types/streamedSession';
+import type {
+  StreamedSessionMessage,
+  StreamedSessionMetadata,
+} from '../types/streamedSession';
 import ActiveSessionCard from '../components/active-sessions/ActiveSessionCard.vue';
+import ReaderSessionView from './ReaderSessionView.vue';
 
 const props = defineProps<{
   activeTab: string;
 }>();
 
 const store = useWebPubSubStore();
+const toast = useToast();
 
 const sessions = ref<StreamedSessionMetadata[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const readerError = ref<string | null>(null);
+const activeSession = ref<StreamedSessionMetadata | null>(null);
+const messages = ref<StreamedSessionMessage[]>([]);
+const readerClient = ref<unknown | null>(null);
 
 const sortedSessions = computed(() => {
   return [...sessions.value].sort((a, b) => {
@@ -80,17 +97,63 @@ async function loadSessions() {
   }
 }
 
-function handleJoin(session: StreamedSessionMetadata) {
-  // TODO: Implement join flow (reader auth + opening session view).
-  console.info('Join session requested', session);
+async function handleJoin(session: StreamedSessionMetadata) {
+  readerError.value = null;
+  messages.value = [];
+  activeSession.value = session;
+
+  try {
+    const client = await store.openReaderRoom(
+      session.webPubSubRoomId,
+      `reader-${Date.now()}`,
+      handleMessage,
+    );
+    readerClient.value = client;
+  } catch (e: any) {
+    readerError.value = e?.message ?? 'Failed to join session.';
+    activeSession.value = null;
+  }
 }
+
+function handleMessage(message: StreamedSessionMessage) {
+  messages.value.push(message);
+
+  if (message.type === 'session-ended') {
+    toast.add({
+      severity: 'info',
+      summary: 'Session Ended',
+      detail: 'The operator ended this session.',
+      life: 4000,
+    });
+    leaveSession();
+  }
+}
+
+async function leaveSession() {
+  if (readerClient.value) {
+    await store.closeReader(readerClient.value);
+    readerClient.value = null;
+  }
+
+  activeSession.value = null;
+  messages.value = [];
+  readerError.value = null;
+  await loadSessions();
+}
+
+onBeforeUnmount(() => {
+  if (readerClient.value) {
+    store.closeReader(readerClient.value);
+  }
+});
 
 watch(
   () => props.activeTab,
   (newTab) => {
-    if (newTab === 'active-sessions') {
+    if (newTab === 'active-sessions' && !activeSession.value) {
       loadSessions();
     }
   },
+  { immediate: true },
 );
 </script>

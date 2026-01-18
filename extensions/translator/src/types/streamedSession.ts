@@ -18,6 +18,30 @@ export type StreamedSessionMetadata = {
   status: SessionStatus; // Active session states only
 };
 
+export type SessionMessageType =
+  | 'translation-live'
+  | 'translation-final'
+  | 'session-ended'
+  | 'system';
+
+export type SessionTranslationPayload = {
+  translations: Record<string, string>;
+  original?: string;
+  isLive: boolean;
+  timestamp: string;
+};
+
+export type SessionSystemPayload = {
+  message: string;
+  timestamp: string;
+};
+
+export type StreamedSessionMessage = {
+  type: SessionMessageType;
+  payload: SessionTranslationPayload | SessionSystemPayload;
+  sessionId?: number;
+};
+
 /**
  * Reference to active session stored in localStorage for crash recovery
  * Key: 'translator_active_session'

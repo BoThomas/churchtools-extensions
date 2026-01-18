@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { StreamedSessionMetadata } from '../types/streamedSession';
+import type {
+  StreamedSessionMessage,
+  StreamedSessionMetadata,
+} from '../types/streamedSession';
 import { WebPubSubService } from '../services/webPubSubService';
 import { useSettingsStore } from './settings';
 import {
@@ -37,6 +40,60 @@ export const useWebPubSubStore = defineStore('webpubsub', () => {
     await webPubSubService.closeRoom(roomId);
   }
 
+  async function closeReader(client: unknown) {
+    const readerClient = client as { stop?: () => void } | null;
+    try {
+      readerClient?.stop?.();
+    } catch (e) {
+      console.warn('Failed to stop reader client (non-critical):', e);
+    }
+  }
+
+  async function openReaderRoom(
+    roomId: string,
+    userId: string,
+    onMessage: (message: StreamedSessionMessage) => void,
+  ): Promise<unknown> {
+    const settingsStore = useSettingsStore();
+
+    const client = await webPubSubService.openReaderRoom(roomId, userId, {
+      authFunctionUrl: settingsStore.readerConfig.authFunctionUrl,
+      readerSecret: settingsStore.readerConfig.readerSecret,
+    });
+
+    client.on('group-message', (event) => {
+      const payload = event as {
+        data?: unknown;
+        dataType?: string;
+        message?: unknown;
+        type?: string;
+      };
+
+      const rawData = payload.data ?? payload.message ?? payload;
+      const rawType = payload.dataType ?? payload.type ?? 'json';
+
+      if (rawType === 'json' && rawData) {
+        onMessage(rawData as StreamedSessionMessage);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(String(rawData)) as StreamedSessionMessage;
+        onMessage(parsed);
+      } catch {
+        onMessage({
+          type: 'system',
+          payload: {
+            message: String(rawData ?? ''),
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+    });
+
+    return client as unknown;
+  }
+
   /**
    * Get active sessions available for reader discovery
    * Reads from streamed-sessions category (reader-accessible)
@@ -59,6 +116,10 @@ export const useWebPubSubStore = defineStore('webpubsub', () => {
     }
   }
 
+  async function sendToRoom(roomId: string, payload: Record<string, unknown>) {
+    await webPubSubService.sendToRoom(roomId, payload);
+  }
+
   return {
     // State
     error,
@@ -66,6 +127,9 @@ export const useWebPubSubStore = defineStore('webpubsub', () => {
     // Actions
     openRoom,
     closeRoom,
+    openReaderRoom,
+    closeReader,
+    sendToRoom,
     getDiscoverableSessions,
   };
 });

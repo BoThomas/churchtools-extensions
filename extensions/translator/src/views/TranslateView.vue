@@ -233,8 +233,11 @@ import { useSessionManagement } from '../composables/useSessionManagement';
 import { useTestPresentation } from '../composables/useTestPresentation';
 import { useTestSession } from '../composables/useTestSession';
 import { useFieldsetState } from '../composables/useFieldsetState';
+import { useWebPubSubStore } from '../stores/webpubsub';
+import type { StreamedSessionMessage } from '../types/streamedSession';
 
 const store = useSettingsStore();
+const webPubSubStore = useWebPubSubStore();
 const confirm = useConfirm();
 const toast = useToast();
 
@@ -284,6 +287,20 @@ const {
 } = useSessionManagement(user);
 const { startGeneration, stopGeneration } = useTestPresentation();
 const { startTestSession } = useTestSession();
+
+const activeSessionReference = computed(() => {
+  const refString = localStorage.getItem('translator_active_session');
+  if (!refString) return null;
+
+  try {
+    return JSON.parse(refString) as {
+      sessionId: number;
+      webPubSubRoomId: string;
+    };
+  } catch {
+    return null;
+  }
+});
 const {
   translationOptionsCollapsed,
   presentationOptionsCollapsed,
@@ -340,11 +357,13 @@ const isPresentationEnabled = computed(() => {
   return store.settings.outputModes?.presentationEnabled ?? true;
 });
 
+const isSessionEnabled = computed(() => {
+  return store.settings.outputModes?.streamedSessionEnabled ?? false;
+});
+
 // Valid output mode: at least one of presentation or streamed session enabled
 const hasValidOutputMode = computed(() => {
-  const sessionEnabled =
-    store.settings.outputModes?.streamedSessionEnabled ?? false;
-  return !!(isPresentationEnabled.value || sessionEnabled);
+  return !!(isPresentationEnabled.value || isSessionEnabled.value);
 });
 
 // Load current user
@@ -379,6 +398,18 @@ function onTranslating(translations: Record<string, string>, original: string) {
     // This reduces redundant localStorage writes
     updatePresentationWindow(presentationTranslations, true, {});
   }
+
+  if (isSessionEnabled.value) {
+    broadcastSessionMessage({
+      type: 'translation-live',
+      payload: {
+        translations,
+        original,
+        isLive: true,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
 }
 
 function onTranslated(translations: Record<string, string>, original: string) {
@@ -410,10 +441,31 @@ function onTranslated(translations: Record<string, string>, original: string) {
       finalizedParagraphsByLang.value,
     );
   }
+
+  if (isSessionEnabled.value) {
+    broadcastSessionMessage({
+      type: 'translation-final',
+      payload: {
+        translations,
+        original,
+        isLive: false,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
 }
 
 function onError(errorMsg: string) {
   error.value = errorMsg;
+  if (isSessionEnabled.value) {
+    broadcastSessionMessage({
+      type: 'system',
+      payload: {
+        message: errorMsg,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
   stop();
 }
 
@@ -428,6 +480,18 @@ function scrollOperatorPreviewToBottom() {
         }
       });
     }
+  });
+}
+
+async function broadcastSessionMessage(message: StreamedSessionMessage) {
+  if (!isSessionEnabled.value || !isWebPubSubEnabled.value) return;
+
+  const activeSession = activeSessionReference.value;
+  if (!activeSession) return;
+
+  await webPubSubStore.sendToRoom(activeSession.webPubSubRoomId, {
+    ...message,
+    sessionId: activeSession.sessionId,
   });
 }
 
@@ -636,6 +700,16 @@ async function startTranslation() {
       store.settings.outputLanguages,
     );
 
+    if (isSessionEnabled.value) {
+      broadcastSessionMessage({
+        type: 'system',
+        payload: {
+          message: 'Translation started',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
     toast.add({
       severity: 'success',
       summary: 'Translation Started',
@@ -843,6 +917,16 @@ async function stop() {
         state.value.isLiveTranslating = false;
         state.value.presentationWindowsOpenedButNotStarted = false;
         presentationSessionId.value = null;
+
+        if (isSessionEnabled.value) {
+          broadcastSessionMessage({
+            type: 'session-ended',
+            payload: {
+              message: 'The operator ended this session',
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
 
         // End session tracking
         await endSessionTracking();
