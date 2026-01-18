@@ -3,8 +3,16 @@
     <template #title>
       <div class="flex items-start justify-between gap-3">
         <div>
-          <div class="text-lg font-semibold text-surface-900">
-            {{ session.displayName }}
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-semibold text-surface-900">
+              {{ session.displayName }}
+            </span>
+            <Tag
+              v-if="session.isTestSession"
+              value="TEST"
+              severity="warn"
+              class="text-xs px-2 py-0.5"
+            />
           </div>
           <div class="text-sm text-surface-500">
             Hosted by {{ session.operatorName }}
@@ -66,6 +74,7 @@
 import { computed } from 'vue';
 import Card from '@churchtools-extensions/prime-volt/Card.vue';
 import Chip from '@churchtools-extensions/prime-volt/Chip.vue';
+import Tag from '@churchtools-extensions/prime-volt/Tag.vue';
 import Button from '@churchtools-extensions/prime-volt/Button.vue';
 import type { StreamedSessionMetadata } from '../../types/streamedSession';
 import { getLanguageDisplayName } from '../../utils/languageHelpers';

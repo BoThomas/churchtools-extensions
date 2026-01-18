@@ -98,18 +98,19 @@
             />
             <SecondaryButton
               v-if="isWebPubSubEnabled"
-              label="Test Session"
+              label="Session"
               icon="pi pi-users"
               @click="$emit('start-test-session')"
               :disabled="
                 isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
+                isTestSessionRunning ||
                 hasInvalidLanguages ||
                 !isSessionEnabled
               "
               severity="secondary"
-              data-testid="button-test-session-mobile"
+              data-testid="button-test-session"
             />
           </div>
           <!-- ButtonGroup for medium and larger screens -->
@@ -151,11 +152,12 @@
                 isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
+                isTestSessionRunning ||
                 hasInvalidLanguages ||
                 !isSessionEnabled
               "
               severity="secondary"
-              data-testid="button-test-session"
+              data-testid="button-test-session-mobile"
             />
           </ButtonGroup>
         </div>
@@ -183,6 +185,7 @@
                 isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
+                isTestSessionRunning ||
                 presentationWindowsOpenedButNotStarted ||
                 hasTooManyLanguagesForSplit ||
                 hasInvalidLanguages ||
@@ -223,7 +226,8 @@
                   (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
-                    !presentationWindowsOpenedButNotStarted)
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
                 )
               "
               data-testid="button-resume-mobile"
@@ -238,7 +242,8 @@
                   (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
-                    !presentationWindowsOpenedButNotStarted)
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
                 )
               "
               data-testid="button-pause-mobile"
@@ -252,6 +257,7 @@
                   isLiveTranslationPrepared ||
                   isTestRunning ||
                   isTestPresentationRunning ||
+                  isTestSessionRunning ||
                   presentationWindowsOpenedButNotStarted
                 )
               "
@@ -277,6 +283,7 @@
                 isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
+                isTestSessionRunning ||
                 presentationWindowsOpenedButNotStarted ||
                 hasTooManyLanguagesForSplit ||
                 hasInvalidLanguages ||
@@ -317,7 +324,8 @@
                   (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
-                    !presentationWindowsOpenedButNotStarted)
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
                 )
               "
               data-testid="button-resume"
@@ -332,7 +340,8 @@
                   (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
-                    !presentationWindowsOpenedButNotStarted)
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
                 )
               "
               data-testid="button-pause"
@@ -346,6 +355,7 @@
                   isLiveTranslationPrepared ||
                   isTestRunning ||
                   isTestPresentationRunning ||
+                  isTestSessionRunning ||
                   presentationWindowsOpenedButNotStarted
                 )
               "
@@ -467,6 +477,7 @@ interface Props {
   isTestRunning: boolean;
   isLiveTranslationPrepared: boolean;
   isTestPresentationRunning: boolean;
+  isTestSessionRunning: boolean;
   isPaused: boolean;
   isLiveTranslating: boolean;
   presentationWindowsOpenedButNotStarted: boolean;

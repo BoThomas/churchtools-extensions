@@ -107,6 +107,7 @@
         :is-test-running="state.isTestRunning"
         :is-live-translation-prepared="state.isLiveTranslationPrepared"
         :is-test-presentation-running="state.isTestPresentationRunning"
+        :is-test-session-running="state.isTestSessionRunning"
         :is-paused="state.isPaused"
         :is-live-translating="state.isLiveTranslating"
         :presentation-windows-opened-but-not-started="
@@ -136,7 +137,7 @@
         :inputs-disabled="inputsDisabled"
         @start-test="startTest"
         @start-test-presentation="startTestPresentation"
-        @start-test-session="startTestSession"
+        @start-test-session="startTestSessionHandler"
         @prepare-live-translation="prepareLiveTranslation"
         @start-translation="startTranslation"
         @start-test-generation="startTestGeneration"
@@ -286,7 +287,12 @@ const {
   resumeSession,
 } = useSessionManagement(user);
 const { startGeneration, stopGeneration } = useTestPresentation();
-const { startTestSession } = useTestSession();
+const {
+  startTestSession,
+  stopTestSession,
+  pauseTestSession,
+  resumeTestSession,
+} = useTestSession();
 
 const activeSessionReference = computed(() => {
   const refString = localStorage.getItem('translator_active_session');
@@ -335,7 +341,8 @@ const isOperatorPreviewActive = computed(
   () =>
     state.value.isTestRunning ||
     state.value.isLiveTranslationPrepared ||
-    state.value.isTestPresentationRunning,
+    state.value.isTestPresentationRunning ||
+    state.value.isTestSessionRunning,
 );
 
 // Computed
@@ -656,6 +663,70 @@ async function startTestPresentation() {
   }
 }
 
+// Start WebPubSub test session with Lorem Ipsum
+async function startTestSessionHandler() {
+  // Clear previous output
+  finalizedParagraphsByLang.value = {};
+  currentLiveTranslationByLang.value = {};
+
+  // Auto-open operator preview if it's closed
+  openOperatorPreview();
+
+  try {
+    state.value.isTestSessionRunning = true;
+
+    // Initialize finalized paragraphs for all languages (operator gets all)
+    for (const lang of operatorLanguages.value) {
+      finalizedParagraphsByLang.value[lang.code] = [];
+    }
+
+    // Start the WebPubSub test session
+    await startTestSession(
+      operatorLanguages.value,
+      (message) => {
+        // Handle message for operator view
+        if (message.type === 'translation-live') {
+          const payload = message.payload as {
+            translations: Record<string, string>;
+            isLive: boolean;
+            timestamp: string;
+          };
+          currentLiveTranslationByLang.value = payload.translations;
+        } else if (message.type === 'translation-final') {
+          const payload = message.payload as {
+            translations: Record<string, string>;
+            isLive: boolean;
+            timestamp: string;
+          };
+          for (const [lang, text] of Object.entries(payload.translations)) {
+            addFinalizedParagraph(lang, text);
+          }
+          currentLiveTranslationByLang.value = {};
+        }
+        scrollOperatorPreviewToBottom();
+      },
+      user.value ? `${user.value.firstName} ${user.value.lastName}` : 'Unknown',
+    );
+
+    toast.add({
+      severity: 'success',
+      summary: 'Test Session Started',
+      detail: 'Lorem ipsum flowing via WebPubSub',
+      life: 3000,
+    });
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start test session';
+    console.error('startTestSession failed', e);
+    state.value.isTestSessionRunning = false;
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value,
+      life: 5000,
+    });
+  }
+}
+
 // Start translation for live presentation
 async function startTranslation() {
   if (!hasApiCredentials.value) {
@@ -806,6 +877,10 @@ function pauseOrResume() {
         setPausedFlag(presentationSessionId.value, false);
       }
     }
+    if (state.value.isTestSessionRunning) {
+      // Resume test session
+      resumeTestSession();
+    }
 
     // Resume session tracking
     resumeSession();
@@ -830,6 +905,10 @@ function pauseOrResume() {
       if (presentationSessionId.value) {
         setPausedFlag(presentationSessionId.value, true);
       }
+    }
+    if (state.value.isTestSessionRunning) {
+      // Pause test session
+      pauseTestSession();
     }
 
     // Pause session tracking
@@ -888,6 +967,19 @@ async function stop() {
     toast.add({
       severity: 'info',
       summary: 'Test Presentation Stopped',
+      life: 3000,
+    });
+  }
+
+  if (state.value.isTestSessionRunning) {
+    await stopTestSession();
+
+    state.value.isTestSessionRunning = false;
+    state.value.isPaused = false;
+
+    toast.add({
+      severity: 'info',
+      summary: 'Test Session Stopped',
       life: 3000,
     });
   }

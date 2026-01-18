@@ -71,6 +71,11 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useSettingsStore } from './stores/settings';
 import { useSessionStore } from './stores/session';
+import { useWebPubSubStore } from './stores/webpubsub';
+import {
+  ensureTranslatorPersistance,
+  getStreamedSessionsCategory,
+} from './services/translatorPersistance';
 
 // Check if we're in presentation mode
 const isPresentationMode = computed(() => {
@@ -84,6 +89,7 @@ const activeTab = ref('translate');
 const user = ref<Person | null>(null);
 const settingsStore = useSettingsStore();
 const sessionStore = useSessionStore();
+const webPubSubStore = useWebPubSubStore();
 const confirm = useConfirm();
 const toast = useToast();
 
@@ -128,6 +134,9 @@ async function init() {
 
     // Check for active session after app loads (non-blocking)
     checkForActiveSessionRecovery();
+
+    // Check for orphaned test sessions (non-blocking)
+    cleanupOrphanedTestSessions();
   } catch (e) {
     console.error('Failed to init', e);
   }
@@ -207,6 +216,66 @@ async function checkForActiveSessionRecovery() {
       }
     },
   });
+}
+
+async function cleanupOrphanedTestSessions() {
+  if (!user.value) return;
+
+  const currentUserName = `${user.value.firstName} ${user.value.lastName}`;
+
+  try {
+    const sessions = await webPubSubStore.getDiscoverableSessions();
+    const orphanedTestSessions = sessions.filter((s) => {
+      if (!s.isTestSession) return false;
+      if (s.operatorName !== currentUserName) return false;
+      return true;
+    });
+
+    if (orphanedTestSessions.length === 0) return;
+
+    confirm.require({
+      header: 'Orphaned Test Sessions Found',
+      message: `Found ${orphanedTestSessions.length} orphaned test session(s) from a previous visit. Clean them up?`,
+      icon: 'pi pi-trash',
+      acceptProps: {
+        label: 'Clean Up',
+        severity: 'danger',
+      },
+      rejectProps: {
+        label: 'Leave Them',
+        severity: 'secondary',
+        outlined: true,
+      },
+      accept: async () => {
+        await ensureTranslatorPersistance();
+        const streamedSessionsCategory = await getStreamedSessionsCategory();
+        if (!streamedSessionsCategory) return;
+
+        const allCategoryItems = await streamedSessionsCategory.list();
+
+        for (const session of orphanedTestSessions) {
+          try {
+            const categoryItem = allCategoryItems.find(
+              (item) => item.value.sessionId === session.sessionId,
+            );
+            if (categoryItem) {
+              await streamedSessionsCategory.delete(categoryItem.id);
+            }
+          } catch (e) {
+            console.warn('Failed to delete orphaned session:', e);
+          }
+        }
+        toast.add({
+          severity: 'success',
+          summary: 'Cleanup Complete',
+          detail: `Removed ${orphanedTestSessions.length} orphaned test session(s)`,
+          life: 3000,
+        });
+      },
+    });
+  } catch (e) {
+    console.warn('Failed to check for orphaned test sessions:', e);
+  }
 }
 
 onMounted(() => {

@@ -8,6 +8,7 @@ export interface TranslationState {
   presentationSessionId: string | null;
   isTestPresentationRunning: boolean;
   presentationWindowsOpenedButNotStarted: boolean;
+  isTestSessionRunning: boolean;
 }
 
 export function useTranslationState() {
@@ -19,6 +20,7 @@ export function useTranslationState() {
     presentationSessionId: null,
     isTestPresentationRunning: false,
     presentationWindowsOpenedButNotStarted: false,
+    isTestSessionRunning: false,
   });
 
   const stateText = computed(() => {
@@ -34,6 +36,7 @@ export function useTranslationState() {
       }
       return 'Test Presentation';
     }
+    if (state.value.isTestSessionRunning) return 'Test Session';
     return '';
   });
 
@@ -44,7 +47,8 @@ export function useTranslationState() {
       (state.value.isLiveTranslationPrepared &&
         state.value.isLiveTranslating) ||
       (state.value.isTestPresentationRunning &&
-        !state.value.presentationWindowsOpenedButNotStarted)
+        !state.value.presentationWindowsOpenedButNotStarted) ||
+      state.value.isTestSessionRunning
     ) {
       return 'success';
     }
@@ -61,7 +65,8 @@ export function useTranslationState() {
     return (
       state.value.isTestRunning ||
       state.value.isLiveTranslationPrepared ||
-      state.value.isTestPresentationRunning
+      state.value.isTestPresentationRunning ||
+      state.value.isTestSessionRunning
     );
   });
 
@@ -74,6 +79,7 @@ export function useTranslationState() {
       presentationSessionId: null,
       isTestPresentationRunning: false,
       presentationWindowsOpenedButNotStarted: false,
+      isTestSessionRunning: false,
     };
   };
 

@@ -16,6 +16,7 @@ export type StreamedSessionMetadata = {
   maxClients?: number; // undefined = unlimited
   currentClients: number; // Connected reader count (updated via WebPubSub events later)
   status: SessionStatus; // Active session states only
+  isTestSession?: boolean;
 };
 
 export type SessionMessageType =

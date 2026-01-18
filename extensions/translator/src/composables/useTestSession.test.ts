@@ -1,23 +1,34 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useTestSession } from './useTestSession';
 
+vi.mock('../stores/webpubsub', () => ({
+  useWebPubSubStore: () => ({
+    openRoom: vi.fn(),
+    closeRoom: vi.fn(),
+    sendToRoom: vi.fn(),
+  }),
+}));
+
+vi.mock('../services/translatorPersistance', () => ({
+  ensureTranslatorPersistance: vi.fn(),
+  getStreamedSessionsCategory: vi.fn(),
+}));
+
 describe('useTestSession', () => {
-  it('should show development alert when startTestSession is called', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
-    const { startTestSession } = useTestSession();
-    startTestSession();
-
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Session testing is under development',
-    );
-
-    alertSpy.mockRestore();
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('should return startTestSession function', () => {
-    const { startTestSession } = useTestSession();
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should return startTestSession, stopTestSession, and isTestSessionRunning functions', () => {
+    const { startTestSession, stopTestSession, isTestSessionRunning } =
+      useTestSession();
 
     expect(startTestSession).toBeTypeOf('function');
+    expect(stopTestSession).toBeTypeOf('function');
+    expect(isTestSessionRunning).toBeTypeOf('function');
   });
 });

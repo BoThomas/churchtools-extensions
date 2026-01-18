@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+.opencode
+
 # E2E test environment files
 .env.e2e
 
