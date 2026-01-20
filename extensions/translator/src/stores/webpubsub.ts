@@ -62,15 +62,9 @@ export const useWebPubSubStore = defineStore('webpubsub', () => {
     });
 
     client.on('group-message', (event) => {
-      const payload = event as {
-        data?: unknown;
-        dataType?: string;
-        message?: unknown;
-        type?: string;
-      };
-
-      const rawData = payload.data ?? payload.message ?? payload;
-      const rawType = payload.dataType ?? payload.type ?? 'json';
+      const message = event.message;
+      const rawData = message.data;
+      const rawType = message.dataType;
 
       if (rawType === 'json' && rawData) {
         onMessage(rawData as StreamedSessionMessage);
