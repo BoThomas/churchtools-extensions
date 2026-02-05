@@ -6,6 +6,7 @@
     :enabled="toggleableEnabled"
     :collapsed="collapsed"
     :toggleable="true"
+    :disabled="disabled"
     info="Displays real-time translations in presentation windows. Supports split-screen or multi-window modes."
     data-testid="fieldset-presentation-options"
     @update:enabled="$emit('update:enabled', $event)"
@@ -47,7 +48,7 @@
 import Fieldset from '@churchtools-extensions/prime-volt/Fieldset.vue';
 import ToggleableFieldset from '../ToggleableFieldset.vue';
 import PresentationOptionsGrid from './PresentationOptionsGrid.vue';
-import type { TranslatorSettings } from '../../stores/translator';
+import type { TranslatorSettings } from '../../types/translator';
 
 interface Props {
   modelValue: TranslatorSettings;

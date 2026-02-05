@@ -67,6 +67,7 @@ export function useTranslationState() {
     return (
       state.value.isTestRunning ||
       state.value.isLiveTranslationPrepared ||
+      state.value.isLiveTranslating ||
       state.value.isTestPresentationRunning ||
       state.value.isTestSessionRunning
     );
