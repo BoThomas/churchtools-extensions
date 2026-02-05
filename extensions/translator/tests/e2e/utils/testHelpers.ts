@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import type { MultiWindowHelper } from './multiWindow';
 
 /**
@@ -335,10 +335,21 @@ export async function configureWebPubSub(
 
   // Save WebPubSub settings
   const saveButton = page.getByTestId('button-save-webpubsub');
+  await expect(saveButton).toBeEnabled();
   await saveButton.click();
 
   // Wait for save to complete
   await page.waitForTimeout(1000);
+
+  // Verify success message
+  const successMessage = page.getByText(
+    /WebPubSub settings saved successfully/i,
+  );
+  await expect(successMessage).toBeVisible();
+
+  // Reload the page to ensure settings are loaded
+  await page.reload();
+  await page.waitForLoadState('networkidle');
 }
 
 /**

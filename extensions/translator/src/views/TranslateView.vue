@@ -235,7 +235,11 @@ import { useTestPresentation } from '../composables/useTestPresentation';
 import { useTestSession } from '../composables/useTestSession';
 import { useFieldsetState } from '../composables/useFieldsetState';
 import { useWebPubSubStore } from '../stores/webpubsub';
-import type { StreamedSessionMessage } from '../types/streamedSession';
+import type { TranslationSession } from '../services/sessionLogger';
+import type {
+  StreamedSessionMessage,
+  ActiveSessionReference,
+} from '../types/streamedSession';
 
 const store = useSettingsStore();
 const webPubSubStore = useWebPubSubStore();
@@ -285,6 +289,8 @@ const {
   endSession: endSessionTracking,
   pauseSession,
   resumeSession,
+  sessionLogger,
+  currentSession,
 } = useSessionManagement(user);
 const { startGeneration, stopGeneration } = useTestPresentation();
 const {
@@ -764,12 +770,19 @@ async function startTranslation() {
 
     captioningService.start();
 
-    // Start session tracking
-    await startSessionTracking(
-      'presentation',
-      store.settings.inputLanguage,
-      store.settings.outputLanguages,
-    );
+    // If this is a resumed session, resume it; otherwise start a new session
+    if (state.value.isResumedSession) {
+      resumeSession();
+      state.value.isResumedSession = false; // Clear the flag
+      state.value.isPaused = false;
+    } else {
+      // Start new session tracking
+      await startSessionTracking(
+        'presentation',
+        store.settings.inputLanguage,
+        store.settings.outputLanguages,
+      );
+    }
 
     if (isSessionEnabled.value) {
       broadcastSessionMessage({
@@ -929,6 +942,7 @@ async function stop() {
     state.value.isLiveTranslationPrepared = false;
     state.value.isTestPresentationRunning = false;
     state.value.presentationWindowsOpenedButNotStarted = false;
+    state.value.isResumedSession = false;
     presentationSessionId.value = null;
 
     toast.add({
@@ -1008,6 +1022,7 @@ async function stop() {
         state.value.isPaused = false;
         state.value.isLiveTranslating = false;
         state.value.presentationWindowsOpenedButNotStarted = false;
+        state.value.isResumedSession = false;
         presentationSessionId.value = null;
 
         if (isSessionEnabled.value) {
@@ -1052,6 +1067,7 @@ async function handleStorageEvent(e: StorageEvent) {
       state.value.isPaused = false;
       state.value.isLiveTranslating = false;
       state.value.presentationWindowsOpenedButNotStarted = false;
+      state.value.isResumedSession = false;
       presentationSessionId.value = null;
 
       // End session tracking
@@ -1082,6 +1098,86 @@ async function handleStorageEvent(e: StorageEvent) {
     }
   }
 }
+
+/**
+ * Restore a resumed session after crash recovery
+ * This applies the session's settings and prepares the UI for the resumed session
+ */
+function restoreResumedSession(
+  sessionSettings: ActiveSessionReference['settings'],
+  sessionId: number,
+  sessionData: TranslationSession,
+) {
+  // Set the session ID and session data in the session logger
+  // This allows endSession() to work properly after browser refresh
+  sessionLogger.setCurrentSessionId(sessionId);
+  currentSession.value = sessionData;
+
+  // Apply session settings to the store
+  store.settings.inputLanguage = sessionSettings.inputLanguage;
+  store.settings.outputLanguages = sessionSettings.outputLanguages;
+  if (sessionSettings.outputModes) {
+    store.settings.outputModes = sessionSettings.outputModes;
+  }
+  store.settings.presentation = sessionSettings.presentation;
+  if (sessionSettings.session) {
+    store.settings.session = sessionSettings.session;
+  }
+  store.settings.profanityOption = sessionSettings.profanityOption;
+  store.settings.stablePartialResultThreshold =
+    sessionSettings.stablePartialResultThreshold;
+  store.settings.phraseList = sessionSettings.phraseList;
+
+  // Clear previous output
+  finalizedParagraphsByLang.value = {};
+  currentLiveTranslationByLang.value = {};
+
+  // Generate new presentation session ID
+  const newSessionId = generateSessionId();
+  presentationSessionId.value = newSessionId;
+
+  // Set UI to prepared state
+  state.value.isLiveTranslationPrepared = true;
+  state.value.isPaused = true;
+  state.value.isResumedSession = true;
+
+  // Open presentation windows if presentation was enabled
+  if (sessionSettings.outputModes?.presentationEnabled) {
+    clearPresentationWindowStorage();
+    state.value.presentationWindowsOpenedButNotStarted = true;
+
+    openPresentationWindows(
+      newSessionId,
+      store.settings,
+      presentationLanguages.value,
+      {
+        isTest: false,
+        multiWindowSummary: 'Presentation Windows Opened',
+        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Translation" to begin.`,
+        singleWindowSummary: 'Presentation Window Opened',
+        singleWindowDetail: 'Click "Start Translation" to begin.',
+      },
+    );
+  } else {
+    state.value.presentationWindowsOpenedButNotStarted = false;
+  }
+
+  // Auto-open operator preview
+  openOperatorPreview();
+
+  toast.add({
+    severity: 'info',
+    summary: 'Session Resumed',
+    detail:
+      'Your previous session has been restored. You can now start translation.',
+    life: 5000,
+  });
+}
+
+// Expose the method so App.vue can call it
+defineExpose({
+  restoreResumedSession,
+});
 
 // Setup storage event listener
 onMounted(() => {

@@ -32,7 +32,7 @@
             <SettingsView />
           </TabPanel>
           <TabPanel value="translate">
-            <TranslateView />
+            <TranslateView ref="translateViewRef" />
           </TabPanel>
           <TabPanel value="active-sessions">
             <ActiveSessionsView :active-tab="activeTab" />
@@ -44,6 +44,38 @@
       </Tabs>
     </div>
   </div>
+
+  <!-- Resume Session Dialog -->
+  <Dialog
+    v-model:visible="resumeDialogVisible"
+    :header="resumeDialogHeader"
+    :modal="true"
+    :closable="!resumeDialogLoading"
+    :style="{ maxWidth: '90vw' }"
+  >
+    <div class="flex items-start gap-3">
+      <i class="pi pi-exclamation-triangle text-xl text-surface-600"></i>
+      <div>{{ resumeDialogMessage }}</div>
+    </div>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <SecondaryButton
+          :label="'End Session'"
+          severity="danger"
+          outlined
+          :disabled="resumeDialogLoading"
+          @click="handleResumeDialogEnd"
+        />
+        <Button
+          :label="resumeDialogLoading ? 'Resuming...' : 'Resume'"
+          severity="success"
+          :loading="resumeDialogLoading"
+          :disabled="resumeDialogLoading"
+          @click="handleResumeDialogResume"
+        />
+      </div>
+    </template>
+  </Dialog>
 
   <!-- Global Confirm Dialog -->
   <ConfirmDialog :style="{ maxWidth: '90vw' }" />
@@ -70,6 +102,9 @@ import TabPanels from '@churchtools-extensions/prime-volt/TabPanels.vue';
 import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
+import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
+import Button from '@churchtools-extensions/prime-volt/Button.vue';
+import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useSettingsStore } from './stores/settings';
@@ -95,6 +130,17 @@ const sessionStore = useSessionStore();
 const webPubSubStore = useWebPubSubStore();
 const confirm = useConfirm();
 const toast = useToast();
+
+// Resume session dialog state
+const resumeDialogVisible = ref(false);
+const resumeDialogLoading = ref(false);
+const resumeDialogHeader = ref('');
+const resumeDialogMessage = ref('');
+const resumeDialogParams = ref<ResumeSessionParams | null>(null);
+const resumeDialogResolve = ref<(() => void) | null>(null);
+
+// Ref to TranslateView for session restoration
+const translateViewRef = ref<InstanceType<typeof TranslateView> | null>(null);
 
 declare const window: Window &
   typeof globalThis & {
@@ -184,56 +230,66 @@ async function promptSessionResume(params: ResumeSessionParams): Promise<void> {
     ? `${params.session.displayName} • ${params.session.status} • ${params.session.inputLanguage} → ${outputStr}`
     : `${params.session.mode || 'Session'} • ${params.session.status} • ${params.session.inputLanguage} → ${outputStr}`;
 
-  confirm.require({
-    header: params.header,
-    message: `Session started ${ageMinutes} minute(s) ago (${details}). What would you like to do?`,
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: 'End Session',
-      severity: 'danger',
-      outlined: true,
-    },
-    acceptProps: {
-      label: 'Resume',
-      severity: 'success',
-    },
-    accept: async () => {
-      try {
-        await params.onResume();
-        toast.add({
-          severity: 'success',
-          summary: 'Session Resumed',
-          detail: 'Your translation session has been resumed',
-          life: 3000,
-        });
-      } catch (e: any) {
-        toast.add({
-          severity: 'error',
-          summary: 'Resume Failed',
-          detail: e.message || 'Failed to resume session',
-          life: 5000,
-        });
-      }
-    },
-    reject: async () => {
-      try {
-        await params.onEnd();
-        toast.add({
-          severity: 'info',
-          summary: 'Session Ended',
-          detail: 'Your previous session has been ended',
-          life: 3000,
-        });
-      } catch (e: any) {
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to end session',
-          life: 5000,
-        });
-      }
-    },
+  resumeDialogHeader.value = params.header;
+  resumeDialogMessage.value = `Session started ${ageMinutes} minute(s) ago (${details}). What would you like to do?`;
+  resumeDialogParams.value = params;
+  resumeDialogVisible.value = true;
+
+  return new Promise<void>((resolve) => {
+    resumeDialogResolve.value = resolve;
   });
+}
+
+async function handleResumeDialogResume() {
+  if (!resumeDialogParams.value) return;
+  try {
+    resumeDialogLoading.value = true;
+    await resumeDialogParams.value.onResume();
+    toast.add({
+      severity: 'success',
+      summary: 'Session Resumed',
+      detail: 'Your translation session has been resumed',
+      life: 3000,
+    });
+  } catch (e: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Resume Failed',
+      detail: e.message || 'Failed to resume session',
+      life: 5000,
+    });
+  } finally {
+    resumeDialogLoading.value = false;
+    resumeDialogVisible.value = false;
+    resumeDialogResolve.value?.();
+    resumeDialogResolve.value = null;
+  }
+}
+
+async function handleResumeDialogEnd() {
+  if (!resumeDialogParams.value) return;
+  try {
+    resumeDialogLoading.value = true;
+    await resumeDialogParams.value.onEnd();
+    toast.add({
+      severity: 'info',
+      summary: 'Session Ended',
+      detail: 'Your previous session has been ended',
+      life: 3000,
+    });
+  } catch (e: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to end session',
+      life: 5000,
+    });
+  } finally {
+    resumeDialogLoading.value = false;
+    resumeDialogVisible.value = false;
+    resumeDialogResolve.value?.();
+    resumeDialogResolve.value = null;
+  }
 }
 
 async function promptLocalSessionRecovery(
@@ -251,9 +307,16 @@ async function promptLocalSessionRecovery(
       startTime: reference.startTime,
     },
     onResume: async () => {
-      await sessionStore.resumeSessionFromCrash(
+      const { settings, session: resumedSession } =
+        await sessionStore.resumeSessionFromCrash(
+          reference.sessionId,
+          session.status,
+        );
+      // Restore the session UI with the stored settings and full session data
+      translateViewRef.value?.restoreResumedSession(
+        settings,
         reference.sessionId,
-        session.status,
+        resumedSession,
       );
     },
     onEnd: async () => {
@@ -318,9 +381,16 @@ async function cleanupOrphanedRealSessions(): Promise<boolean> {
         startTime: mostRecentSession.startTime,
       },
       onResume: async () => {
-        await sessionStore.resumeSessionFromCrash(
+        const { settings, session: resumedSession } =
+          await sessionStore.resumeSessionFromCrash(
+            mostRecentSession.sessionId,
+            mostRecentSession.status,
+          );
+        // Restore the session UI with the stored settings
+        translateViewRef.value?.restoreResumedSession(
+          settings,
           mostRecentSession.sessionId,
-          mostRecentSession.status,
+          resumedSession,
         );
         userResumed = true;
       },

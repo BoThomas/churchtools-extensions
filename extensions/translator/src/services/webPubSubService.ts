@@ -189,18 +189,22 @@ export class WebPubSubService {
   ): Promise<void> {
     if (this.clients.has(roomId)) return;
 
-    const accessUrl = await this.getOperatorUrl(
-      config,
-      roomId,
-      `operator-${userId}`,
-    );
-
     const client = new WebPubSubClient({
-      getClientAccessUrl: async () => accessUrl,
+      getClientAccessUrl: async () =>
+        this.getOperatorUrl(config, roomId, `operator-${userId}`),
     });
 
-    await client.start();
-    await client.joinGroup(roomId);
+    try {
+      await client.start();
+      await client.joinGroup(roomId);
+    } catch (e) {
+      console.error('WebPubSub operator connect/join failed', {
+        roomId,
+        userId,
+        error: e,
+      });
+      throw e;
+    }
     this.clients.set(roomId, client);
   }
 
@@ -209,14 +213,21 @@ export class WebPubSubService {
     userId: string,
     config: WebPubSubReaderAccessConfig,
   ): Promise<WebPubSubClient> {
-    const accessUrl = await this.getReaderUrl(config, roomId, userId);
-
     const client = new WebPubSubClient({
-      getClientAccessUrl: async () => accessUrl,
+      getClientAccessUrl: async () => this.getReaderUrl(config, roomId, userId),
     });
 
-    await client.start();
-    await client.joinGroup(roomId);
+    try {
+      await client.start();
+      await client.joinGroup(roomId);
+    } catch (e) {
+      console.error('WebPubSub reader connect/join failed', {
+        roomId,
+        userId,
+        error: e,
+      });
+      throw e;
+    }
 
     return client;
   }
@@ -260,12 +271,19 @@ export class WebPubSubService {
     payload: Record<string, unknown>,
   ): Promise<void> {
     const client = this.clients.get(roomId);
-    if (!client) return;
+    if (!client) {
+      console.warn('WebPubSub send failed: no client for room', { roomId });
+      return;
+    }
 
     try {
       await client.sendToGroup(roomId, payload, 'json');
     } catch (e) {
-      console.warn('Failed to send WebPubSub message (non-critical):', e);
+      console.warn('WebPubSub sendToGroup failed', {
+        roomId,
+        payloadType: payload?.type,
+        error: e,
+      });
     }
   }
 }

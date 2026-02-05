@@ -19,6 +19,7 @@ describe('useTranslationState', () => {
         isTestPresentationRunning: false,
         presentationWindowsOpenedButNotStarted: false,
         isTestSessionRunning: false,
+        isResumedSession: false,
       });
     });
 
@@ -170,6 +171,7 @@ describe('useTranslationState', () => {
         isTestPresentationRunning: false,
         presentationWindowsOpenedButNotStarted: false,
         isTestSessionRunning: false,
+        isResumedSession: false,
       });
       expect(translationState.stateText.value).toBe('');
       expect(translationState.inputsDisabled.value).toBe(false);

@@ -9,6 +9,7 @@ import type {
   StreamedSessionMetadata,
   ActiveSessionReference,
 } from '../types/streamedSession';
+import type { TranslatorSettings } from '../types/translator';
 import { generateSessionDisplayName } from '../types/streamedSession';
 import { useWebPubSubStore } from './webpubsub';
 import {
@@ -38,10 +39,12 @@ export const useSessionStore = defineStore('session', () => {
    * Start a new translation session
    * If streaming is enabled, also creates streamed session metadata for reader discovery
    * @param sessionData - Full session data for 'sessions' category
+   * @param settings - Full settings snapshot for crash recovery
    * @param streamingConfig - Optional streaming configuration (creates entry in 'streamed-sessions')
    */
   async function startSession(
     sessionData: TranslationSession,
+    settings: TranslatorSettings,
     streamingConfig?: {
       displayName?: string;
       maxClients?: number;
@@ -108,6 +111,7 @@ export const useSessionStore = defineStore('session', () => {
             sessionId: id,
             webPubSubRoomId: roomId,
             startTime: sessionData.startTime,
+            settings,
           };
           localStorage.setItem(
             'translator_active_session',
@@ -465,29 +469,61 @@ export const useSessionStore = defineStore('session', () => {
 
   /**
    * Resume a session after browser refresh/crash
-   * Updates heartbeat immediately and restarts heartbeat interval
+   * Updates heartbeat immediately, pauses session, and returns settings for UI restoration
+   * @returns The session settings stored in localStorage for UI restoration
    */
   async function resumeSessionFromCrash(
     sessionId: number,
     status: 'running' | 'paused' | 'completed' | 'error' | 'abandoned',
     cachedSession?: CategoryValue<TranslationSession>,
-  ): Promise<void> {
+  ): Promise<{
+    settings: ActiveSessionReference['settings'];
+    session: TranslationSession;
+  }> {
     try {
+      // Get the stored session reference with settings
+      const refString = localStorage.getItem('translator_active_session');
+      if (!refString) {
+        throw new Error('No active session found in localStorage');
+      }
+      const ref = JSON.parse(refString) as ActiveSessionReference;
+
+      let sessionData: TranslationSession | null = cachedSession?.value ?? null;
+      if (!sessionData) {
+        await ensureCategoriesReady();
+        const sessionsCategory = await getSessionsCategory();
+        if (!sessionsCategory) {
+          throw new Error('Sessions category not initialized');
+        }
+        const sessionWrapper = await sessionsCategory.getById(sessionId);
+        if (!sessionWrapper) {
+          throw new Error('Session not found');
+        }
+        sessionData = sessionWrapper.value;
+      }
+
       // Immediately update heartbeat
       await updateHeartbeat(sessionId, cachedSession);
 
       // update session to paused if its not already
       if (status !== 'paused') await pauseSession(sessionId);
 
-      // TODO: Reconnect to WebPubSub
-      // const ref = JSON.parse(localStorage.getItem('translator_active_session')!);
-      // await webPubSubClient.reconnect(ref.webPubSubRoomId);
-
-      // TODO: Restart Presentation mode if enabled. Would be fire if we could reuse existing presentation windows if they are still open.
-
-      // TODO: Set UI to paused, so operator can start translation again
+      // Reconnect to WebPubSub room if this is a streamed session
+      if (ref.settings.outputModes?.streamedSessionEnabled) {
+        try {
+          await webPubSubStore.openRoom(
+            ref.webPubSubRoomId,
+            cachedSession?.value.userId || 0,
+          );
+        } catch (e) {
+          console.warn('Failed to reconnect to WebPubSub room:', e);
+        }
+      }
 
       console.log(`Resumed session ${sessionId} after crash recovery`);
+
+      // Return settings and session data for UI restoration
+      return { settings: ref.settings, session: sessionData };
     } catch (e) {
       console.error('Failed to resume session from crash:', e);
       throw e;

@@ -1,3 +1,5 @@
+import type { TranslatorSettings } from './translator';
+
 /**
  * Streamed session metadata for reader discovery
  * Stored in 'streamed-sessions' KV category with reader read permissions
@@ -51,6 +53,7 @@ export type ActiveSessionReference = {
   sessionId: number;
   webPubSubRoomId: string;
   startTime: string;
+  settings: TranslatorSettings;
 };
 
 /**

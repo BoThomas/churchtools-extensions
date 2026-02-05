@@ -76,7 +76,11 @@ export function useSessionManagement(user: { value: Person | null }) {
         }
       : undefined;
 
-    const sessionId = await sessionStore.startSession(session, streamingConfig);
+    const sessionId = await sessionStore.startSession(
+      session,
+      settingsStore.settings,
+      streamingConfig,
+    );
 
     if (sessionId) {
       sessionLogger.setCurrentSessionId(sessionId);
@@ -92,13 +96,23 @@ export function useSessionManagement(user: { value: Person | null }) {
    */
   async function endSession(status: 'completed' | 'error' = 'completed') {
     const sessionId = sessionLogger.getCurrentSessionId();
-    if (sessionId && currentSession.value) {
+    if (sessionId) {
       try {
-        const endedSession = sessionLogger.endSession(
-          currentSession.value,
-          status,
-        );
-        await sessionStore.endSession(sessionId, endedSession);
+        // If we have currentSession in memory, use it; otherwise just end by sessionId
+        if (currentSession.value) {
+          const endedSession = sessionLogger.endSession(
+            currentSession.value,
+            status,
+          );
+          await sessionStore.endSession(sessionId, endedSession);
+        } else {
+          // For resumed sessions after browser refresh, we don't have currentSession
+          // Just end the session with minimal info
+          await sessionStore.endSession(sessionId, {
+            status,
+            endTime: new Date().toISOString(),
+          });
+        }
       } catch (e) {
         console.error('Failed to end session:', e);
       } finally {

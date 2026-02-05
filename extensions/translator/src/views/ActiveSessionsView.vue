@@ -135,10 +135,13 @@ async function leaveSession() {
     readerClient.value = null;
   }
 
+  // Refresh with a slight delay to ensure the session has been fully closed on the backend
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await loadSessions();
+
   activeSession.value = null;
   messages.value = [];
   readerError.value = null;
-  await loadSessions();
 }
 
 onBeforeUnmount(() => {

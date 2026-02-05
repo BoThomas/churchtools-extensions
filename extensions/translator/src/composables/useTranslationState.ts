@@ -9,6 +9,7 @@ export interface TranslationState {
   isTestPresentationRunning: boolean;
   presentationWindowsOpenedButNotStarted: boolean;
   isTestSessionRunning: boolean;
+  isResumedSession: boolean;
 }
 
 export function useTranslationState() {
@@ -21,6 +22,7 @@ export function useTranslationState() {
     isTestPresentationRunning: false,
     presentationWindowsOpenedButNotStarted: false,
     isTestSessionRunning: false,
+    isResumedSession: false,
   });
 
   const stateText = computed(() => {
@@ -80,6 +82,7 @@ export function useTranslationState() {
       isTestPresentationRunning: false,
       presentationWindowsOpenedButNotStarted: false,
       isTestSessionRunning: false,
+      isResumedSession: false,
     };
   };
 
