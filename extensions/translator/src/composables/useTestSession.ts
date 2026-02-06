@@ -57,7 +57,7 @@ export function useTestSession() {
       webPubSubRoomId: roomId,
       displayName,
       inputLanguage: operatorLanguages[0]?.code ?? 'en',
-      outputLanguages: operatorLanguages.map((l) => l.code),
+      outputLanguages: operatorLanguages.slice(1).map((l) => l.code),
       operatorName: userName ?? 'Unknown Operator',
       startTime: new Date().toISOString(),
       lastHeartbeat: new Date().toISOString(),
@@ -70,19 +70,22 @@ export function useTestSession() {
 
     isPaused = false;
     showLive = true;
+    const outputLanguages = operatorLanguages.slice(1);
     testSessionInterval = setInterval(async () => {
       if (isPaused) return;
 
       if (showLive) {
+        const originalText = lorem.generateSentences(1);
         const liveTranslations: Record<string, string> = {};
-        for (const lang of operatorLanguages) {
-          liveTranslations[lang.code] = lorem.generateSentences(1);
+        for (const lang of outputLanguages) {
+          liveTranslations[lang.code] = originalText;
         }
 
         const message: StreamedSessionMessage = {
           type: 'translation-live',
           payload: {
             translations: liveTranslations,
+            original: originalText,
             isLive: true,
             timestamp: new Date().toISOString(),
           },
@@ -92,20 +95,22 @@ export function useTestSession() {
         await webPubSubStore.sendToRoom(roomId, message);
         onMessage(message);
       } else {
+        const originalText = lorem.generateParagraphs(1);
         const finalizedTranslations: Record<string, string> = {};
-        for (const lang of operatorLanguages) {
+        for (const lang of outputLanguages) {
           if (!currentParagraphCounters[lang.code]) {
             currentParagraphCounters[lang.code] = 0;
           }
           currentParagraphCounters[lang.code]++;
           finalizedTranslations[lang.code] =
-            `${currentParagraphCounters[lang.code]}. ${lorem.generateParagraphs(1)}`;
+            `${currentParagraphCounters[lang.code]}. ${originalText}`;
         }
 
         const message: StreamedSessionMessage = {
           type: 'translation-final',
           payload: {
             translations: finalizedTranslations,
+            original: originalText,
             isLive: false,
             timestamp: new Date().toISOString(),
           },

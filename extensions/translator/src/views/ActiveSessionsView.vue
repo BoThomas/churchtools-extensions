@@ -130,6 +130,11 @@ function handleMessage(message: StreamedSessionMessage) {
 }
 
 async function leaveSession() {
+  // Clear session state immediately so UI shows loading state
+  activeSession.value = null;
+  messages.value = [];
+  readerError.value = null;
+
   if (readerClient.value) {
     await store.closeReader(readerClient.value);
     readerClient.value = null;
@@ -138,10 +143,6 @@ async function leaveSession() {
   // Refresh with a slight delay to ensure the session has been fully closed on the backend
   await new Promise((resolve) => setTimeout(resolve, 1500));
   await loadSessions();
-
-  activeSession.value = null;
-  messages.value = [];
-  readerError.value = null;
 }
 
 onBeforeUnmount(() => {
