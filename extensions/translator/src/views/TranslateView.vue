@@ -300,19 +300,31 @@ const {
   resumeTestSession,
 } = useTestSession();
 
-const activeSessionReference = computed(() => {
-  const refString = localStorage.getItem('translator_active_session');
-  if (!refString) return null;
+const activeSessionReference = ref<{
+  sessionId: number;
+  webPubSubRoomId: string;
+} | null>(null);
 
+// Sync reactive ref from localStorage -- must be called explicitly since
+// Vue cannot reactively track localStorage changes
+function loadActiveSessionReference() {
+  const refString = localStorage.getItem('translator_active_session');
+  if (!refString) {
+    activeSessionReference.value = null;
+    return;
+  }
   try {
-    return JSON.parse(refString) as {
+    activeSessionReference.value = JSON.parse(refString) as {
       sessionId: number;
       webPubSubRoomId: string;
     };
   } catch {
-    return null;
+    activeSessionReference.value = null;
   }
-});
+}
+
+// Load on init (covers page load where localStorage may already have a value from a previous session)
+loadActiveSessionReference();
 const {
   translationOptionsCollapsed,
   presentationOptionsCollapsed,
@@ -768,21 +780,26 @@ async function startTranslation() {
       store.apiSettings.azureRegion,
     );
 
-    captioningService.start();
-
-    // If this is a resumed session, resume it; otherwise start a new session
+    // Start/resume session tracking FIRST to ensure WebPubSub room is connected
+    // before audio capture begins firing translation callbacks
     if (state.value.isResumedSession) {
       resumeSession();
       state.value.isResumedSession = false; // Clear the flag
       state.value.isPaused = false;
     } else {
-      // Start new session tracking
+      // Start new session tracking (opens WebPubSub room, writes localStorage)
       await startSessionTracking(
         'presentation',
         store.settings.inputLanguage,
         store.settings.outputLanguages,
       );
     }
+
+    // Sync reactive ref from localStorage (now populated by startSessionTracking)
+    loadActiveSessionReference();
+
+    // NOW start audio capture -- WebPubSub is ready, translation callbacks will work
+    captioningService.start();
 
     if (isSessionEnabled.value) {
       broadcastSessionMessage({
@@ -961,6 +978,7 @@ async function stop() {
 
     // End session tracking
     await endSessionTracking();
+    activeSessionReference.value = null;
   }
 
   if (state.value.isTestPresentationRunning) {
@@ -1037,6 +1055,7 @@ async function stop() {
 
         // End session tracking
         await endSessionTracking();
+        activeSessionReference.value = null;
 
         toast.add({
           severity: 'info',
@@ -1072,6 +1091,7 @@ async function handleStorageEvent(e: StorageEvent) {
 
       // End session tracking
       await endSessionTracking();
+      activeSessionReference.value = null;
 
       toast.add({
         severity: 'info',
@@ -1140,6 +1160,9 @@ function restoreResumedSession(
   state.value.isLiveTranslationPrepared = true;
   state.value.isPaused = true;
   state.value.isResumedSession = true;
+
+  // Sync reactive ref from localStorage (already populated from previous session)
+  loadActiveSessionReference();
 
   // Open presentation windows if presentation was enabled
   if (sessionSettings.outputModes?.presentationEnabled) {
