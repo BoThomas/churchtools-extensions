@@ -41,6 +41,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { useActiveTab } from './composables/useActiveTab';
+import { KEY } from './config';
 import SettingsView from './views/SettingsView.vue';
 import LobbyView from './views/LobbyView.vue';
 import GameView from './views/GameView.vue';
@@ -53,7 +55,7 @@ import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue'
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
 import { useGamesStore } from './stores/games';
 
-const activeTab = ref('lobby');
+const activeTab = useActiveTab(KEY, 'lobby', ['settings', 'lobby'] as const);
 const activeGameId = ref<string | null>(null);
 const store = useGamesStore();
 

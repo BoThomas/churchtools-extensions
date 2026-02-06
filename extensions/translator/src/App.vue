@@ -90,6 +90,8 @@ import type { StreamedSessionMetadata } from './types/streamedSession';
 import type { TranslationSession } from './services/sessionLogger';
 import type { ActiveSessionReference } from './types/streamedSession';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { useActiveTab } from './composables/useActiveTab';
+import { KEY } from './config';
 import SettingsView from './views/SettingsView.vue';
 import TranslateView from './views/TranslateView.vue';
 import ActiveSessionsView from './views/ActiveSessionsView.vue';
@@ -121,8 +123,13 @@ const isPresentationMode = computed(() => {
   return params.get('presentation') === 'true';
 });
 
-// Active tab state (default to translate)
-const activeTab = ref('translate');
+// Active tab state (persisted to localStorage)
+const activeTab = useActiveTab(KEY, 'translate', [
+  'settings',
+  'translate',
+  'active-sessions',
+  'reports',
+] as const);
 
 const user = ref<Person | null>(null);
 const settingsStore = useSettingsStore();

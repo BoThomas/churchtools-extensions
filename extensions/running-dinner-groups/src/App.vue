@@ -40,6 +40,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { useActiveTab } from './composables/useActiveTab';
+import { KEY } from './config';
 import { useEventMetadataStore } from './stores/eventMetadata';
 import { useDinnerGroupStore } from './stores/dinnerGroup';
 import { useRouteStore } from './stores/route';
@@ -53,7 +55,10 @@ import TabPanel from '@churchtools-extensions/prime-volt/TabPanel.vue';
 import Toast from '@churchtools-extensions/prime-volt/Toast.vue';
 import ConfirmDialog from '@churchtools-extensions/prime-volt/ConfirmDialog.vue';
 
-const activeTab = ref('organize');
+const activeTab = useActiveTab(KEY, 'organize', [
+  'settings',
+  'organize',
+] as const);
 const initializing = ref(true);
 
 const eventMetadataStore = useEventMetadataStore();
