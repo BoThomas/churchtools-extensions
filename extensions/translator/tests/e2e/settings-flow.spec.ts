@@ -8,8 +8,12 @@ import {
   configureTranslationSettings,
   configurePresentationStyling,
   openTestPresentationWindows,
-  startTestRecording,
+  startTestTranslation,
+  configureWebPubSub,
+  configureSessionOptions,
 } from './utils/testHelpers';
+
+const MOCK_WEBPUBSUB_URL = 'https://mock-webpubsub.local/api/negotiate';
 
 /**
  * E2E Tests for Settings Flow with REAL ChurchTools Integration
@@ -54,7 +58,7 @@ test.describe('Settings Flow - First Time User', () => {
     // Step 2: Navigate to Settings tab and enter credentials
     await navigateToTab(extensionPage, 'settings');
 
-    const apiKeyInput = extensionPage.getByTestId('input-api-key');
+    const apiKeyInput = extensionPage.locator('#api-key input');
     await apiKeyInput.fill('test-api-key-12345');
 
     const regionInput = extensionPage.getByTestId('input-api-region');
@@ -91,7 +95,7 @@ test.describe('Settings Flow - First Time User', () => {
     await navigateToTab(extensionPage, 'settings', 0);
 
     const savedApiKey = await extensionPage
-      .getByTestId('input-api-key')
+      .locator('#api-key input')
       .inputValue();
     const savedRegion = await extensionPage
       .getByTestId('input-api-region')
@@ -124,9 +128,9 @@ test.describe('Settings Flow - Configuration Management', () => {
     await extensionPage.waitForLoadState('networkidle');
 
     // Expand Presentation Options
-    const presentationOptionsButton = extensionPage.getByRole('button', {
-      name: /Presentation Options/i,
-    });
+    const presentationOptionsButton = extensionPage
+      .getByTestId('fieldset-presentation-options')
+      .locator('[data-pc-section="togglebutton"]');
     const presentationOptionsExpanded =
       (await presentationOptionsButton.getAttribute('aria-expanded')) ===
       'true';
@@ -471,7 +475,7 @@ test.describe('Settings Flow - Configuration Management', () => {
     expect(rootStyles.background).toMatch(/rgb\(0,\s*0,\s*0\)|000000/i); // Black
 
     // Step 6: Start test generation to verify live text color
-    await startTestRecording(extensionPage);
+    await startTestTranslation(extensionPage);
     await testWindow.waitForTimeout(2000); // Wait for lorem ipsum generation
 
     // Check if live translation element exists and has correct color
@@ -560,5 +564,360 @@ test.describe('Settings Flow - Configuration Management', () => {
     // Verify computed styles
     expect(rootStyles2.fontFamily).toContain('Palatino');
     expect(rootStyles2.color).toMatch(/rgb\(255,\s*255,\s*255\)|white/i);
+  });
+});
+
+test.describe('WebPubSub Configuration', () => {
+  test.beforeEach(async ({ extensionPage }) => {
+    await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
+
+    await extensionPage.goto('/');
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Mock Azure Function validation endpoint used by WebPubSub settings
+    await extensionPage.route('**/api/negotiate', async (route) => {
+      const postData = route.request().postData();
+      let parsed: any = {};
+      if (postData) {
+        try {
+          parsed = JSON.parse(postData);
+        } catch {
+          parsed = {};
+        }
+      }
+
+      const secret: string = parsed?.secret ?? '';
+      const role = secret.includes('operator') ? 'operator' : 'reader';
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'wss://mock-webpubsub.local/client',
+          role,
+        }),
+      });
+    });
+  });
+
+  test.afterEach(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage, false);
+  });
+
+  test('should save and persist WebPubSub configuration', async ({
+    extensionPage,
+  }) => {
+    // Navigate to Settings tab
+    await navigateToTab(extensionPage, 'settings');
+
+    // Enable WebPubSub feature
+    const enableCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await enableCheckbox.click();
+    await extensionPage.waitForTimeout(300);
+
+    // Fill in operator secret
+    const operatorSecretInput = extensionPage
+      .getByTestId('input-operator-secret')
+      .locator('input');
+    await operatorSecretInput.fill('test-operator-secret-123');
+
+    // Fill in reader secret
+    const readerSecretInput = extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input');
+    await readerSecretInput.fill('test-reader-secret-456');
+
+    // Fill in auth function URL
+    const authFunctionUrlInput = extensionPage.getByTestId(
+      'input-auth-function-url',
+    );
+    await authFunctionUrlInput.fill(MOCK_WEBPUBSUB_URL);
+
+    // Save button should be enabled (there are unsaved changes)
+    const saveButton = extensionPage.getByTestId('button-save-webpubsub');
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+
+    // Wait for save to complete
+    await extensionPage.waitForTimeout(1000);
+
+    // Verify success message
+    const successMessage = extensionPage.getByText(
+      /WebPubSub settings saved successfully/i,
+    );
+    await expect(successMessage).toBeVisible();
+
+    // Reload the page
+    await extensionPage.reload();
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Navigate back to settings
+    await navigateToTab(extensionPage, 'settings', 0);
+
+    // Verify the checkbox is still enabled
+    const savedCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await expect(savedCheckbox).toHaveAttribute('data-p-checked', 'true');
+
+    // Verify the values are still present (they should be masked in password fields)
+    // Note: Password fields won't show the value directly, but we can verify they're filled
+    const savedOperatorSecret = await extensionPage
+      .getByTestId('input-operator-secret')
+      .locator('input');
+    const savedReaderSecret = await extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input');
+    const savedAuthUrl = await extensionPage
+      .getByTestId('input-auth-function-url')
+      .inputValue();
+
+    // Password fields should have values (even if masked)
+    expect(await savedOperatorSecret.inputValue()).toBe(
+      'test-operator-secret-123',
+    );
+    expect(await savedReaderSecret.inputValue()).toBe('test-reader-secret-456');
+    expect(savedAuthUrl).toBe(MOCK_WEBPUBSUB_URL);
+  });
+
+  test('should reload WebPubSub configuration', async ({ extensionPage }) => {
+    // Navigate to Settings tab
+    await navigateToTab(extensionPage, 'settings');
+
+    // Enable WebPubSub feature
+    const enableCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await enableCheckbox.click();
+    await extensionPage.waitForTimeout(300);
+
+    // Pre-populate and save
+    await extensionPage
+      .getByTestId('input-operator-secret')
+      .locator('input')
+      .fill('initial-operator-secret');
+    await extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input')
+      .fill('initial-reader-secret');
+    await extensionPage
+      .getByTestId('input-auth-function-url')
+      .fill(MOCK_WEBPUBSUB_URL);
+
+    // Save button should be visible due to changes
+    const saveButton = extensionPage.getByTestId('button-save-webpubsub');
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await extensionPage.waitForTimeout(1000);
+
+    // After save, save button should be disabled (no unsaved changes)
+    await expect(saveButton).toBeDisabled();
+
+    // Modify the values locally (without saving)
+    await extensionPage
+      .getByTestId('input-operator-secret')
+      .locator('input')
+      .fill('modified-operator-secret');
+    await extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input')
+      .fill('modified-reader-secret');
+    await extensionPage
+      .getByTestId('input-auth-function-url')
+      .fill(`${MOCK_WEBPUBSUB_URL}?modified=1`);
+
+    // Save button should be enabled again (there are unsaved changes)
+    await expect(saveButton).toBeEnabled();
+
+    // Click reload button
+    const reloadButton = extensionPage.getByTestId('button-reload-webpubsub');
+    await reloadButton.click();
+    await extensionPage.waitForTimeout(500);
+
+    // Verify values are restored to saved state
+    expect(
+      await extensionPage
+        .getByTestId('input-operator-secret')
+        .locator('input')
+        .inputValue(),
+    ).toBe('initial-operator-secret');
+    expect(
+      await extensionPage
+        .getByTestId('input-reader-secret')
+        .locator('input')
+        .inputValue(),
+    ).toBe('initial-reader-secret');
+    expect(
+      await extensionPage.getByTestId('input-auth-function-url').inputValue(),
+    ).toBe(MOCK_WEBPUBSUB_URL);
+
+    // After reload, save button should be disabled again (no unsaved changes)
+    await expect(saveButton).toBeDisabled();
+  });
+
+  test('should require all WebPubSub fields to be filled when enabled', async ({
+    extensionPage,
+  }) => {
+    await navigateToTab(extensionPage, 'settings');
+
+    // Save button should be visible but disabled initially (no changes, feature disabled)
+    const saveButton = extensionPage.getByTestId('button-save-webpubsub');
+    await expect(saveButton).toBeVisible();
+    await expect(saveButton).toBeDisabled();
+
+    // Enable WebPubSub feature
+    const enableCheckbox = extensionPage.getByTestId(
+      'checkbox-webpubsub-enabled',
+    );
+    await enableCheckbox.click();
+    await extensionPage.waitForTimeout(300);
+
+    // After enabling, save button should still be disabled (all fields empty)
+    await expect(saveButton).toBeDisabled();
+
+    // Fill only operator secret
+    await extensionPage
+      .getByTestId('input-operator-secret')
+      .locator('input')
+      .fill('test-secret');
+    await expect(saveButton).toBeDisabled();
+
+    // Fill reader secret too
+    await extensionPage
+      .getByTestId('input-reader-secret')
+      .locator('input')
+      .fill('test-reader');
+    await expect(saveButton).toBeDisabled();
+
+    // Fill auth function URL - now button should be enabled
+    await extensionPage
+      .getByTestId('input-auth-function-url')
+      .fill(MOCK_WEBPUBSUB_URL);
+    await expect(saveButton).toBeEnabled();
+  });
+});
+
+test.describe('Session Options Configuration', () => {
+  test.beforeEach(async ({ extensionPage }) => {
+    await authenticateChurchTools(extensionPage);
+    await cleanupE2EData(extensionPage);
+
+    await extensionPage.goto('/');
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Mock Azure Function validation endpoint for WebPubSub
+    await extensionPage.route('**/api/negotiate', async (route) => {
+      const postData = route.request().postData();
+      let parsed: any = {};
+      if (postData) {
+        try {
+          parsed = JSON.parse(postData);
+        } catch {
+          parsed = {};
+        }
+      }
+
+      const secret: string = parsed?.secret ?? '';
+      const role = secret.includes('operator') ? 'operator' : 'reader';
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'wss://mock-webpubsub.local/client',
+          role,
+        }),
+      });
+    });
+
+    await configureApiCredentials(extensionPage);
+    await configureWebPubSub(extensionPage);
+    await navigateToTab(extensionPage, 'translate');
+  });
+
+  test.afterEach(async ({ extensionPage }) => {
+    await cleanupE2EData(extensionPage, false);
+  });
+
+  test('should preserve session settings when switching between variants', async ({
+    extensionPage,
+  }) => {
+    await extensionPage.waitForLoadState('networkidle');
+
+    // Enable the session options by clicking the "On" button in the SelectButton
+    const sessionFieldset = extensionPage.getByTestId(
+      'fieldset-session-options',
+    );
+    const enableButton = sessionFieldset
+      .locator('[data-pc-name="pctogglebutton"]')
+      .filter({ hasText: 'On' });
+    await enableButton.click();
+    await extensionPage.waitForTimeout(300);
+
+    // Create two variants with different session settings
+    await configureSessionOptions(extensionPage, {
+      displayName: 'Variant A',
+      maxClients: 10,
+      hidden: false,
+    });
+    await createVariant(extensionPage, 'Variant A');
+    await extensionPage.waitForTimeout(500);
+
+    await configureSessionOptions(extensionPage, {
+      displayName: 'Variant B',
+      maxClients: 20,
+      hidden: true,
+    });
+    await createVariant(extensionPage, 'Variant B');
+    await extensionPage.waitForTimeout(500);
+
+    // Switch to Variant A and verify
+    const variantSelect = extensionPage.getByTestId('select-variant');
+    await variantSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage
+      .locator('[role="listbox"]')
+      .getByText('Variant A')
+      .click();
+    await extensionPage.waitForTimeout(500);
+
+    // Expand Session Options fieldset if collapsed
+    const sessionOptionsToggle = extensionPage
+      .getByTestId('fieldset-session-options')
+      .locator('[data-pc-section="togglebutton"]');
+    if ((await sessionOptionsToggle.getAttribute('aria-expanded')) !== 'true') {
+      await sessionOptionsToggle.click();
+      await extensionPage.waitForTimeout(300);
+    }
+
+    expect(
+      await extensionPage.locator('#session-display-name').inputValue(),
+    ).toBe('Variant A');
+    expect(
+      await extensionPage.locator('#session-max-clients input').inputValue(),
+    ).toBe('10');
+    expect(
+      await extensionPage.locator('#session-hidden input').isChecked(),
+    ).toBe(false);
+
+    // Switch to Variant B and verify
+    await variantSelect.click();
+    await extensionPage.waitForTimeout(300);
+    await extensionPage
+      .locator('[role="listbox"]')
+      .getByText('Variant B')
+      .click();
+    await extensionPage.waitForTimeout(500);
+
+    expect(
+      await extensionPage.locator('#session-display-name').inputValue(),
+    ).toBe('Variant B');
+    expect(
+      await extensionPage.locator('#session-max-clients input').inputValue(),
+    ).toBe('20');
+    expect(
+      await extensionPage.locator('#session-hidden input').isChecked(),
+    ).toBe(true);
   });
 });

@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useTranslatorStore } from '../../src/stores/translator';
+import { useSessionHistoryStore } from '../../src/stores/sessionHistory';
+import { useSessionStore } from '../../src/stores/session';
+import { useSettingsStore } from '../../src/stores/settings';
 import {
   SessionLogger,
   type TranslationSession,
@@ -12,14 +14,18 @@ import {
  * across multiple users and time periods.
  */
 describe('Reports Generation Integration', () => {
-  let store: ReturnType<typeof useTranslatorStore>;
+  let historyStore: ReturnType<typeof useSessionHistoryStore>;
+  let settingsStore: ReturnType<typeof useSettingsStore>;
+  let sessionStore: ReturnType<typeof useSessionStore>;
   let sessionLogger: SessionLogger;
 
   beforeEach(async () => {
-    store = useTranslatorStore();
+    sessionStore = useSessionStore();
+    historyStore = useSessionHistoryStore();
+    settingsStore = useSettingsStore();
     sessionLogger = new SessionLogger();
-    await store.loadApiSettings();
-    await store.loadSettingVariants();
+    await settingsStore.loadApiSettings();
+    await settingsStore.loadSettingVariants();
   });
 
   describe('Fetching Sessions', () => {
@@ -34,16 +40,16 @@ describe('Reports Generation Integration', () => {
           outputLanguages: ['en'],
           mode: 'test',
         });
-        await store.startSession(session);
-        await store.endSession(store.currentSessionId!, {
+        await sessionStore.startSession(session);
+        await sessionStore.endSession(sessionStore.currentSessionId!, {
           status: 'completed',
           endTime: new Date().toISOString(),
         });
       }
 
-      await store.fetchSessions();
+      await historyStore.fetchSessions();
 
-      expect(store.sessions.length).toBeGreaterThanOrEqual(3);
+      expect(historyStore.sessions.length).toBeGreaterThanOrEqual(3);
     });
 
     it('should include session details', async () => {
@@ -56,10 +62,12 @@ describe('Reports Generation Integration', () => {
         mode: 'presentation',
       });
 
-      await store.startSession(session);
-      await store.fetchSessions();
+      await sessionStore.startSession(session);
+      await historyStore.fetchSessions();
 
-      const savedSession = store.sessions.find((s) => s.value.userId === 42);
+      const savedSession = historyStore.sessions.find(
+        (s) => s.value.userId === 42,
+      );
       expect(savedSession).toBeDefined();
       expect(savedSession?.value.userEmail).toBe('detail@test.com');
       expect(savedSession?.value.inputLanguage).toBe('fr-FR');
@@ -79,8 +87,8 @@ describe('Reports Generation Integration', () => {
           outputLanguages: ['en'],
           mode: 'test',
         });
-        await store.startSession(session);
-        await store.endSession(store.currentSessionId!, {
+        await sessionStore.startSession(session);
+        await sessionStore.endSession(sessionStore.currentSessionId!, {
           status: 'completed',
           endTime: new Date().toISOString(),
         });
@@ -96,14 +104,14 @@ describe('Reports Generation Integration', () => {
           outputLanguages: ['de'],
           mode: 'presentation',
         });
-        await store.startSession(session);
-        await store.endSession(store.currentSessionId!, {
+        await sessionStore.startSession(session);
+        await sessionStore.endSession(sessionStore.currentSessionId!, {
           status: 'completed',
           endTime: new Date().toISOString(),
         });
       }
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
 
       expect(stats.length).toBeGreaterThanOrEqual(2);
       const user1Stats = stats.find((s) => s.userId === 1);
@@ -123,15 +131,15 @@ describe('Reports Generation Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(session1);
-      const sessionId1 = store.currentSessionId!;
+      await sessionStore.startSession(session1);
+      const sessionId1 = sessionStore.currentSessionId!;
 
-      await store.endSession(sessionId1, {
+      await sessionStore.endSession(sessionId1, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       const userStats = stats.find((s) => s.userId === 1);
 
       expect(userStats?.totalMinutes).toBeGreaterThanOrEqual(0);
@@ -148,21 +156,21 @@ describe('Reports Generation Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(session);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(session);
+      const sessionId = sessionStore.currentSessionId!;
 
       // Pause
-      await store.pauseSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
 
       // Resume
-      await store.resumeSession(sessionId);
+      await sessionStore.resumeSession(sessionId);
 
-      await store.endSession(sessionId, {
+      await sessionStore.endSession(sessionId, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       const userStats = stats.find((s) => s.userId === 1);
 
       expect(userStats?.pausedMinutes).toBeGreaterThanOrEqual(0);
@@ -180,15 +188,15 @@ describe('Reports Generation Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(session);
-      await store.endSession(store.currentSessionId!, {
+      await sessionStore.startSession(session);
+      await sessionStore.endSession(sessionStore.currentSessionId!, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
 
       const afterSession = new Date();
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       const userStats = stats.find((s) => s.userId === 1);
 
       const lastUsed = new Date(userStats!.lastUsed);
@@ -209,14 +217,14 @@ describe('Reports Generation Integration', () => {
           outputLanguages: ['en'],
           mode: 'test',
         });
-        await store.startSession(session);
-        await store.endSession(store.currentSessionId!, {
+        await sessionStore.startSession(session);
+        await sessionStore.endSession(sessionStore.currentSessionId!, {
           status: 'completed',
           endTime: new Date().toISOString(),
         });
       }
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       const userStats = stats.find((s) => s.userId === 1);
 
       expect(userStats?.sessions).toBeDefined();
@@ -235,13 +243,13 @@ describe('Reports Generation Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(session);
-      await store.endSession(store.currentSessionId!, {
+      await sessionStore.startSession(session);
+      await sessionStore.endSession(sessionStore.currentSessionId!, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       const userStats = stats.find((s) => s.userId === 1);
 
       expect(userStats?.sessionCount).toBeGreaterThanOrEqual(1);
@@ -264,9 +272,9 @@ describe('Reports Generation Integration', () => {
         status: 'abandoned',
       };
 
-      await store.startSession(abandonedSession);
+      await sessionStore.startSession(abandonedSession);
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       // Should still be included in stats
       expect(stats.length).toBeGreaterThan(0);
     });
@@ -281,13 +289,13 @@ describe('Reports Generation Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(session);
-      await store.endSession(store.currentSessionId!, {
+      await sessionStore.startSession(session);
+      await sessionStore.endSession(sessionStore.currentSessionId!, {
         status: 'error',
         endTime: new Date().toISOString(),
       });
 
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       const userStats = stats.find((s) => s.userId === 1);
 
       // Error sessions should still be counted
@@ -297,7 +305,7 @@ describe('Reports Generation Integration', () => {
 
   describe('Empty Data Handling', () => {
     it('should handle empty session list', async () => {
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
 
       expect(stats).toBeDefined();
       expect(Array.isArray(stats)).toBe(true);
@@ -305,10 +313,10 @@ describe('Reports Generation Integration', () => {
     });
 
     it('should handle fetch when no sessions exist', async () => {
-      await store.fetchSessions();
+      await historyStore.fetchSessions();
 
-      expect(store.sessions).toBeDefined();
-      expect(store.sessions.length).toBe(0);
+      expect(historyStore.sessions).toBeDefined();
+      expect(historyStore.sessions.length).toBe(0);
     });
   });
 
@@ -324,15 +332,15 @@ describe('Reports Generation Integration', () => {
           outputLanguages: ['en'],
           mode: 'test',
         });
-        await store.startSession(session);
-        await store.endSession(store.currentSessionId!, {
+        await sessionStore.startSession(session);
+        await sessionStore.endSession(sessionStore.currentSessionId!, {
           status: 'completed',
           endTime: new Date().toISOString(),
         });
       }
 
       const startTime = Date.now();
-      const stats = await store.getUsageStats();
+      const stats = await historyStore.getUsageStats();
       const duration = Date.now() - startTime;
 
       // Should complete reasonably fast (under 1 second)
@@ -353,26 +361,26 @@ describe('Reports Generation Integration', () => {
           outputLanguages: ['en'],
           mode: 'test',
         });
-        await store.startSession(session);
-        await store.endSession(store.currentSessionId!, {
+        await sessionStore.startSession(session);
+        await sessionStore.endSession(sessionStore.currentSessionId!, {
           status: 'completed',
           endTime: new Date().toISOString(),
         });
       }
 
-      await store.fetchSessions();
-      expect(store.sessions.length).toBeGreaterThan(0);
+      await historyStore.fetchSessions();
+      expect(historyStore.sessions.length).toBeGreaterThan(0);
 
       // Clear all
-      await store.clearAllSessions();
-      await store.fetchSessions();
+      await historyStore.clearAllSessions();
+      await historyStore.fetchSessions();
 
-      expect(store.sessions.length).toBe(0);
+      expect(historyStore.sessions.length).toBe(0);
     });
 
     it('should allow new sessions after clearing', async () => {
       // Clear
-      await store.clearAllSessions();
+      await historyStore.clearAllSessions();
 
       // Create new session
       const session = sessionLogger.createSession({
@@ -384,10 +392,10 @@ describe('Reports Generation Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(session);
-      await store.fetchSessions();
+      await sessionStore.startSession(session);
+      await historyStore.fetchSessions();
 
-      expect(store.sessions.length).toBe(1);
+      expect(historyStore.sessions.length).toBe(1);
     });
   });
 });

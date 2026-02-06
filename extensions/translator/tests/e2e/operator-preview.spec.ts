@@ -34,7 +34,9 @@ test.describe('Operator Preview', () => {
     await navigateToTab(extensionPage, 'translate');
 
     // Verify operator preview is visible
-    const operatorPreview = extensionPage.getByTestId('operator-preview');
+    const operatorPreview = extensionPage.getByTestId(
+      'fieldset-operator-preview',
+    );
     await expect(operatorPreview).toBeVisible();
 
     // Verify placeholder is shown when nothing is running
@@ -102,7 +104,7 @@ test.describe('Operator Preview', () => {
     await expect(spanishOutput).toBeVisible();
 
     // 3. Wait for mocked Azure SDK to produce translations
-    // Test mode auto-starts recognition, no need to click start recording
+    // Test mode auto-starts recognition, no need to click start translation
     // Mock 'basic' scenario: recognizing at 500ms, recognized at 1000ms
     await extensionPage.waitForTimeout(1500);
 
@@ -222,7 +224,9 @@ test.describe('Operator Preview', () => {
     await navigateToTab(extensionPage, 'translate');
 
     // Collapse the operator preview fieldset by clicking the legend button
-    const operatorPreview = extensionPage.getByTestId('operator-preview');
+    const operatorPreview = extensionPage.getByTestId(
+      'fieldset-operator-preview',
+    );
     // PrimeVue Fieldset has a button inside the legend with the legend text
     const toggleButton = operatorPreview.locator('legend button');
     await toggleButton.click();

@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 max-w-7xl">
     <div class="flex gap-2">
       <Button
         icon="pi pi-refresh"
@@ -423,9 +423,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useTranslatorStore } from '../stores/translator';
-import type { UsageStats } from '../stores/translator';
+import { ref, computed, watch } from 'vue';
+import { useSessionHistoryStore } from '../stores/sessionHistory';
+import type { UsageStats } from '../types/translator';
 import type { CategoryValue } from '@churchtools-extensions/persistance';
 import {
   SessionLogger,
@@ -448,7 +448,11 @@ import { useToast } from 'primevue/usetoast';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
 
-const store = useTranslatorStore();
+const props = defineProps<{
+  activeTab: string;
+}>();
+
+const store = useSessionHistoryStore();
 const confirm = useConfirm();
 const toast = useToast();
 
@@ -994,8 +998,13 @@ async function addDummySessions() {
   }
 }
 
-// Initialize
-onMounted(() => {
-  loadData();
-});
+// Load data only when Reports tab is visited (not on initial page load)
+watch(
+  () => props.activeTab,
+  (newTab) => {
+    if (newTab === 'reports') {
+      loadData();
+    }
+  },
+);
 </script>

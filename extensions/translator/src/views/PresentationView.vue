@@ -11,7 +11,7 @@
       '--presentation-live-color': presentationSettings.liveColor,
     }"
   >
-    <!-- Waiting for Recording Overlay -->
+    <!-- Waiting for Translation Overlay -->
     <div
       v-if="showWaitingOverlay"
       class="fixed inset-0 flex items-start justify-center pt-32 z-40 waiting-overlay"
@@ -179,7 +179,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
-import type { TranslatorSettings } from '../stores/translator';
+import type { TranslatorSettings } from '../types/translator';
 import { getLanguageDisplayName } from '../utils/languageHelpers';
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
 
@@ -199,13 +199,13 @@ const specificLanguage = urlParams.get('lang') || null; // For multi-window mode
 const showFullscreenInstructions = ref(true);
 const osType = ref<'mac' | 'windows' | 'linux'>('windows');
 
-// Waiting for recording overlay
+// Waiting for translation overlay
 const showWaitingOverlay = ref(true);
 const isTestMode = ref(false);
 
 // Computed message for waiting overlay
 const waitingMessage = computed(() => {
-  const action = isTestMode.value ? 'Start Test' : 'Start Recording';
+  const action = isTestMode.value ? 'Start Test' : 'Start Translation';
   return `Press "${action}" in the control panel to begin`;
 });
 
@@ -317,9 +317,9 @@ function handleStorageEvent(e: StorageEvent) {
     try {
       const data = JSON.parse(e.newValue);
       if (data.started) {
-        // Dismiss waiting overlay immediately when recording/test starts
+        // Dismiss waiting overlay immediately when translation/test starts
         showWaitingOverlay.value = false;
-        // Also dismiss fullscreen hint when recording/test starts
+        // Also dismiss fullscreen hint when translation/test starts
         showFullscreenInstructions.value = false;
       }
     } catch (err) {
@@ -663,7 +663,7 @@ onUnmounted(() => {
   font-size: calc(var(--presentation-font-size) * 0.85) !important;
 }
 
-/* Waiting for recording overlay */
+/* Waiting for translation overlay */
 .waiting-overlay {
   background: rgba(0, 0, 0, 0.3) !important;
   backdrop-filter: blur(2px) !important;

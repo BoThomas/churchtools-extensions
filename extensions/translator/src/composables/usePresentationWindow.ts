@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import type { TranslatorSettings } from '../stores/translator';
+import type { TranslatorSettings } from '../types/translator';
 import type { LanguageConfig } from '../types/language';
 import { SESSION_MAX_AGE_MS } from '../config';
 
@@ -148,7 +148,7 @@ export function usePresentationWindow() {
   }
 
   /**
-   * Signal that presentation has started (recording/test generation began)
+   * Signal that presentation has started (translation/test generation began)
    * This dismisses the waiting overlay immediately without waiting for first data
    */
   function setPresentationStartedFlag(sessionId: string) {

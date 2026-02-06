@@ -44,82 +44,270 @@
         </div>
       </Message>
 
+      <!-- Warning when no output mode is selected (invalid configuration) -->
+      <Message
+        v-if="isWebPubSubEnabled && !hasValidOutputMode"
+        severity="warn"
+        :closable="false"
+        icon="pi pi-exclamation-triangle"
+      >
+        <div>
+          <strong>Invalid Output Mode:</strong> Both Presentation and Streamed
+          Session are disabled. Please enable at least one output mode.
+        </div>
+      </Message>
+
       <!-- Main Flow: Test & Presentation -->
-      <div class="controls-grid grid grid-cols-1 gap-3 items-stretch">
+      <div
+        class="controls-flow flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-start"
+      >
         <!-- Test Modes -->
         <div class="flex flex-col gap-1">
           <span class="text-xs font-medium uppercase text-surface-500">
             Testing
           </span>
-          <div class="test-button-wrapper flex flex-col gap-2">
+          <!-- Individual buttons for smaller screens -->
+          <div class="flex flex-col gap-2 sm:hidden">
             <SecondaryButton
               label="Test Translation"
               icon="pi pi-compass"
               @click="$emit('start-test')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 hasInvalidLanguages
               "
-              class="test-button w-full"
-              data-testid="button-test-translation"
+              data-testid="button-test-translation-mobile"
             />
             <SecondaryButton
               label="Test Presentation"
               icon="pi pi-external-link"
               @click="$emit('start-test-presentation')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
                 presentationWindowsOpenedButNotStarted ||
                 hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled && !isPresentationEnabled)
+              "
+              severity="secondary"
+              data-testid="button-test-presentation-mobile"
+            />
+            <SecondaryButton
+              v-if="isWebPubSubEnabled"
+              label="Session"
+              icon="pi pi-users"
+              @click="$emit('start-test-session')"
+              :disabled="
+                isLiveTranslationPrepared ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                isTestSessionRunning ||
+                hasInvalidLanguages ||
+                !isSessionEnabled
+              "
+              severity="secondary"
+              data-testid="button-test-session"
+            />
+          </div>
+          <!-- ButtonGroup for medium and larger screens -->
+          <ButtonGroup class="hidden sm:flex">
+            <SecondaryButton
+              label="Translation"
+              icon="pi pi-compass"
+              @click="$emit('start-test')"
+              :disabled="
+                isLiveTranslationPrepared ||
+                isTestRunning ||
+                isTestPresentationRunning ||
                 hasInvalidLanguages
+              "
+              data-testid="button-test-translation"
+            />
+            <SecondaryButton
+              label="Presentation"
+              icon="pi pi-external-link"
+              @click="$emit('start-test-presentation')"
+              :disabled="
+                isLiveTranslationPrepared ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                presentationWindowsOpenedButNotStarted ||
+                hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled && !isPresentationEnabled)
               "
               severity="secondary"
               data-testid="button-test-presentation"
             />
-          </div>
-        </div>
-
-        <!-- Presentation flow as input group -->
-        <div class="flex flex-col gap-1">
-          <span class="text-xs font-medium uppercase text-surface-500">
-            Live presentation
-          </span>
-          <div class="presentation-buttons-wrapper flex flex-col gap-2">
-            <Button
-              label="Presentation"
-              icon="pi pi-external-link"
-              @click="$emit('start-presentation')"
+            <SecondaryButton
+              v-if="isWebPubSubEnabled"
+              label="Session"
+              icon="pi pi-users"
+              @click="$emit('start-test-session')"
               :disabled="
-                isPresentationRunning ||
+                isLiveTranslationPrepared ||
                 isTestRunning ||
                 isTestPresentationRunning ||
-                presentationWindowsOpenedButNotStarted ||
-                hasTooManyLanguagesForSplit ||
-                hasInvalidLanguages
+                isTestSessionRunning ||
+                hasInvalidLanguages ||
+                !isSessionEnabled
               "
               severity="secondary"
-              data-testid="button-presentation"
+              data-testid="button-test-session-mobile"
+            />
+          </ButtonGroup>
+        </div>
+
+        <!-- Live Translation flow as input group -->
+        <div class="flex flex-col gap-1">
+          <span class="text-xs font-medium uppercase text-surface-500">
+            Live Translation
+          </span>
+          <!-- Individual buttons for smaller screens -->
+          <div class="flex flex-col gap-2 sm:hidden">
+            <Button
+              v-if="
+                !(
+                  isLiveTranslationPrepared &&
+                  !isLiveTranslating &&
+                  (presentationWindowsOpenedButNotStarted ||
+                    (isWebPubSubEnabled && !isPresentationEnabled))
+                )
+              "
+              label="Prepare Translation"
+              icon="pi pi-language"
+              @click="$emit('prepare-live-translation')"
+              :disabled="
+                isLiveTranslationPrepared ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                isTestSessionRunning ||
+                presentationWindowsOpenedButNotStarted ||
+                hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled && !hasValidOutputMode)
+              "
+              data-testid="button-presentation-mobile"
             />
             <DangerButton
               v-if="
-                presentationWindowsOpenedButNotStarted &&
-                isPresentationRunning &&
-                !isRecordingStarted
+                isLiveTranslationPrepared &&
+                !isLiveTranslating &&
+                (presentationWindowsOpenedButNotStarted ||
+                  (isWebPubSubEnabled && !isPresentationEnabled))
               "
-              label="Start Recording"
+              label="Start Translation"
               icon="pi pi-microphone"
-              @click="$emit('start-recording')"
-              data-testid="button-start-recording"
+              @click="$emit('start-translation')"
+              data-testid="button-start-translation-mobile"
             />
             <DangerButton
               v-if="
                 presentationWindowsOpenedButNotStarted &&
                 isTestPresentationRunning &&
-                !isRecordingStarted
+                !isLiveTranslating
+              "
+              label="Start Test"
+              icon="pi pi-compass"
+              @click="$emit('start-test-generation')"
+              data-testid="button-start-test-generation-mobile"
+            />
+            <Button
+              v-if="isPaused"
+              label="Resume"
+              icon="pi pi-play"
+              @click="$emit('pause-or-resume')"
+              :disabled="
+                !(
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
+                  isTestRunning ||
+                  (isTestPresentationRunning &&
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
+                )
+              "
+              data-testid="button-resume-mobile"
+            />
+            <Button
+              v-else
+              label="Pause"
+              icon="pi pi-pause"
+              @click="$emit('pause-or-resume')"
+              :disabled="
+                !(
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
+                  isTestRunning ||
+                  (isTestPresentationRunning &&
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
+                )
+              "
+              data-testid="button-pause-mobile"
+            />
+            <Button
+              label="Stop"
+              icon="pi pi-stop"
+              @click="$emit('stop')"
+              :disabled="
+                !(
+                  isLiveTranslationPrepared ||
+                  isTestRunning ||
+                  isTestPresentationRunning ||
+                  isTestSessionRunning ||
+                  presentationWindowsOpenedButNotStarted
+                )
+              "
+              outlined
+              data-testid="button-stop-mobile"
+            />
+          </div>
+          <!-- ButtonGroup for medium and larger screens -->
+          <ButtonGroup class="hidden sm:flex">
+            <Button
+              v-if="
+                !(
+                  isLiveTranslationPrepared &&
+                  !isLiveTranslating &&
+                  (presentationWindowsOpenedButNotStarted ||
+                    (isWebPubSubEnabled && !isPresentationEnabled))
+                )
+              "
+              label="Prepare Translation"
+              icon="pi pi-language"
+              @click="$emit('prepare-live-translation')"
+              :disabled="
+                isLiveTranslationPrepared ||
+                isTestRunning ||
+                isTestPresentationRunning ||
+                isTestSessionRunning ||
+                presentationWindowsOpenedButNotStarted ||
+                hasTooManyLanguagesForSplit ||
+                hasInvalidLanguages ||
+                (isWebPubSubEnabled && !hasValidOutputMode)
+              "
+              data-testid="button-presentation"
+            />
+            <DangerButton
+              v-if="
+                isLiveTranslationPrepared &&
+                !isLiveTranslating &&
+                (presentationWindowsOpenedButNotStarted ||
+                  (isWebPubSubEnabled && !isPresentationEnabled))
+              "
+              label="Start Translation"
+              icon="pi pi-microphone"
+              @click="$emit('start-translation')"
+              data-testid="button-start-translation"
+            />
+            <DangerButton
+              v-if="
+                presentationWindowsOpenedButNotStarted &&
+                isTestPresentationRunning &&
+                !isLiveTranslating
               "
               label="Start Test"
               icon="pi pi-compass"
@@ -133,10 +321,11 @@
               @click="$emit('pause-or-resume')"
               :disabled="
                 !(
-                  (isPresentationRunning && isRecordingStarted) ||
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
-                    !presentationWindowsOpenedButNotStarted)
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
                 )
               "
               data-testid="button-resume"
@@ -148,13 +337,13 @@
               @click="$emit('pause-or-resume')"
               :disabled="
                 !(
-                  (isPresentationRunning && isRecordingStarted) ||
+                  (isLiveTranslationPrepared && isLiveTranslating) ||
                   isTestRunning ||
                   (isTestPresentationRunning &&
-                    !presentationWindowsOpenedButNotStarted)
+                    !presentationWindowsOpenedButNotStarted) ||
+                  isTestSessionRunning
                 )
               "
-              severity="warning"
               data-testid="button-pause"
             />
             <Button
@@ -163,22 +352,25 @@
               @click="$emit('stop')"
               :disabled="
                 !(
-                  isPresentationRunning ||
+                  isLiveTranslationPrepared ||
                   isTestRunning ||
                   isTestPresentationRunning ||
+                  isTestSessionRunning ||
                   presentationWindowsOpenedButNotStarted
                 )
               "
-              severity="danger"
               outlined
               data-testid="button-stop"
             />
-          </div>
+          </ButtonGroup>
         </div>
       </div>
-      <div class="text-xs text-surface-500 flex items-center justify-end">
+      <div
+        v-if="isPresentationEnabled"
+        class="text-xs text-surface-500 flex items-center justify-end"
+      >
         <span>
-          Open the presentation first, enter fullscreen/place window(s), then
+          Prepare translation first, enter fullscreen/place window(s), then
           start & control from here.
         </span>
       </div>
@@ -208,7 +400,6 @@
               />
               <Button
                 icon="pi pi-trash"
-                severity="danger"
                 outlined
                 @click="$emit('confirm-delete-variant')"
                 :disabled="
@@ -272,6 +463,7 @@ import DangerButton from '@churchtools-extensions/prime-volt/DangerButton.vue';
 import SecondaryButton from '@churchtools-extensions/prime-volt/SecondaryButton.vue';
 import Select from '@churchtools-extensions/prime-volt/Select.vue';
 import Message from '@churchtools-extensions/prime-volt/Message.vue';
+import ButtonGroup from '@churchtools-extensions/prime-volt/ButtonGroup.vue';
 
 interface SettingVariant {
   id: number;
@@ -283,10 +475,11 @@ interface SettingVariant {
 interface Props {
   // State props
   isTestRunning: boolean;
-  isPresentationRunning: boolean;
+  isLiveTranslationPrepared: boolean;
   isTestPresentationRunning: boolean;
+  isTestSessionRunning: boolean;
   isPaused: boolean;
-  isRecordingStarted: boolean;
+  isLiveTranslating: boolean;
   presentationWindowsOpenedButNotStarted: boolean;
   stateText: string;
   statusSeverity: string;
@@ -297,6 +490,12 @@ interface Props {
   presentationLanguagesCount: number;
   outputLanguagesCount: number;
   hasTooManyLanguagesForSplit: boolean;
+
+  // WebPubSub props
+  isWebPubSubEnabled?: boolean;
+  isPresentationEnabled?: boolean;
+  isSessionEnabled?: boolean;
+  hasValidOutputMode?: boolean;
 
   // Variant management props
   selectedVariantId: number | null;
@@ -313,8 +512,9 @@ defineProps<Props>();
 defineEmits<{
   'start-test': [];
   'start-test-presentation': [];
-  'start-presentation': [];
-  'start-recording': [];
+  'start-test-session': [];
+  'prepare-live-translation': [];
+  'start-translation': [];
   'start-test-generation': [];
   'pause-or-resume': [];
   stop: [];
@@ -324,34 +524,3 @@ defineEmits<{
   'prompt-save-as-new-variant': [];
 }>();
 </script>
-
-<style scoped>
-/* Use explicit media queries to avoid conflicts with host page Tailwind */
-
-/* Medium layout - horizontal buttons within each section */
-@media (min-width: 768px) {
-  .test-button-wrapper {
-    flex-direction: row;
-  }
-
-  .test-button {
-    width: auto;
-  }
-
-  .presentation-buttons-wrapper {
-    flex-direction: row;
-    align-items: stretch;
-  }
-
-  .presentation-buttons-wrapper > button {
-    flex: 1;
-  }
-}
-
-/* Wide layout - two-column grid with sections side-by-side */
-@media (min-width: 1024px) {
-  .controls-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  }
-}
-</style>

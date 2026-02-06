@@ -288,3 +288,219 @@ export async function resourceGroupExists(name: string): Promise<boolean> {
     return false;
   }
 }
+
+interface CorsSettings {
+  allowedOrigins: string[];
+}
+
+/**
+ * Fetch current CORS settings from a Function App
+ */
+async function getCurrentCorsSettings(
+  functionAppName: string,
+  resourceGroup: string,
+  subscriptionId: string,
+): Promise<string[]> {
+  try {
+    const result = await execJson<CorsSettings>(
+      `az functionapp cors show \
+        --name "${functionAppName}" \
+        --resource-group "${resourceGroup}" \
+        --subscription "${subscriptionId}"`,
+    );
+    return result.allowedOrigins || [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Prompt user for CORS origins and configure them on a Function App
+ */
+export async function configureFunctionAppCors(
+  functionAppName: string,
+  resourceGroup: string,
+  subscriptionId: string,
+  skipConfirmation: boolean = false,
+): Promise<void> {
+  logger.blank();
+  logger.step('Configuring CORS for Function App...');
+  logger.info(
+    'CORS allows your ChurchTools extension to make requests to the Function App from browsers.',
+  );
+  logger.blank();
+
+  // Only ask if they want to configure if skipConfirmation is false (initial setup)
+  if (!skipConfirmation) {
+    const shouldConfigure = await confirm({
+      message: 'Would you like to configure CORS origins now?',
+      default: true,
+    });
+
+    if (!shouldConfigure) {
+      logger.info(
+        'Skipping CORS configuration. You can configure it later by running setup again.',
+      );
+      return;
+    }
+  }
+
+  // Fetch current CORS settings
+  const spinner = ora('Fetching current CORS settings...').start();
+  const currentOrigins = await getCurrentCorsSettings(
+    functionAppName,
+    resourceGroup,
+    subscriptionId,
+  );
+  spinner.stop();
+
+  logger.blank();
+  if (currentOrigins.length > 0) {
+    logger.info('Current CORS origins:');
+    currentOrigins.forEach((origin) => logger.info(`  - ${origin}`));
+  } else {
+    logger.info('No CORS origins currently configured.');
+  }
+  logger.blank();
+
+  // Start with current origins
+  let origins = [...currentOrigins];
+
+  // Allow user to remove origins if any exist
+  if (currentOrigins.length > 0) {
+    const shouldRemove = await confirm({
+      message: 'Remove any existing origins?',
+      default: false,
+    });
+
+    if (shouldRemove) {
+      const { checkbox } = await import('@inquirer/prompts');
+      const toRemove = await checkbox({
+        message: 'Select origins to remove (use space to select):',
+        choices: currentOrigins.map((origin) => ({
+          name: origin,
+          value: origin,
+        })),
+      });
+
+      if (toRemove.length > 0) {
+        origins = origins.filter((o) => !toRemove.includes(o));
+        logger.blank();
+        logger.info(`Marked ${toRemove.length} origin(s) for removal.`);
+        logger.blank();
+      }
+    }
+  }
+
+  // Add new origins
+  const shouldAdd = await confirm({
+    message: 'Add new origins?',
+    default: currentOrigins.length === 0,
+  });
+
+  if (shouldAdd) {
+    logger.blank();
+    logger.info(
+      'Add origins (examples: http://localhost:5173, https://mytown.church.tools)',
+    );
+    logger.blank();
+
+    let addMore = true;
+    while (addMore) {
+      const newOrigin = await input({
+        message: 'Enter origin URL (or leave empty to finish):',
+        default: origins.length === 0 ? 'http://localhost:5173' : '',
+        validate: (v) => {
+          if (!v.trim()) return true; // Allow empty to finish
+          try {
+            new URL(v);
+            if (origins.includes(v.trim())) {
+              return 'This origin is already in the list';
+            }
+            return true;
+          } catch {
+            return 'Invalid URL format';
+          }
+        },
+      });
+
+      if (newOrigin.trim()) {
+        origins.push(newOrigin.trim());
+        logger.info(`Added: ${newOrigin.trim()}`);
+      } else {
+        addMore = false;
+      }
+    }
+  }
+
+  // If no changes, exit
+  const hasChanges =
+    origins.length !== currentOrigins.length ||
+    !origins.every((o) => currentOrigins.includes(o));
+
+  if (!hasChanges) {
+    logger.blank();
+    logger.info('No changes to CORS configuration.');
+    return;
+  }
+
+  // Show final configuration
+  logger.blank();
+  if (origins.length === 0) {
+    logger.warn(
+      'All origins will be removed. The function will not accept browser requests.',
+    );
+  } else {
+    logger.info('New CORS configuration:');
+    origins.forEach((origin) => logger.info(`  - ${origin}`));
+  }
+  logger.blank();
+
+  const shouldProceed = await confirm({
+    message: 'Apply these CORS settings?',
+    default: true,
+  });
+
+  if (!shouldProceed) {
+    logger.info('CORS configuration cancelled.');
+    return;
+  }
+
+  const updateSpinner = ora('Updating CORS settings...').start();
+
+  try {
+    // Remove all existing origins first
+    if (currentOrigins.length > 0) {
+      const removeArg = currentOrigins.map((o) => `"${o}"`).join(' ');
+      await exec(
+        `az functionapp cors remove \
+          --name "${functionAppName}" \
+          --resource-group "${resourceGroup}" \
+          --subscription "${subscriptionId}" \
+          --allowed-origins ${removeArg}`,
+      );
+    }
+
+    // Add new origins
+    if (origins.length > 0) {
+      const addArg = origins.map((o) => `"${o}"`).join(' ');
+      await exec(
+        `az functionapp cors add \
+          --name "${functionAppName}" \
+          --resource-group "${resourceGroup}" \
+          --subscription "${subscriptionId}" \
+          --allowed-origins ${addArg}`,
+      );
+    }
+
+    updateSpinner.succeed('CORS settings updated successfully');
+    logger.blank();
+    logger.success(`✓ Configured ${origins.length} allowed origin(s)`);
+  } catch (error: any) {
+    updateSpinner.fail('Failed to update CORS settings');
+    logger.error(error.message);
+    logger.warn(
+      'You can manually configure CORS in the Azure Portal or run this setup again.',
+    );
+  }
+}

@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 max-w-5xl">
     <Message
       v-if="!hasApiCredentials"
       severity="warn"
@@ -65,7 +65,6 @@
         :input-language-valid="inputLanguageValid"
         :output-languages-valid="outputLanguagesValid"
         :collapsed="translationOptionsCollapsed"
-        @change="store.markSettingsChanged()"
         @toggle="toggleTranslationOptions"
       />
 
@@ -75,17 +74,42 @@
         :disabled="inputsDisabled"
         :presentation-languages-count="presentationLanguages.length"
         :collapsed="presentationOptionsCollapsed"
-        @change="store.markSettingsChanged()"
+        :toggleable-enabled="
+          isWebPubSubEnabled
+            ? store.settings.outputModes?.presentationEnabled
+            : undefined
+        "
         @toggle="togglePresentationOptions"
+        @update:enabled="
+          (value) => {
+            store.settings.outputModes!.presentationEnabled = value;
+          }
+        "
+      />
+
+      <!-- Session Options (WebPubSub) -->
+      <SessionOptionsSection
+        v-if="isWebPubSubEnabled"
+        v-model="store.settings"
+        :enabled="store.settings.outputModes?.streamedSessionEnabled ?? false"
+        :collapsed="sessionOptionsCollapsed"
+        :disabled="inputsDisabled"
+        @update:enabled="
+          (value) => {
+            store.settings.outputModes!.streamedSessionEnabled = value;
+          }
+        "
+        @toggle="toggleSessionOptions"
       />
 
       <!-- Controls -->
       <TranslationControlPanel
         :is-test-running="state.isTestRunning"
-        :is-presentation-running="state.isPresentationRunning"
+        :is-live-translation-prepared="state.isLiveTranslationPrepared"
         :is-test-presentation-running="state.isTestPresentationRunning"
+        :is-test-session-running="state.isTestSessionRunning"
         :is-paused="state.isPaused"
-        :is-recording-started="state.isRecordingStarted"
+        :is-live-translating="state.isLiveTranslating"
         :presentation-windows-opened-but-not-started="
           state.presentationWindowsOpenedButNotStarted
         "
@@ -96,6 +120,14 @@
         :presentation-languages-count="presentationLanguages.length"
         :output-languages-count="store.settings.outputLanguages.length"
         :has-too-many-languages-for-split="hasTooManyLanguagesForSplit"
+        :is-web-pub-sub-enabled="isWebPubSubEnabled"
+        :is-presentation-enabled="
+          store.settings.outputModes?.presentationEnabled ?? true
+        "
+        :is-session-enabled="
+          store.settings.outputModes?.streamedSessionEnabled ?? false
+        "
+        :has-valid-output-mode="hasValidOutputMode"
         :selected-variant-id="selectedVariantForDisplay"
         :setting-variants="store.settingVariants"
         :has-unsaved-changes="store.hasUnsavedChanges"
@@ -105,8 +137,9 @@
         :inputs-disabled="inputsDisabled"
         @start-test="startTest"
         @start-test-presentation="startTestPresentation"
-        @start-presentation="startPresentation"
-        @start-recording="startRecording"
+        @start-test-session="startTestSessionHandler"
+        @prepare-live-translation="prepareLiveTranslation"
+        @start-translation="startTranslation"
         @start-test-generation="startTestGeneration"
         @pause-or-resume="pauseOrResume"
         @stop="stop"
@@ -175,7 +208,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { useTranslatorStore } from '../stores/translator';
+import { useSettingsStore } from '../stores/settings';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { CaptioningService } from '../services/captioning';
@@ -189,6 +222,7 @@ import Message from '@churchtools-extensions/prime-volt/Message.vue';
 import Dialog from '@churchtools-extensions/prime-volt/Dialog.vue';
 import TranslationOptionsSection from '../components/sections/TranslationOptionsSection.vue';
 import PresentationOptionsSection from '../components/sections/PresentationOptionsSection.vue';
+import SessionOptionsSection from '../components/sections/SessionOptionsSection.vue';
 import OperatorPreview from '../components/sections/OperatorPreview.vue';
 import TranslationControlPanel from '../components/sections/TranslationControlPanel.vue';
 import { useVariantManagement } from '../composables/useVariantManagement';
@@ -198,9 +232,17 @@ import { useOperatorPreview } from '../composables/useOperatorPreview';
 import { usePresentationWindow } from '../composables/usePresentationWindow';
 import { useSessionManagement } from '../composables/useSessionManagement';
 import { useTestPresentation } from '../composables/useTestPresentation';
+import { useTestSession } from '../composables/useTestSession';
 import { useFieldsetState } from '../composables/useFieldsetState';
+import { useWebPubSubStore } from '../stores/webpubsub';
+import type { TranslationSession } from '../services/sessionLogger';
+import type {
+  StreamedSessionMessage,
+  ActiveSessionReference,
+} from '../types/streamedSession';
 
-const store = useTranslatorStore();
+const store = useSettingsStore();
+const webPubSubStore = useWebPubSubStore();
 const confirm = useConfirm();
 const toast = useToast();
 
@@ -247,14 +289,50 @@ const {
   endSession: endSessionTracking,
   pauseSession,
   resumeSession,
+  sessionLogger,
+  currentSession,
 } = useSessionManagement(user);
 const { startGeneration, stopGeneration } = useTestPresentation();
 const {
+  startTestSession,
+  stopTestSession,
+  pauseTestSession,
+  resumeTestSession,
+} = useTestSession();
+
+const activeSessionReference = ref<{
+  sessionId: number;
+  webPubSubRoomId: string;
+} | null>(null);
+
+// Sync reactive ref from localStorage -- must be called explicitly since
+// Vue cannot reactively track localStorage changes
+function loadActiveSessionReference() {
+  const refString = localStorage.getItem('translator_active_session');
+  if (!refString) {
+    activeSessionReference.value = null;
+    return;
+  }
+  try {
+    activeSessionReference.value = JSON.parse(refString) as {
+      sessionId: number;
+      webPubSubRoomId: string;
+    };
+  } catch {
+    activeSessionReference.value = null;
+  }
+}
+
+// Load on init (covers page load where localStorage may already have a value from a previous session)
+loadActiveSessionReference();
+const {
   translationOptionsCollapsed,
   presentationOptionsCollapsed,
+  sessionOptionsCollapsed,
   operatorPreviewCollapsed,
   toggleTranslationOptions,
   togglePresentationOptions,
+  toggleSessionOptions,
   toggleOperatorPreview,
   openOperatorPreview,
 } = useFieldsetState();
@@ -280,13 +358,37 @@ const operatorPreview = ref<InstanceType<typeof OperatorPreview> | null>(null);
 const isOperatorPreviewActive = computed(
   () =>
     state.value.isTestRunning ||
-    state.value.isPresentationRunning ||
-    state.value.isTestPresentationRunning,
+    state.value.isLiveTranslationPrepared ||
+    state.value.isTestPresentationRunning ||
+    state.value.isTestSessionRunning,
 );
 
 // Computed
 const hasApiCredentials = computed(() => {
   return !!store.apiSettings.azureApiKey && !!store.apiSettings.azureRegion;
+});
+
+// Check if WebPubSub is fully configured
+const isWebPubSubEnabled = computed(() => {
+  return (
+    store.readerConfig.enabled &&
+    !!store.readerConfig.authFunctionUrl &&
+    !!store.readerConfig.readerSecret &&
+    !!store.operatorSecret.secret
+  );
+});
+
+const isPresentationEnabled = computed(() => {
+  return store.settings.outputModes?.presentationEnabled ?? true;
+});
+
+const isSessionEnabled = computed(() => {
+  return store.settings.outputModes?.streamedSessionEnabled ?? false;
+});
+
+// Valid output mode: at least one of presentation or streamed session enabled
+const hasValidOutputMode = computed(() => {
+  return !!(isPresentationEnabled.value || isSessionEnabled.value);
 });
 
 // Load current user
@@ -311,7 +413,7 @@ function onTranslating(translations: Record<string, string>, original: string) {
   scrollOperatorPreviewToBottom();
 
   // Update presentation window if running (filter for audience)
-  if (state.value.isPresentationRunning) {
+  if (state.value.isLiveTranslationPrepared && isPresentationEnabled.value) {
     // Build translations for presentation (respects checkbox)
     const presentationTranslations = { ...translations };
     if (store.settings.presentation.showInputLanguage) {
@@ -320,6 +422,18 @@ function onTranslating(translations: Record<string, string>, original: string) {
     // Don't send finalized paragraphs during live updates - they haven't changed
     // This reduces redundant localStorage writes
     updatePresentationWindow(presentationTranslations, true, {});
+  }
+
+  if (isSessionEnabled.value) {
+    broadcastSessionMessage({
+      type: 'translation-live',
+      payload: {
+        translations,
+        original,
+        isLive: true,
+        timestamp: new Date().toISOString(),
+      },
+    });
   }
 }
 
@@ -340,7 +454,7 @@ function onTranslated(translations: Record<string, string>, original: string) {
   scrollOperatorPreviewToBottom();
 
   // Update presentation window if running
-  if (state.value.isPresentationRunning) {
+  if (state.value.isLiveTranslationPrepared && isPresentationEnabled.value) {
     // Build translations for presentation (respects checkbox)
     const presentationTranslations = { ...translations };
     if (store.settings.presentation.showInputLanguage) {
@@ -352,10 +466,31 @@ function onTranslated(translations: Record<string, string>, original: string) {
       finalizedParagraphsByLang.value,
     );
   }
+
+  if (isSessionEnabled.value) {
+    broadcastSessionMessage({
+      type: 'translation-final',
+      payload: {
+        translations,
+        original,
+        isLive: false,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
 }
 
 function onError(errorMsg: string) {
   error.value = errorMsg;
+  if (isSessionEnabled.value) {
+    broadcastSessionMessage({
+      type: 'system',
+      payload: {
+        message: errorMsg,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
   stop();
 }
 
@@ -370,6 +505,18 @@ function scrollOperatorPreviewToBottom() {
         }
       });
     }
+  });
+}
+
+async function broadcastSessionMessage(message: StreamedSessionMessage) {
+  if (!isSessionEnabled.value || !isWebPubSubEnabled.value) return;
+
+  const activeSession = activeSessionReference.value;
+  if (!activeSession) return;
+
+  await webPubSubStore.sendToRoom(activeSession.webPubSubRoomId, {
+    ...message,
+    sessionId: activeSession.sessionId,
   });
 }
 
@@ -435,8 +582,8 @@ async function startTest() {
   }
 }
 
-// Start presentation mode
-async function startPresentation() {
+// Prepare live translation
+async function prepareLiveTranslation() {
   if (!hasApiCredentials.value) {
     error.value = 'Please configure Azure API credentials first';
     return;
@@ -449,28 +596,34 @@ async function startPresentation() {
   // Generate unique session ID and clear storage
   const sessionId = generateSessionId();
   presentationSessionId.value = sessionId;
-  clearPresentationWindowStorage();
 
   try {
-    state.value.isPresentationRunning = true;
-    state.value.presentationWindowsOpenedButNotStarted = true;
+    state.value.isLiveTranslationPrepared = true;
 
-    openPresentationWindows(
-      sessionId,
-      store.settings,
-      presentationLanguages.value,
-      {
-        isTest: false,
-        multiWindowSummary: 'Presentation Windows Opened',
-        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Recording" to begin.`,
-        singleWindowSummary: 'Presentation Window Opened',
-        singleWindowDetail: 'Click "Start Recording" to begin.',
-      },
-    );
+    if (isPresentationEnabled.value) {
+      clearPresentationWindowStorage();
+      state.value.presentationWindowsOpenedButNotStarted = true;
+
+      openPresentationWindows(
+        sessionId,
+        store.settings,
+        presentationLanguages.value,
+        {
+          isTest: false,
+          multiWindowSummary: 'Presentation Windows Opened',
+          multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Translation" to begin.`,
+          singleWindowSummary: 'Presentation Window Opened',
+          singleWindowDetail: 'Click "Start Translation" to begin.',
+        },
+      );
+    } else {
+      state.value.presentationWindowsOpenedButNotStarted = false;
+    }
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start presentation';
     console.error('startPresentation failed', e);
-    state.value.isPresentationRunning = false;
+    state.value.isLiveTranslationPrepared = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
     presentationSessionId.value = null;
     toast.add({
       severity: 'error',
@@ -490,11 +643,11 @@ async function startTestPresentation() {
   // Generate unique session ID and clear storage
   const sessionId = generateSessionId();
   presentationSessionId.value = sessionId;
-  clearPresentationWindowStorage();
 
   try {
     state.value.isTestPresentationRunning = true;
     state.value.presentationWindowsOpenedButNotStarted = true;
+    clearPresentationWindowStorage();
 
     openPresentationWindows(
       sessionId,
@@ -517,6 +670,7 @@ async function startTestPresentation() {
     error.value = e?.message ?? 'Failed to start test presentation';
     console.error('startTestPresentation failed', e);
     state.value.isTestPresentationRunning = false;
+    state.value.presentationWindowsOpenedButNotStarted = false;
     presentationSessionId.value = null;
     toast.add({
       severity: 'error',
@@ -527,19 +681,83 @@ async function startTestPresentation() {
   }
 }
 
-// Start recording for live presentation
-async function startRecording() {
+// Start WebPubSub test session with Lorem Ipsum
+async function startTestSessionHandler() {
+  // Clear previous output
+  finalizedParagraphsByLang.value = {};
+  currentLiveTranslationByLang.value = {};
+
+  // Auto-open operator preview if it's closed
+  openOperatorPreview();
+
+  try {
+    state.value.isTestSessionRunning = true;
+
+    // Initialize finalized paragraphs for all languages (operator gets all)
+    for (const lang of operatorLanguages.value) {
+      finalizedParagraphsByLang.value[lang.code] = [];
+    }
+
+    // Start the WebPubSub test session
+    await startTestSession(
+      operatorLanguages.value,
+      (message) => {
+        // Handle message for operator view
+        if (message.type === 'translation-live') {
+          const payload = message.payload as {
+            translations: Record<string, string>;
+            isLive: boolean;
+            timestamp: string;
+          };
+          currentLiveTranslationByLang.value = payload.translations;
+        } else if (message.type === 'translation-final') {
+          const payload = message.payload as {
+            translations: Record<string, string>;
+            isLive: boolean;
+            timestamp: string;
+          };
+          for (const [lang, text] of Object.entries(payload.translations)) {
+            addFinalizedParagraph(lang, text);
+          }
+          currentLiveTranslationByLang.value = {};
+        }
+        scrollOperatorPreviewToBottom();
+      },
+      user.value ? `${user.value.firstName} ${user.value.lastName}` : 'Unknown',
+    );
+
+    toast.add({
+      severity: 'success',
+      summary: 'Test Session Started',
+      detail: 'Lorem ipsum flowing via WebPubSub',
+      life: 3000,
+    });
+  } catch (e: any) {
+    error.value = e?.message ?? 'Failed to start test session';
+    console.error('startTestSession failed', e);
+    state.value.isTestSessionRunning = false;
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.value,
+      life: 5000,
+    });
+  }
+}
+
+// Start translation for live presentation
+async function startTranslation() {
   if (!hasApiCredentials.value) {
     error.value = 'Please configure Azure API credentials first';
     return;
   }
 
   try {
-    state.value.isRecordingStarted = true;
+    state.value.isLiveTranslating = true;
     state.value.presentationWindowsOpenedButNotStarted = false;
 
-    // Signal to presentation windows that recording has started
-    if (presentationSessionId.value) {
+    // Signal to presentation windows that translation has started
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       setPresentationStartedFlag(presentationSessionId.value);
     }
 
@@ -562,25 +780,47 @@ async function startRecording() {
       store.apiSettings.azureRegion,
     );
 
+    // Start/resume session tracking FIRST to ensure WebPubSub room is connected
+    // before audio capture begins firing translation callbacks
+    if (state.value.isResumedSession) {
+      resumeSession();
+      state.value.isResumedSession = false; // Clear the flag
+      state.value.isPaused = false;
+    } else {
+      // Start new session tracking (opens WebPubSub room, writes localStorage)
+      await startSessionTracking(
+        'presentation',
+        store.settings.inputLanguage,
+        store.settings.outputLanguages,
+      );
+    }
+
+    // Sync reactive ref from localStorage (now populated by startSessionTracking)
+    loadActiveSessionReference();
+
+    // NOW start audio capture -- WebPubSub is ready, translation callbacks will work
     captioningService.start();
 
-    // Start session tracking
-    await startSessionTracking(
-      'presentation',
-      store.settings.inputLanguage,
-      store.settings.outputLanguages,
-    );
+    if (isSessionEnabled.value) {
+      broadcastSessionMessage({
+        type: 'system',
+        payload: {
+          message: 'Translation started',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
 
     toast.add({
       severity: 'success',
-      summary: 'Recording Started',
-      detail: 'Speak into your microphone',
+      summary: 'Translation Started',
+      detail: 'Audio input is being translated live',
       life: 3000,
     });
   } catch (e: any) {
-    error.value = e?.message ?? 'Failed to start recording';
-    console.error('startRecording failed', e);
-    state.value.isRecordingStarted = false;
+    error.value = e?.message ?? 'Failed to start translation';
+    console.error('startTranslation failed', e);
+    state.value.isLiveTranslating = false;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -593,11 +833,11 @@ async function startRecording() {
 // Start lorem ipsum generation for test presentation
 function startTestGeneration() {
   try {
-    state.value.isRecordingStarted = true;
+    state.value.isLiveTranslating = true;
     state.value.presentationWindowsOpenedButNotStarted = false;
 
     // Signal to presentation windows that test generation has started
-    if (presentationSessionId.value) {
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       setPresentationStartedFlag(presentationSessionId.value);
     }
 
@@ -610,12 +850,16 @@ function startTestGeneration() {
       presentationLanguages.value,
       addFinalizedParagraph,
       currentLiveTranslationByLang,
-      (translations, isLive) =>
+      (translations, isLive) => {
+        if (!isPresentationEnabled.value) {
+          return;
+        }
         updatePresentationWindow(
           translations,
           isLive,
           isLive ? {} : finalizedParagraphsByLang.value,
-        ),
+        );
+      },
       scrollOperatorPreviewToBottom,
     );
 
@@ -628,7 +872,7 @@ function startTestGeneration() {
   } catch (e: any) {
     error.value = e?.message ?? 'Failed to start test generation';
     console.error('startTestGeneration failed', e);
-    state.value.isRecordingStarted = false;
+    state.value.isLiveTranslating = false;
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -645,13 +889,15 @@ function pauseOrResume() {
     if (state.value.isTestRunning) {
       captioningService?.start();
     }
-    if (state.value.isPresentationRunning) {
+    if (state.value.isLiveTranslationPrepared) {
       // Clear presenter's state to avoid showing stale content when resuming
       finalizedParagraphsByLang.value = {};
       currentLiveTranslationByLang.value = {};
-      clearPresentationWindowStorage();
-      if (presentationSessionId.value) {
-        setPausedFlag(presentationSessionId.value, false);
+      if (isPresentationEnabled.value) {
+        clearPresentationWindowStorage();
+        if (presentationSessionId.value) {
+          setPausedFlag(presentationSessionId.value, false);
+        }
       }
       captioningService?.start();
     }
@@ -661,6 +907,10 @@ function pauseOrResume() {
         setPausedFlag(presentationSessionId.value, false);
       }
     }
+    if (state.value.isTestSessionRunning) {
+      // Resume test session
+      resumeTestSession();
+    }
 
     // Resume session tracking
     resumeSession();
@@ -669,13 +919,15 @@ function pauseOrResume() {
     if (captioningService) {
       captioningService.stop();
     }
-    if (state.value.isPresentationRunning) {
+    if (state.value.isLiveTranslationPrepared) {
       // Clear presentation window and presenter's state to avoid showing stale content when paused
       finalizedParagraphsByLang.value = {};
       currentLiveTranslationByLang.value = {};
-      clearPresentationWindowStorage();
-      if (presentationSessionId.value) {
-        setPausedFlag(presentationSessionId.value, true);
+      if (isPresentationEnabled.value) {
+        clearPresentationWindowStorage();
+        if (presentationSessionId.value) {
+          setPausedFlag(presentationSessionId.value, true);
+        }
       }
     }
     if (state.value.isTestPresentationRunning) {
@@ -683,6 +935,10 @@ function pauseOrResume() {
       if (presentationSessionId.value) {
         setPausedFlag(presentationSessionId.value, true);
       }
+    }
+    if (state.value.isTestSessionRunning) {
+      // Pause test session
+      pauseTestSession();
     }
 
     // Pause session tracking
@@ -696,13 +952,14 @@ async function stop() {
   // Handle pre-start state (windows opened but not started)
   if (state.value.presentationWindowsOpenedButNotStarted) {
     // Clean up session-based localStorage
-    if (presentationSessionId.value) {
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       cleanupPresentationStorage(presentationSessionId.value);
     }
 
-    state.value.isPresentationRunning = false;
+    state.value.isLiveTranslationPrepared = false;
     state.value.isTestPresentationRunning = false;
     state.value.presentationWindowsOpenedButNotStarted = false;
+    state.value.isResumedSession = false;
     presentationSessionId.value = null;
 
     toast.add({
@@ -721,6 +978,7 @@ async function stop() {
 
     // End session tracking
     await endSessionTracking();
+    activeSessionReference.value = null;
   }
 
   if (state.value.isTestPresentationRunning) {
@@ -728,13 +986,13 @@ async function stop() {
     stopGeneration();
 
     // Clean up session-based localStorage
-    if (presentationSessionId.value) {
+    if (presentationSessionId.value && isPresentationEnabled.value) {
       cleanupPresentationStorage(presentationSessionId.value);
     }
 
     state.value.isTestPresentationRunning = false;
     state.value.isPaused = false;
-    state.value.isRecordingStarted = false;
+    state.value.isLiveTranslating = false;
     state.value.presentationWindowsOpenedButNotStarted = false;
     presentationSessionId.value = null;
 
@@ -745,7 +1003,20 @@ async function stop() {
     });
   }
 
-  if (state.value.isPresentationRunning) {
+  if (state.value.isTestSessionRunning) {
+    await stopTestSession();
+
+    state.value.isTestSessionRunning = false;
+    state.value.isPaused = false;
+
+    toast.add({
+      severity: 'info',
+      summary: 'Test Session Stopped',
+      life: 3000,
+    });
+  }
+
+  if (state.value.isLiveTranslationPrepared) {
     confirm.require({
       message: 'Are you sure you want to stop the presentation?',
       header: 'Confirm Stop',
@@ -761,18 +1032,30 @@ async function stop() {
         captioningService?.stop();
 
         // Clean up session-based localStorage
-        if (presentationSessionId.value) {
+        if (presentationSessionId.value && isPresentationEnabled.value) {
           cleanupPresentationStorage(presentationSessionId.value);
         }
 
-        state.value.isPresentationRunning = false;
+        state.value.isLiveTranslationPrepared = false;
         state.value.isPaused = false;
-        state.value.isRecordingStarted = false;
+        state.value.isLiveTranslating = false;
         state.value.presentationWindowsOpenedButNotStarted = false;
+        state.value.isResumedSession = false;
         presentationSessionId.value = null;
+
+        if (isSessionEnabled.value) {
+          broadcastSessionMessage({
+            type: 'session-ended',
+            payload: {
+              message: 'The operator ended this session',
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
 
         // End session tracking
         await endSessionTracking();
+        activeSessionReference.value = null;
 
         toast.add({
           severity: 'info',
@@ -793,17 +1076,22 @@ async function handleStorageEvent(e: StorageEvent) {
   if (!sessionId) return;
 
   if (e.key === `translator_settings_${sessionId}` && e.newValue === null) {
+    if (!isPresentationEnabled.value) {
+      return;
+    }
     // Presentation window was closed, stop everything
-    if (state.value.isPresentationRunning) {
+    if (state.value.isLiveTranslationPrepared) {
       captioningService?.stop();
-      state.value.isPresentationRunning = false;
+      state.value.isLiveTranslationPrepared = false;
       state.value.isPaused = false;
-      state.value.isRecordingStarted = false;
+      state.value.isLiveTranslating = false;
       state.value.presentationWindowsOpenedButNotStarted = false;
+      state.value.isResumedSession = false;
       presentationSessionId.value = null;
 
       // End session tracking
       await endSessionTracking();
+      activeSessionReference.value = null;
 
       toast.add({
         severity: 'info',
@@ -817,7 +1105,7 @@ async function handleStorageEvent(e: StorageEvent) {
 
       state.value.isTestPresentationRunning = false;
       state.value.isPaused = false;
-      state.value.isRecordingStarted = false;
+      state.value.isLiveTranslating = false;
       state.value.presentationWindowsOpenedButNotStarted = false;
       presentationSessionId.value = null;
 
@@ -830,6 +1118,89 @@ async function handleStorageEvent(e: StorageEvent) {
     }
   }
 }
+
+/**
+ * Restore a resumed session after crash recovery
+ * This applies the session's settings and prepares the UI for the resumed session
+ */
+function restoreResumedSession(
+  sessionSettings: ActiveSessionReference['settings'],
+  sessionId: number,
+  sessionData: TranslationSession,
+) {
+  // Set the session ID and session data in the session logger
+  // This allows endSession() to work properly after browser refresh
+  sessionLogger.setCurrentSessionId(sessionId);
+  currentSession.value = sessionData;
+
+  // Apply session settings to the store
+  store.settings.inputLanguage = sessionSettings.inputLanguage;
+  store.settings.outputLanguages = sessionSettings.outputLanguages;
+  if (sessionSettings.outputModes) {
+    store.settings.outputModes = sessionSettings.outputModes;
+  }
+  store.settings.presentation = sessionSettings.presentation;
+  if (sessionSettings.session) {
+    store.settings.session = sessionSettings.session;
+  }
+  store.settings.profanityOption = sessionSettings.profanityOption;
+  store.settings.stablePartialResultThreshold =
+    sessionSettings.stablePartialResultThreshold;
+  store.settings.phraseList = sessionSettings.phraseList;
+
+  // Clear previous output
+  finalizedParagraphsByLang.value = {};
+  currentLiveTranslationByLang.value = {};
+
+  // Generate new presentation session ID
+  const newSessionId = generateSessionId();
+  presentationSessionId.value = newSessionId;
+
+  // Set UI to prepared state
+  state.value.isLiveTranslationPrepared = true;
+  state.value.isPaused = true;
+  state.value.isResumedSession = true;
+
+  // Sync reactive ref from localStorage (already populated from previous session)
+  loadActiveSessionReference();
+
+  // Open presentation windows if presentation was enabled
+  if (sessionSettings.outputModes?.presentationEnabled) {
+    clearPresentationWindowStorage();
+    state.value.presentationWindowsOpenedButNotStarted = true;
+
+    openPresentationWindows(
+      newSessionId,
+      store.settings,
+      presentationLanguages.value,
+      {
+        isTest: false,
+        multiWindowSummary: 'Presentation Windows Opened',
+        multiWindowDetail: `${presentationLanguages.value.length} windows opened. Click "Start Translation" to begin.`,
+        singleWindowSummary: 'Presentation Window Opened',
+        singleWindowDetail: 'Click "Start Translation" to begin.',
+      },
+    );
+  } else {
+    state.value.presentationWindowsOpenedButNotStarted = false;
+  }
+
+  // Auto-open operator preview
+  openOperatorPreview();
+
+  toast.add({
+    severity: 'info',
+    summary: 'Session Resumed',
+    detail:
+      'Your previous session has been restored. You can now start translation.',
+    life: 5000,
+  });
+}
+
+// Expose the method so App.vue can call it
+defineExpose({
+  restoreResumedSession,
+});
 
 // Setup storage event listener
 onMounted(() => {

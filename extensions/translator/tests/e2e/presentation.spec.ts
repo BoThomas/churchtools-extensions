@@ -5,7 +5,7 @@ import {
   configureTranslationSettings,
   openPresentationWindows,
   openTestPresentationWindows,
-  startTestRecording,
+  startTestTranslation,
   extractLanguageParams,
   navigateToTab,
   configureApiCredentials,
@@ -62,7 +62,7 @@ test.describe('Presentation Mode - Split Screen', () => {
     const waitingOverlay = presentationWindow.getByTestId('waiting-overlay');
     await expect(waitingOverlay).toBeVisible();
     const overlayText = await waitingOverlay.textContent();
-    expect(overlayText).toContain('Start Recording');
+    expect(overlayText).toContain('Start Translation');
     expect(overlayText).toContain('control panel');
 
     // Fullscreen instructions should be visible initially
@@ -71,16 +71,15 @@ test.describe('Presentation Mode - Split Screen', () => {
     );
     await expect(fullscreenHint).toBeVisible();
 
-    // Start recording to trigger Azure SDK mock outputs
-    const startRecordingButton = extensionPage.getByTestId(
-      'button-start-recording',
+    // Start translation to trigger Azure SDK mock outputs
+    const startTranslationButton = extensionPage.getByTestId(
+      'button-start-translation',
     );
-    await startRecordingButton.click();
-
-    // Verify waiting overlay disappears after starting recording
+    await startTranslationButton.click();
+    // Verify waiting overlay disappears after starting translation
     await expect(waitingOverlay).not.toBeVisible();
 
-    // Verify fullscreen hint also disappears when recording starts
+    // Verify fullscreen hint also disappears when translation starts
     await expect(fullscreenHint).not.toBeVisible();
 
     // Wait for mocked Azure SDK to produce translations
@@ -154,12 +153,11 @@ test.describe('Presentation Mode - Split Screen', () => {
     const splitView = presentationWindow.getByTestId('split-view-container');
     await expect(splitView).toBeVisible();
 
-    // Start recording
-    const startRecordingButton = extensionPage.getByTestId(
-      'button-start-recording',
+    // Start translation
+    const startTranslationButton = extensionPage.getByTestId(
+      'button-start-translation',
     );
-    await startRecordingButton.click();
-
+    await startTranslationButton.click();
     // Wait for mocked Azure SDK to produce translations
     await extensionPage.waitForTimeout(1500);
 
@@ -195,7 +193,7 @@ test.describe('Presentation Mode - Split Screen', () => {
     await closePromise;
     expect(presentationWindow.isClosed()).toBeTruthy();
 
-    // Verify recording has stopped
+    // Verify translation has stopped
     await extensionPage.waitForTimeout(300);
     await expect(stopButton).toBeDisabled();
     const presentationButtonAfter = extensionPage.getByTestId(
@@ -237,7 +235,7 @@ test.describe('Presentation Mode - Split Screen', () => {
     await expect(fullscreenHint).toBeVisible();
 
     // Start lorem ipsum generation
-    await startTestRecording(extensionPage);
+    await startTestTranslation(extensionPage);
 
     // Verify waiting overlay disappears after starting test
     await expect(waitingOverlay).not.toBeVisible();
@@ -355,7 +353,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     await expect(deWaitingOverlay).toBeVisible();
     const deOverlayText = await deWaitingOverlay.textContent();
     expect(deOverlayText).toContain('German');
-    expect(deOverlayText).toContain('Start Recording');
+    expect(deOverlayText).toContain('Start Translation');
     expect(deOverlayText).toContain('control panel');
 
     // Verify waiting overlay is visible in French window with language name
@@ -363,7 +361,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     await expect(frWaitingOverlay).toBeVisible();
     const frOverlayText = await frWaitingOverlay.textContent();
     expect(frOverlayText).toContain('French');
-    expect(frOverlayText).toContain('Start Recording');
+    expect(frOverlayText).toContain('Start Translation');
     expect(frOverlayText).toContain('control panel');
 
     // Fullscreen instructions should be visible initially in all windows
@@ -372,17 +370,16 @@ test.describe('Presentation Mode - Multi-Window', () => {
     await expect(deFullscreenHint).toBeVisible();
     await expect(frFullscreenHint).toBeVisible();
 
-    // Start recording to trigger Azure SDK mock outputs
-    const startRecordingButton = extensionPage.getByTestId(
-      'button-start-recording',
+    // Start translation to trigger Azure SDK mock outputs
+    const startTranslationButton = extensionPage.getByTestId(
+      'button-start-translation',
     );
-    await startRecordingButton.click();
-
-    // Verify waiting overlays disappear in all windows after starting recording
+    await startTranslationButton.click();
+    // Verify waiting overlays disappear in all windows after starting translation
     await expect(deWaitingOverlay).not.toBeVisible();
     await expect(frWaitingOverlay).not.toBeVisible();
 
-    // Verify fullscreen hints also disappear when recording starts
+    // Verify fullscreen hints also disappear when translation starts
     await expect(deFullscreenHint).not.toBeVisible();
     await expect(frFullscreenHint).not.toBeVisible();
 
@@ -402,7 +399,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     const frContent = await frContainer.textContent();
     expect(frContent).toContain('Bonjour le monde');
 
-    // Verify recording is active
+    // Verify translation is active
     const stopButton = extensionPage.getByTestId('button-stop');
     await expect(stopButton).toBeEnabled();
 
@@ -428,7 +425,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     expect(deContentAfterResume).toContain('Hallo Welt');
     expect(frContentAfterResume).toContain('Bonjour le monde');
 
-    // Close one window - should close all windows and stop recording
+    // Close one window - should close all windows and stop translation
     await windows[1].close();
 
     // Wait for cleanup and cross-window communication
@@ -445,7 +442,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     expect(windows[1].isClosed()).toBeTruthy();
     expect(windows[2].isClosed()).toBeTruthy();
 
-    // Verify recording has stopped and button is enabled again
+    // Verify translation has stopped and button is enabled again
     const presentationButton = extensionPage.getByTestId('button-presentation');
     await expect(presentationButton).toBeEnabled();
     await expect(stopButton).toBeDisabled();
@@ -473,12 +470,11 @@ test.describe('Presentation Mode - Multi-Window', () => {
     expect(windows.length).toBe(3);
     expect(windowHelper.getWindowCount()).toBe(3);
 
-    // Start recording
-    const startRecordingButton = extensionPage.getByTestId(
-      'button-start-recording',
+    // Start translation
+    const startTranslationButton = extensionPage.getByTestId(
+      'button-start-translation',
     );
-    await startRecordingButton.click();
-
+    await startTranslationButton.click();
     // Wait for mocked Azure SDK to produce translations
     await extensionPage.waitForTimeout(1500);
 
@@ -521,7 +517,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     expect(windows[1].isClosed()).toBeTruthy();
     expect(windows[2].isClosed()).toBeTruthy();
 
-    // Verify recording has stopped
+    // Verify translation has stopped
     await extensionPage.waitForTimeout(300);
     await expect(stopButton).toBeDisabled();
     const presentationButton = extensionPage.getByTestId('button-presentation');
@@ -583,7 +579,7 @@ test.describe('Presentation Mode - Multi-Window', () => {
     await expect(frFullscreenHint).toBeVisible();
 
     // Start lorem ipsum generation
-    await startTestRecording(extensionPage);
+    await startTestTranslation(extensionPage);
 
     // Verify waiting overlays disappear in all windows after starting test
     await expect(deWaitingOverlay).not.toBeVisible();

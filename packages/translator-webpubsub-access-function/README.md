@@ -31,6 +31,15 @@ These are automatically configured by the `translator-infra` CLI during deployme
 - `OPERATOR_SECRET`: A generated UUID used to authorize operators.
 - `READER_SECRET`: A generated UUID used to authorize readers.
 
+## CORS Configuration
+
+CORS (Cross-Origin Resource Sharing) is configured automatically during setup via the `translator-infra` CLI to allow browser-based requests from:
+
+- Local development environments (e.g., `http://localhost:5173`)
+- ChurchTools instances (e.g., `https://mytown.church.tools`)
+
+To update CORS settings after deployment, run the setup command again and select "Update existing WebPubSub Auth Function" → "Manage CORS settings".
+
 ## Local Development
 
 If you want to run the function locally for testing:

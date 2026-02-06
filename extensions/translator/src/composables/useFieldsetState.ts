@@ -5,12 +5,14 @@ const STORAGE_KEY = 'translator_fieldset_states';
 interface FieldsetStates {
   translationOptions: boolean;
   presentationOptions: boolean;
+  sessionOptions: boolean;
   operatorPreview: boolean;
 }
 
 const defaultStates: FieldsetStates = {
   translationOptions: true, // collapsed by default
   presentationOptions: true, // collapsed by default
+  sessionOptions: true, // collapsed by default
   operatorPreview: false, // open by default
 };
 
@@ -50,6 +52,7 @@ export function useFieldsetState() {
 
   const translationOptionsCollapsed = ref(states.value.translationOptions);
   const presentationOptionsCollapsed = ref(states.value.presentationOptions);
+  const sessionOptionsCollapsed = ref(states.value.sessionOptions);
   const operatorPreviewCollapsed = ref(states.value.operatorPreview);
 
   // Sync individual refs with state object and persist
@@ -59,6 +62,10 @@ export function useFieldsetState() {
 
   watch(presentationOptionsCollapsed, (collapsed) => {
     states.value.presentationOptions = collapsed;
+  });
+
+  watch(sessionOptionsCollapsed, (collapsed) => {
+    states.value.sessionOptions = collapsed;
   });
 
   watch(operatorPreviewCollapsed, (collapsed) => {
@@ -74,6 +81,10 @@ export function useFieldsetState() {
     presentationOptionsCollapsed.value = event.value;
   }
 
+  function toggleSessionOptions(event: { value: boolean }) {
+    sessionOptionsCollapsed.value = event.value;
+  }
+
   function toggleOperatorPreview(event: { value: boolean }) {
     operatorPreviewCollapsed.value = event.value;
   }
@@ -86,9 +97,11 @@ export function useFieldsetState() {
   return {
     translationOptionsCollapsed,
     presentationOptionsCollapsed,
+    sessionOptionsCollapsed,
     operatorPreviewCollapsed,
     toggleTranslationOptions,
     togglePresentationOptions,
+    toggleSessionOptions,
     toggleOperatorPreview,
     openOperatorPreview,
   };

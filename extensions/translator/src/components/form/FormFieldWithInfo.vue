@@ -65,4 +65,10 @@ const popover = ref();
   border-top-right-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
+
+/* InputNumber renders the actual input inside the first child, so target it explicitly */
+.has-info :deep(> *:first-child [data-pc-name='pcinputtext']) {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
 </style>

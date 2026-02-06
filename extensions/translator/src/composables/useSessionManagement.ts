@@ -4,14 +4,16 @@ import {
   type TranslationSession,
 } from '../services/sessionLogger';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
-import { useTranslatorStore } from '../stores/translator';
+import { useSessionStore } from '../stores/session';
+import { useSettingsStore } from '../stores/settings';
 
 /**
  * Composable for managing session tracking and heartbeat updates
  * Handles session lifecycle, heartbeat intervals, and cleanup
  */
 export function useSessionManagement(user: { value: Person | null }) {
-  const store = useTranslatorStore();
+  const sessionStore = useSessionStore();
+  const settingsStore = useSettingsStore();
   const sessionLogger = new SessionLogger();
 
   const currentSession = ref<TranslationSession | null>(null);
@@ -27,7 +29,7 @@ export function useSessionManagement(user: { value: Person | null }) {
       const sessionId = sessionLogger.getCurrentSessionId();
       if (sessionId) {
         // Non-blocking heartbeat update
-        store.updateHeartbeat(sessionId).catch(() => {
+        sessionStore.updateHeartbeat(sessionId).catch(() => {
           // Silent fail - already logged in store
         });
       }
@@ -63,7 +65,23 @@ export function useSessionManagement(user: { value: Person | null }) {
       mode,
     });
 
-    const sessionId = await store.startSession(session);
+    // Check if streaming is enabled
+    const streamingEnabled =
+      settingsStore.settings.outputModes?.streamedSessionEnabled;
+    const streamingConfig = streamingEnabled
+      ? {
+          displayName: settingsStore.settings.session?.displayName,
+          maxClients: settingsStore.settings.session?.maxClients,
+          hidden: settingsStore.settings.session?.hidden ?? false,
+        }
+      : undefined;
+
+    const sessionId = await sessionStore.startSession(
+      session,
+      settingsStore.settings,
+      streamingConfig,
+    );
+
     if (sessionId) {
       sessionLogger.setCurrentSessionId(sessionId);
       currentSession.value = session;
@@ -78,13 +96,23 @@ export function useSessionManagement(user: { value: Person | null }) {
    */
   async function endSession(status: 'completed' | 'error' = 'completed') {
     const sessionId = sessionLogger.getCurrentSessionId();
-    if (sessionId && currentSession.value) {
+    if (sessionId) {
       try {
-        const endedSession = sessionLogger.endSession(
-          currentSession.value,
-          status,
-        );
-        await store.endSession(sessionId, endedSession);
+        // If we have currentSession in memory, use it; otherwise just end by sessionId
+        if (currentSession.value) {
+          const endedSession = sessionLogger.endSession(
+            currentSession.value,
+            status,
+          );
+          await sessionStore.endSession(sessionId, endedSession);
+        } else {
+          // For resumed sessions after browser refresh, we don't have currentSession
+          // Just end the session with minimal info
+          await sessionStore.endSession(sessionId, {
+            status,
+            endTime: new Date().toISOString(),
+          });
+        }
       } catch (e) {
         console.error('Failed to end session:', e);
       } finally {
@@ -102,7 +130,7 @@ export function useSessionManagement(user: { value: Person | null }) {
     const sessionId = sessionLogger.getCurrentSessionId();
     if (sessionId) {
       stopHeartbeat();
-      store.pauseSession(sessionId);
+      sessionStore.pauseSession(sessionId);
     }
   }
 
@@ -112,7 +140,7 @@ export function useSessionManagement(user: { value: Person | null }) {
   function resumeSession() {
     const sessionId = sessionLogger.getCurrentSessionId();
     if (sessionId) {
-      store.resumeSession(sessionId);
+      sessionStore.resumeSession(sessionId);
       startHeartbeat();
     }
   }
@@ -132,7 +160,7 @@ export function useSessionManagement(user: { value: Person | null }) {
         );
         // Note: This async call will likely not complete before page unload
         // The session will be marked as abandoned (status='running' with old lastHeartbeat)
-        store.endSession(sessionId, endedSession);
+        sessionStore.endSession(sessionId, endedSession);
       } catch (e) {
         // Silent fail on unload
         console.warn('Could not end session on close:', e);

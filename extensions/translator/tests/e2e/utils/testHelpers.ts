@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import type { MultiWindowHelper } from './multiWindow';
 
 /**
@@ -23,9 +23,9 @@ export async function configureTranslationSettings(
   await page.waitForTimeout(500);
 
   // Expand Translation Options if not already expanded
-  const translationOptionsButton = page.getByRole('button', {
-    name: /Translation Options/i,
-  });
+  const translationOptionsButton = page
+    .getByTestId('fieldset-translation-options')
+    .locator('[data-pc-section="togglebutton"]');
   const translationOptionsExpanded =
     (await translationOptionsButton.getAttribute('aria-expanded')) === 'true';
   if (!translationOptionsExpanded) {
@@ -71,9 +71,9 @@ export async function configureTranslationSettings(
   // Set presentation mode if specified and there are 2+ output languages
   // (presentation mode is disabled for single language)
   if (config.presentationMode && config.outputLangs.length >= 2) {
-    const presentationOptionsButton = page.getByRole('button', {
-      name: /Presentation Options/i,
-    });
+    const presentationOptionsButton = page
+      .getByTestId('fieldset-presentation-options')
+      .locator('[data-pc-section="togglebutton"]');
     const presentationOptionsExpanded =
       (await presentationOptionsButton.getAttribute('aria-expanded')) ===
       'true';
@@ -125,9 +125,9 @@ export async function openTestPresentationWindows(
 }
 
 /**
- * Start recording in the test presentation
+ * Start translation in the test presentation
  */
-export async function startTestRecording(page: Page) {
+export async function startTestTranslation(page: Page) {
   const startButton = page.getByTestId('button-start-test-generation');
   await startButton.click();
   await page.waitForTimeout(500);
@@ -170,7 +170,8 @@ export async function configureApiCredentials(
 ) {
   await navigateToTab(page, 'settings');
 
-  const apiKeyInput = page.getByTestId('input-api-key');
+  // The Password component is a wrapper div with id "api-key", find the input inside
+  const apiKeyInput = page.locator('#api-key input');
   await apiKeyInput.fill(apiKey);
 
   const regionInput = page.getByTestId('input-api-region');
@@ -239,9 +240,9 @@ export async function configurePresentationStyling(
   config: PresentationStylingConfig,
 ) {
   // Expand Presentation Options if not already expanded
-  const presentationOptionsButton = page.getByRole('button', {
-    name: /Presentation Options/i,
-  });
+  const presentationOptionsButton = page
+    .getByTestId('fieldset-presentation-options')
+    .locator('[data-pc-section="togglebutton"]');
   const presentationOptionsExpanded =
     (await presentationOptionsButton.getAttribute('aria-expanded')) === 'true';
   if (!presentationOptionsExpanded) {
@@ -296,5 +297,116 @@ export async function configurePresentationStyling(
     await backgroundInput.clear();
     await backgroundInput.fill(config.background);
     await page.waitForTimeout(200);
+  }
+}
+
+/**
+ * Configure WebPubSub settings via Settings tab
+ * Enables streamed sessions by configuring operator and reader secrets
+ */
+export async function configureWebPubSub(
+  page: Page,
+  operatorSecret: string = 'mock-operator-secret',
+  readerSecret: string = 'mock-reader-secret',
+  authFunctionUrl: string = 'https://mock-webpubsub.local/api/negotiate',
+) {
+  await navigateToTab(page, 'settings');
+
+  // Enable WebPubSub streaming
+  const enableCheckbox = page.getByTestId('checkbox-webpubsub-enabled');
+  await enableCheckbox.click();
+  await page.waitForTimeout(300);
+
+  // Configure operator secret
+  const operatorSecretInput = page
+    .getByTestId('input-operator-secret')
+    .locator('input');
+  await operatorSecretInput.fill(operatorSecret);
+
+  // Configure reader secret
+  const readerSecretInput = page
+    .getByTestId('input-reader-secret')
+    .locator('input');
+  await readerSecretInput.fill(readerSecret);
+
+  // Configure auth function URL
+  const authFunctionUrlInput = page.getByTestId('input-auth-function-url');
+  await authFunctionUrlInput.fill(authFunctionUrl);
+
+  // Save WebPubSub settings
+  const saveButton = page.getByTestId('button-save-webpubsub');
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
+
+  // Wait for save to complete
+  await page.waitForTimeout(1000);
+
+  // Verify success message
+  const successMessage = page.getByText(
+    /WebPubSub settings saved successfully/i,
+  );
+  await expect(successMessage).toBeVisible();
+
+  // Reload the page to ensure settings are loaded
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+}
+
+/**
+ * Configuration for session options
+ */
+export interface SessionOptionsConfig {
+  displayName?: string;
+  maxClients?: number;
+  hidden?: boolean;
+}
+
+/**
+ * Configure session options via UI
+ * Assumes user is already on the Translate tab with WebPubSub enabled
+ */
+export async function configureSessionOptions(
+  page: Page,
+  config: SessionOptionsConfig,
+) {
+  // Expand Session Options if not already expanded
+  const sessionOptionsButton = page
+    .getByTestId('fieldset-session-options')
+    .locator('[data-pc-section="togglebutton"]');
+  const sessionOptionsExpanded =
+    (await sessionOptionsButton.getAttribute('aria-expanded')) === 'true';
+  if (!sessionOptionsExpanded) {
+    await sessionOptionsButton.click();
+    await page.waitForTimeout(300);
+  }
+
+  // Configure display name if specified
+  if (config.displayName !== undefined) {
+    const displayNameInput = page.locator('#session-display-name');
+    await displayNameInput.clear();
+    if (config.displayName) {
+      await displayNameInput.fill(config.displayName);
+    }
+    await page.waitForTimeout(200);
+  }
+
+  // Configure max clients if specified
+  if (config.maxClients !== undefined) {
+    const maxClientsInput = page.locator('#session-max-clients input');
+    await maxClientsInput.clear();
+    if (config.maxClients) {
+      await maxClientsInput.fill(config.maxClients.toString());
+    }
+    await page.waitForTimeout(200);
+  }
+
+  // Configure hidden if specified
+  if (config.hidden !== undefined) {
+    const hiddenCheckbox = page.locator('#session-hidden').locator('input');
+    const isChecked = await hiddenCheckbox.isChecked();
+    if (isChecked !== config.hidden) {
+      await hiddenCheckbox.click();
+      await page.waitForTimeout(200);
+    }
   }
 }

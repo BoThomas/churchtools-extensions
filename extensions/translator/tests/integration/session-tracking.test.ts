@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useTranslatorStore } from '../../src/stores/translator';
+import { useSessionStore } from '../../src/stores/session';
+import { useSettingsStore } from '../../src/stores/settings';
+import { useSessionHistoryStore } from '../../src/stores/sessionHistory';
 import {
   SessionLogger,
   type TranslationSession,
@@ -14,15 +16,19 @@ import {
  * These tests use real PersistanceCategory with mocked kv-store backend.
  */
 describe('Session Tracking Integration', () => {
-  let store: ReturnType<typeof useTranslatorStore>;
+  let sessionStore: ReturnType<typeof useSessionStore>;
+  let settingsStore: ReturnType<typeof useSettingsStore>;
+  let historyStore: ReturnType<typeof useSessionHistoryStore>;
   let sessionLogger: SessionLogger;
 
   beforeEach(async () => {
     // Note: Pinia and mocks are set up in setup.ts global beforeEach
-    store = useTranslatorStore();
+    sessionStore = useSessionStore();
+    settingsStore = useSettingsStore();
+    historyStore = useSessionHistoryStore();
     sessionLogger = new SessionLogger();
-    await store.loadApiSettings();
-    await store.loadSettingVariants();
+    await settingsStore.loadApiSettings();
+    await settingsStore.loadSettingVariants();
   });
 
   describe('Starting Sessions', () => {
@@ -36,13 +42,13 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
+      await sessionStore.startSession(sessionData);
 
-      expect(store.currentSessionId).not.toBeNull();
-      expect(store.currentSession).toBeDefined();
-      expect(store.currentSession?.status).toBe('running');
-      expect(store.currentSession?.inputLanguage).toBe('de-DE');
-      expect(store.currentSession?.outputLanguages).toEqual(['en']);
+      expect(sessionStore.currentSessionId).not.toBeNull();
+      expect(sessionStore.currentSession).toBeDefined();
+      expect(sessionStore.currentSession?.status).toBe('running');
+      expect(sessionStore.currentSession?.inputLanguage).toBe('de-DE');
+      expect(sessionStore.currentSession?.outputLanguages).toEqual(['en']);
     });
 
     it('should store session in persistence', async () => {
@@ -55,11 +61,11 @@ describe('Session Tracking Integration', () => {
         mode: 'presentation',
       });
 
-      await store.startSession(sessionData);
-      await store.fetchSessions();
+      await sessionStore.startSession(sessionData);
+      await historyStore.fetchSessions();
 
-      const savedSession = store.sessions.find(
-        (s) => s.id === store.currentSessionId,
+      const savedSession = historyStore.sessions.find(
+        (s) => s.id === sessionStore.currentSessionId,
       );
       expect(savedSession).toBeDefined();
       expect(savedSession?.value.status).toBe('running');
@@ -84,17 +90,17 @@ describe('Session Tracking Integration', () => {
         mode: 'presentation',
       });
 
-      await store.startSession(session1);
-      const sessionId1 = store.currentSessionId;
+      await sessionStore.startSession(session1);
+      const sessionId1 = sessionStore.currentSessionId;
 
-      await store.startSession(session2);
-      const sessionId2 = store.currentSessionId;
+      await sessionStore.startSession(session2);
+      const sessionId2 = sessionStore.currentSessionId;
 
       expect(sessionId1).not.toBe(sessionId2);
 
-      await store.fetchSessions();
-      expect(store.sessions.some((s) => s.id === sessionId1)).toBe(true);
-      expect(store.sessions.some((s) => s.id === sessionId2)).toBe(true);
+      await historyStore.fetchSessions();
+      expect(historyStore.sessions.some((s) => s.id === sessionId1)).toBe(true);
+      expect(historyStore.sessions.some((s) => s.id === sessionId2)).toBe(true);
     });
 
     it('should record correct timestamp', async () => {
@@ -109,10 +115,10 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
+      await sessionStore.startSession(sessionData);
 
       const afterStart = new Date();
-      const sessionStart = new Date(store.currentSession!.startTime);
+      const sessionStart = new Date(sessionStore.currentSession!.startTime);
 
       expect(sessionStart.getTime()).toBeGreaterThanOrEqual(
         beforeStart.getTime(),
@@ -132,15 +138,15 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
       const beforeHeartbeat = new Date();
-      await store.updateHeartbeat(sessionId);
+      await sessionStore.updateHeartbeat(sessionId);
       const afterHeartbeat = new Date();
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       const heartbeat = new Date(session!.value.lastHeartbeat!);
 
       expect(heartbeat.getTime()).toBeGreaterThanOrEqual(
@@ -159,16 +165,16 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
       // Simulate multiple heartbeats
       for (let i = 0; i < 3; i++) {
-        await store.updateHeartbeat(sessionId);
+        await sessionStore.updateHeartbeat(sessionId);
       }
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       expect(session?.value.lastHeartbeat).toBeDefined();
       expect(session?.value.status).toBe('running');
     });
@@ -183,12 +189,12 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
       // Manually set to abandoned (simulating detection)
-      await store.fetchSessions();
-      let session = store.sessions.find((s) => s.id === sessionId)!;
+      await historyStore.fetchSessions();
+      let session = historyStore.sessions.find((s) => s.id === sessionId)!;
       const abandonedSession: TranslationSession = {
         ...session.value,
         status: 'abandoned',
@@ -211,13 +217,13 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.pauseSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       expect(session?.value.status).toBe('paused');
       expect(session?.value.pausedAt).toBeDefined();
     });
@@ -232,15 +238,15 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
       const beforePause = new Date();
-      await store.pauseSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
       const afterPause = new Date();
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       const pausedAt = new Date(session!.value.pausedAt!);
 
       expect(pausedAt.getTime()).toBeGreaterThanOrEqual(beforePause.getTime());
@@ -257,14 +263,14 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.pauseSession(sessionId);
-      await store.pauseSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       expect(session?.value.status).toBe('paused');
     });
   });
@@ -280,14 +286,14 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.pauseSession(sessionId);
-      await store.resumeSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
+      await sessionStore.resumeSession(sessionId);
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       expect(session?.value.status).toBe('running');
       expect(session?.value.pausedAt).toBeUndefined();
     });
@@ -302,15 +308,15 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.pauseSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
 
-      await store.resumeSession(sessionId);
+      await sessionStore.resumeSession(sessionId);
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
 
       // Should have some paused duration (at least 0 minutes)
       expect(session?.value.pausedDurationMinutes).toBeDefined();
@@ -327,24 +333,28 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
       // First pause/resume
-      await store.pauseSession(sessionId);
-      await store.resumeSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
+      await sessionStore.resumeSession(sessionId);
 
-      await store.fetchSessions();
-      const afterFirstResume = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const afterFirstResume = historyStore.sessions.find(
+        (s) => s.id === sessionId,
+      );
       const firstPauseDuration =
         afterFirstResume?.value.pausedDurationMinutes || 0;
 
       // Second pause/resume
-      await store.pauseSession(sessionId);
-      await store.resumeSession(sessionId);
+      await sessionStore.pauseSession(sessionId);
+      await sessionStore.resumeSession(sessionId);
 
-      await store.fetchSessions();
-      const afterSecondResume = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const afterSecondResume = historyStore.sessions.find(
+        (s) => s.id === sessionId,
+      );
       const totalPauseDuration =
         afterSecondResume?.value.pausedDurationMinutes || 0;
 
@@ -364,16 +374,16 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.endSession(sessionId, {
+      await sessionStore.endSession(sessionId, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       expect(session?.value.status).toBe('completed');
       expect(session?.value.endTime).toBeDefined();
     });
@@ -388,16 +398,16 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.endSession(sessionId, {
+      await sessionStore.endSession(sessionId, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       expect(session?.value.durationMinutes).toBeDefined();
       expect(session?.value.durationMinutes).toBeGreaterThanOrEqual(0);
     });
@@ -412,16 +422,16 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.endSession(sessionId, {
+      await sessionStore.endSession(sessionId, {
         status: 'error',
         endTime: new Date().toISOString(),
       });
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       expect(session?.value.status).toBe('error');
     });
 
@@ -435,17 +445,17 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.endSession(sessionId, {
+      await sessionStore.endSession(sessionId, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
 
       // Current session should be cleared
-      expect(store.currentSessionId).toBeNull();
-      expect(store.currentSession).toBeNull();
+      expect(sessionStore.currentSessionId).toBeNull();
+      expect(sessionStore.currentSession).toBeNull();
     });
   });
 
@@ -469,13 +479,13 @@ describe('Session Tracking Integration', () => {
         lastHeartbeat: oldHeartbeat.toISOString(),
       };
 
-      await store.startSession(oldSession);
+      await sessionStore.startSession(oldSession);
 
       // In a real scenario, a background job would mark this as abandoned
       // For this test, we just verify the heartbeat is old
-      await store.fetchSessions();
-      const session = store.sessions.find(
-        (s) => s.id === store.currentSessionId,
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find(
+        (s) => s.id === sessionStore.currentSessionId,
       );
       const heartbeatAge =
         Date.now() - new Date(session!.value.lastHeartbeat!).getTime();
@@ -493,13 +503,13 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
-      await store.updateHeartbeat(sessionId);
+      await sessionStore.updateHeartbeat(sessionId);
 
-      await store.fetchSessions();
-      const session = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find((s) => s.id === sessionId);
       const heartbeatAge =
         Date.now() - new Date(session!.value.lastHeartbeat!).getTime();
 
@@ -519,18 +529,20 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(sessionData);
-      const sessionId = store.currentSessionId!;
+      await sessionStore.startSession(sessionData);
+      const sessionId = sessionStore.currentSessionId!;
 
       // End with error
-      await store.endSession(sessionId, {
+      await sessionStore.endSession(sessionId, {
         status: 'error',
         endTime: new Date().toISOString(),
       });
 
       // Verify error status
-      await store.fetchSessions();
-      const errorSession = store.sessions.find((s) => s.id === sessionId);
+      await historyStore.fetchSessions();
+      const errorSession = historyStore.sessions.find(
+        (s) => s.id === sessionId,
+      );
       expect(errorSession?.value.status).toBe('error');
 
       // In a real app, user might start a new session after error
@@ -543,9 +555,9 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(newSessionData);
-      expect(store.currentSessionId).not.toBe(sessionId);
-      expect(store.currentSession?.status).toBe('running');
+      await sessionStore.startSession(newSessionData);
+      expect(sessionStore.currentSessionId).not.toBe(sessionId);
+      expect(sessionStore.currentSession?.status).toBe('running');
     });
   });
 
@@ -560,11 +572,11 @@ describe('Session Tracking Integration', () => {
         mode: 'presentation',
       });
 
-      await store.startSession(sessionData);
+      await sessionStore.startSession(sessionData);
 
-      await store.fetchSessions();
-      const session = store.sessions.find(
-        (s) => s.id === store.currentSessionId,
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find(
+        (s) => s.id === sessionStore.currentSessionId,
       );
 
       expect(session?.value.userId).toBe(42);
@@ -587,11 +599,11 @@ describe('Session Tracking Integration', () => {
         status: 'running',
       };
 
-      await store.startSession(minimalSession);
+      await sessionStore.startSession(minimalSession);
 
-      await store.fetchSessions();
-      const session = store.sessions.find(
-        (s) => s.id === store.currentSessionId,
+      await historyStore.fetchSessions();
+      const session = historyStore.sessions.find(
+        (s) => s.id === sessionStore.currentSessionId,
       );
       expect(session).toBeDefined();
       expect(session?.value.status).toBe('running');
@@ -612,9 +624,9 @@ describe('Session Tracking Integration', () => {
         mode: 'test',
       });
 
-      await store.startSession(session1);
-      const sessionId1 = store.currentSessionId!;
-      await store.endSession(sessionId1, {
+      await sessionStore.startSession(session1);
+      const sessionId1 = sessionStore.currentSessionId!;
+      await sessionStore.endSession(sessionId1, {
         status: 'completed',
         endTime: new Date().toISOString(),
       });
@@ -629,11 +641,11 @@ describe('Session Tracking Integration', () => {
         mode: 'presentation',
       });
 
-      await store.startSession(session2);
-      const sessionId2 = store.currentSessionId!;
+      await sessionStore.startSession(session2);
+      const sessionId2 = sessionStore.currentSessionId!;
 
-      await store.fetchSessions();
-      const userSessions = store.sessions.filter(
+      await historyStore.fetchSessions();
+      const userSessions = historyStore.sessions.filter(
         (s) => s.value.userId === userId,
       );
 

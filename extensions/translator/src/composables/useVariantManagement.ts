@@ -2,7 +2,7 @@ import { ref, watch, computed } from 'vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import type { Person } from '@churchtools-extensions/ct-utils/ct-types';
-import { useTranslatorStore } from '../stores/translator';
+import { useSettingsStore } from '../stores/settings';
 
 /**
  * Composable for managing translator setting variants
@@ -12,7 +12,7 @@ export function useVariantManagement(
   user: { value: Person | null },
   hasInvalidLanguages: { value: boolean },
 ) {
-  const store = useTranslatorStore();
+  const store = useSettingsStore();
   const confirm = useConfirm();
   const toast = useToast();
 
@@ -196,12 +196,13 @@ export function useVariantManagement(
     { immediate: true },
   );
 
-  // Mark settings as changed when they're modified
+  // Watch settings for changes and intelligently detect if they differ from clean state
   watch(
     () => store.settings,
     () => {
       if (!store.settingsLoading && !store.selectingVariant) {
-        store.markSettingsChanged();
+        // Check if settings actually differ from clean state
+        store.hasUnsavedChanges = store.hasSettingsChanged();
       }
     },
     { deep: true },

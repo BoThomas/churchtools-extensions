@@ -7,6 +7,7 @@ import {
   selectOrCreateResourceGroup,
   resourceGroupExists,
   ensureProvidersRegistered,
+  configureFunctionAppCors,
 } from '../utils/az.ts';
 import { exec, execJson } from '../utils/exec.ts';
 import { logger } from '../utils/logger.ts';
@@ -75,7 +76,7 @@ export async function runSetup(): Promise<void> {
         value: 'webpubsub',
       },
       {
-        name: 'Deploy Function App code only (update existing)',
+        name: 'Update existing WebPubSub Auth Function (deploy code and/or manage CORS)',
         value: 'deploy',
       },
     ],
@@ -97,7 +98,7 @@ export async function runSetup(): Promise<void> {
   // Prevent mixing deploy with provisioning
   if (resources.includes('deploy')) {
     logger.error(
-      'Cannot combine "Deploy Function App code only" with resource provisioning.',
+      'Cannot combine "Update existing WebPubSub Auth Function (deploy code and/or manage CORS)" with resource provisioning.',
     );
     logger.info('Please run setup again and select only one option.');
     process.exit(1);
@@ -215,30 +216,65 @@ async function handleDeployOnly(ctx: SetupContext): Promise<void> {
     logger.success('✓ Function App has all expected settings');
   }
 
-  // Deploy the code
+  // Ask what the user wants to do
   logger.blank();
-  await deployFunctionApp(
-    functionAppName,
-    ctx.resourceGroup,
-    ctx.subscriptionId,
-  );
+  const action = await select({
+    message: 'What would you like to do?',
+    choices: [
+      {
+        name: 'Deploy Function App code',
+        value: 'deploy',
+      },
+      {
+        name: 'Manage CORS settings',
+        value: 'cors',
+      },
+      {
+        name: 'Both (Deploy code + Manage CORS)',
+        value: 'both',
+      },
+    ],
+  });
 
-  // Get function app URL
-  const result = await exec(
-    `az functionapp show \
-      --name "${functionAppName}" \
-      --resource-group "${ctx.resourceGroup}" \
-      --subscription "${ctx.subscriptionId}" \
-      --query properties.defaultHostName \
-      --output tsv`,
-  );
-  const defaultHostName = result.stdout.trim();
+  // Handle CORS configuration first if needed
+  if (action === 'cors' || action === 'both') {
+    await configureFunctionAppCors(
+      functionAppName,
+      ctx.resourceGroup,
+      ctx.subscriptionId,
+      true, // Skip confirmation - user already chose to manage CORS
+    );
+  }
+
+  // Only deploy if requested
+  if (action === 'deploy' || action === 'both') {
+    // Deploy the code
+    logger.blank();
+    await deployFunctionApp(
+      functionAppName,
+      ctx.resourceGroup,
+      ctx.subscriptionId,
+    );
+
+    // Get function app URL
+    const result = await exec(
+      `az functionapp show \
+        --name "${functionAppName}" \
+        --resource-group "${ctx.resourceGroup}" \
+        --subscription "${ctx.subscriptionId}" \
+        --query properties.defaultHostName \
+        --output tsv`,
+    );
+    const defaultHostName = result.stdout.trim();
+
+    logger.blank();
+    logger.success('✓ Function App code deployed successfully');
+    logger.blank();
+    logger.info(
+      `ℹ️  Function URL: https://${defaultHostName}/api/webpubsub-access`,
+    );
+  }
 
   logger.blank();
-  logger.success('✓ Function App code deployed successfully');
-  logger.blank();
-  logger.info(
-    `ℹ️  Function URL: https://${defaultHostName}/api/webpubsub-access`,
-  );
-  logger.blank();
+  logger.success('✓ Done!');
 }

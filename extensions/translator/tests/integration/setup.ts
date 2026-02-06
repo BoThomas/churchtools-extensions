@@ -2,6 +2,7 @@ import { beforeEach, afterEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { clearAllStorage } from '../../src/__mocks__/setup';
 import { mockAzureSpeech } from '../../src/__mocks__/azureSpeechSdk';
+import { resetTranslatorPersistance } from '../../src/services/translatorPersistance';
 import {
   _resetKVStore,
   _seedModules,
@@ -10,9 +11,8 @@ import {
 // Mock the kv-store module so when actual code imports it, it gets the mock
 // This allows PersistanceCategory to use the in-memory mock instead of real ChurchTools API
 vi.mock('@churchtools-extensions/ct-utils/kv-store', async () => {
-  const mock = await import(
-    '@churchtools-extensions/ct-utils/__mocks__/kv-store'
-  );
+  const mock =
+    await import('@churchtools-extensions/ct-utils/__mocks__/kv-store');
   return mock;
 });
 
@@ -35,6 +35,9 @@ if (typeof process !== 'undefined') {
 beforeEach(() => {
   // Fresh Pinia instance for each test
   setActivePinia(createPinia());
+
+  // Reset shared session categories
+  resetTranslatorPersistance();
 
   // Clear localStorage/sessionStorage
   clearAllStorage();

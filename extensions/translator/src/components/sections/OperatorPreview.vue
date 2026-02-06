@@ -4,7 +4,7 @@
     :toggleable="true"
     :collapsed="!isOpen"
     @toggle="onToggle"
-    data-testid="operator-preview"
+    data-testid="fieldset-operator-preview"
   >
     <!-- Placeholder when nothing is running -->
     <div

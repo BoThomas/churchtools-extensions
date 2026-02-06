@@ -31,9 +31,23 @@ export type CategoryValue<T = unknown> = {
   raw: CustomModuleDataValue;
 };
 
+export type CacheOptions = {
+  useCache?: {
+    maxAgeMs: number;
+  };
+};
+
 export class PersistanceCategory<T = unknown> {
   private moduleId!: number;
   private categoryId!: number;
+
+  private valuesCache: Map<
+    number,
+    {
+      data: Array<CategoryValue>;
+      timestamp: number;
+    }
+  > = new Map();
 
   private constructor() {}
 
@@ -72,20 +86,46 @@ export class PersistanceCategory<T = unknown> {
     return getCustomDataValues<any>(this.categoryId, this.moduleId);
   }
 
-  async list<TOut = T>(): Promise<Array<CategoryValue<TOut>>> {
+  async list<TOut = T>(
+    options?: CacheOptions,
+  ): Promise<Array<CategoryValue<TOut>>> {
+    const useCache = options?.useCache;
+
+    if (useCache) {
+      const cached = this.valuesCache.get(this.categoryId);
+      const ageMs = cached ? Date.now() - cached.timestamp : Infinity;
+
+      if (cached && ageMs < useCache.maxAgeMs) {
+        console.log(
+          '[Cache] Using cached values for category:',
+          this.categoryId,
+        );
+        return cached.data as Array<CategoryValue<TOut>>;
+      }
+    }
+
     const vals = await this.listRaw();
-    return vals.map((rec: any) => ({
+    const result = vals.map((rec: any) => ({
       id: rec.id,
       value: rec as TOut,
       raw: rec as unknown as CustomModuleDataValue,
     }));
+
+    this.valuesCache.set(this.categoryId, {
+      data: result,
+      timestamp: Date.now(),
+    });
+
+    return result;
   }
 
   async getById<TOut = T>(
     id: number,
+    options?: CacheOptions,
   ): Promise<CategoryValue<TOut> | undefined> {
-    const vals = await this.list<TOut>();
-    // Compare as numbers since the parsed JSON value may have id as string
+    const vals = await this.list<TOut>(
+      options || { useCache: { maxAgeMs: 0 } },
+    );
     return vals.find((v) => Number(v.id) === id);
   }
 
@@ -97,6 +137,7 @@ export class PersistanceCategory<T = unknown> {
       },
       this.moduleId,
     );
+    this.clearValuesCache();
     return { id: created.id };
   }
 
@@ -109,6 +150,7 @@ export class PersistanceCategory<T = unknown> {
       },
       this.moduleId,
     );
+    this.clearValuesCache();
     return { id };
   }
 
@@ -118,5 +160,16 @@ export class PersistanceCategory<T = unknown> {
 
   async deleteCategory(): Promise<void> {
     await deleteCustomDataCategory(this.categoryId, this.moduleId);
+    this.clearValuesCache();
+  }
+
+  private clearValuesCache(): void {
+    if (this.valuesCache.has(this.categoryId)) {
+      this.valuesCache.delete(this.categoryId);
+      console.log(
+        '[Cache] Cleared values cache for category:',
+        this.categoryId,
+      );
+    }
   }
 }

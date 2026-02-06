@@ -9,7 +9,7 @@ import type {
   TranslatorSettings,
   ApiSettings,
   SettingVariant,
-} from '../stores/translator';
+} from '../types/translator';
 import type { TranslationSession } from '../services/sessionLogger';
 import {
   mockApiSettings,
