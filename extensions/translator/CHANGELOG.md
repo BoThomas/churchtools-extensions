@@ -2,6 +2,16 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2026-02-06 — ct-translator v2.0.1
+
+### Changes
+
+- e4c2a4a feat(useActiveTab): implement composable for managing active tab state with localStorage persistence for all extensions
+- 25b2557 style(ButtonGroup): update theme styles to use !important for rounded classes bcs of ct conflicts
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2026-02-06-ct-translator-v2.0.0...2026-02-06-ct-translator-v2.0.1
+
+---
 ## 2026-02-06 — ct-translator v2.0.0
 
 EXPERIMENTAL: Web-Pub-Sub session mode, for streaming translations to other web-clients in addition to the presentation mode. Not stable yet - dont use this in production.
