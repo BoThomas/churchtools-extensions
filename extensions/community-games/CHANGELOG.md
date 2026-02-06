@@ -2,6 +2,30 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2026-02-06 — ct-community-games v1.0.1
+
+### Changes
+
+- e4c2a4a feat(useActiveTab): implement composable for managing active tab state with localStorage persistence for all extensions
+- 25b2557 style(ButtonGroup): update theme styles to use !important for rounded classes bcs of ct conflicts
+- 0ed1cbe feat(volt): add Tag component
+- 678af6d feat(persistance): implement caching for modules, categories and values
+- 89b6931 feat(translator): update translation state management and control panel interactions + flow state renames
+- 9672636 feat(translator): implement test session button and refactor controls area
+- 76de4b6 refactor: move ui components to comply to default npx volt path
+- 62df9d2 feat(translator): implement ToggleableFieldset and integrate into session and presentation options
+- e9b99d4 chore: update deployment commands to use 'package' instead of 'deploy'
+- e8d0751 test(translator): enhance integration tests with complete KV store mock and fix other issues
+- 9b13d37 feat: add mock implementation for kv-store with in-memory storage
+- 5f9b426 fix: use cross-platform archiver for deploy script instead of zip command
+- bec5b7a docs(build-tools): clarify date-prefixed tag format and git integration
+- 85e100d docs: reformat some images
+- 770c1a3 docs: add screenshots to READMEs
+- 5b67ddd docs: add new images
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2025-12-06-ct-community-games-v1.0.0...2026-02-06-ct-community-games-v1.0.1
+
+---
 ## 2025-12-06 — ct-community-games v1.0.0
 
 🎮 Initial release of Community Games!
