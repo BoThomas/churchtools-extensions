@@ -2,6 +2,51 @@
 
 All notable changes to this extension will be documented in this file.
 
+## 2026-02-06 — ct-translator v2.0.0
+
+EXPERIMENTAL: Web-Pub-Sub session mode, for streaming translations to other web-clients in addition to the presentation mode. Not stable yet - dont use this in production.
+
+### Changes
+
+- d43bb4a feat(translator): update output language handling and improve message display logic in session reader view
+- 07afedf fix(translator): fix streamed session management with localStorage synchronization
+- 7687906 fix(translator): add disabled prop to ToggleableFieldset
+- 862c15e feat(webPubSub): improve error handling and session recovery
+- c3bce9c fix(translator): fix message handling in openReaderRoom
+- 61d8461 feat(translator): enhance session recovery handling and cleanup logic
+- 0b67790 feat(translator): implement test session management and test session cleanup functionality
+- 0ed1cbe feat(volt): add Tag component
+- 0c9f5c5 feat(translator): implement reader functionality and session messaging in WebPubSub
+- 2048317 feat(translator): disable presentation in webpubsub-only-mode
+- de5e50e refactor(translator): split up the way to big translator store
+- e47682b feat(translator): integrate Azure Web PubSub client for real-time session management and implement operator opening/closing of rooms.
+- 76b1aa8 feat(translator): add Active Sessions tab and implement session loading functionality
+- f84d6a9 feat(translator): pass active tab to reports prop and load data on tab change
+- f067695 feat(translator): use persistance caching
+- 678af6d feat(persistance): implement caching for modules, categories and values
+- 02978d0 feat(translator): implement streaming session management with recovery
+- 3802a3c feat(translator): implement session options with display name and max clients configuration
+- 0e1e103 feat(translator): add info popover to ToggleableFieldset and add output mode check
+- 79b9d36 feat(translator): update fieldset legends and data-testid attributes
+- 554af10 style(translator): adjust max-width for ReportsView and TranslateView templates
+- 95b6eab fix(translator): update button data-testid attributes for mobile compatibility and refactor event emission methods + other e2e test fixes
+- 89b6931 feat(translator): update translation state management and control panel interactions + flow state renames
+- 9672636 feat(translator): implement test session button and refactor controls area
+- 930fd66 feat(translator): move fieldset state management into persistent config
+- f23a0be chore: reformat and pnpm lock update
+- 2e6de41 refactor(translator): extract PresentationOptionsGrid component
+- 00068d0 feat(translator): replace ToggleButton with SelectButton in toggle fieldset and enhance toggle functionality
+- 76de4b6 refactor: move ui components to comply to default npx volt path
+- 62df9d2 feat(translator): implement ToggleableFieldset and integrate into session and presentation options
+- 7620d34 feat(translator): implement WebPubSub configuration validation and option to disable it
+- f7d9ba7 feat(translator): add WebPubSub configuration management with operator secret and reader config
+- a282b50 docs(translator): add Azure setup options to README for automated and manual provisioning
+- 0b40f2d fix(translator): make input group style work inside ct
+- e9b99d4 chore: update deployment commands to use 'package' instead of 'deploy'
+
+**Full Changelog**: https://github.com/BoThomas/churchtools-extensions/compare/2025-12-22-ct-translator-v1.4.0...2026-02-06-ct-translator-v2.0.0
+
+---
 ## 2025-12-22 — ct-translator v1.4.0
 
 Doing the things better!
